@@ -1,0 +1,53 @@
+# 系统配置 - 课堂视觉识别系统
+
+# PPT识别参数
+ppt_recognition:
+  enabled: true
+  source: "screen"  # 0为摄像头，"screen"为屏幕
+  confidence_threshold: 0.7
+  simhash_threshold: 5
+  stable_frame_count: 30
+  save_interval: 1.0
+
+  # OCR参数
+  ocr:
+    use_gpu: true
+    gpu_id: 0
+    language: "ch"
+    det_db_thresh: 0.3
+    det_db_box_thresh: 0.5
+
+# SAGE-Net学生状态识别参数
+student_engagement:
+  enabled: true
+  model_path: "models/sage_net.pth"
+  camera_id: 0
+  display: true
+
+  # SAGE-Net模型参数
+  sage_net:
+    expression_classes: 7
+    gaze_threshold: 0.4
+    head_yaw_threshold: 30
+    engagement_buffer_size: 50
+    max_num_faces: 10
+
+  # 推理参数
+  inference:
+    use_gpu: true
+    gpu_id: 1
+    batch_size: 8
+    frame_resize: [640, 360]
+
+# 输出配置
+output:
+  dir: "outputs"
+  save_knowledge_points: true
+  save_engagement_log: true
+  save_video: false
+  video_fps: 15
+
+# 日志配置
+logging:
+  level: "INFO"
+  format: "<green>{time:YYYY-MM-DD HH:mm:ss}</green> | <level>{level: <8}</level> | <cyan>{name}</cyan>:<cyan>{function}</cyan> - <level>{message}</level>"

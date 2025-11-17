@@ -1,0 +1,24 @@
+# Python 3.9.18
+
+# 核心依赖（按安装顺序）
+paddleocr==2.7.3                 # 升级版本，解除OpenCV限制
+paddlepaddle-gpu==2.5.2
+torch==2.0.1+cu118
+torchvision==0.15.2+cu118
+
+# OpenCV（兼容版）
+opencv-python==4.6.0.66          # 降级
+opencv-contrib-python==4.6.0.66
+
+# 其他不变
+mediapipe==0.10.8
+numpy==1.24.3
+scipy==1.10.1
+scikit-learn==1.3.0
+deep-sort-realtime==1.3.0
+pandas==2.0.3
+imageio==2.31.1
+imageio-ffmpeg==0.4.9
+ffmpeg-python==0.2.0
+tqdm==4.65.0
+loguru==0.7.0
