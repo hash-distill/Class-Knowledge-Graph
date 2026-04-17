@@ -11,8 +11,8 @@ tqdm>=4.66.5,<5.0
 pydantic>=2.8.2,<3.0
 
 # ── Deep learning (GPU) ──────────────────────────────────────
-# torch>=2.5.0
-# torchvision>=0.20.0
+# torch==2.11.0+cu128
+# torchvision==0.26.0+cu128
 
 # ── Detection / Tracking / Pose (YOLO26) ─────────────────────
 ultralytics>=8.3.50
