@@ -634,8 +634,13 @@ python scripts/smoke_test.py --mock
 # 训练检测模型
 python scripts/train_det.py --data configs/scb_yolo.yaml --model yolo26s.pt --device 0
 
+python scripts/train_det.py --data configs/scb_yolo.yaml --model yolo26s.pt --epochs 40 --imgsz 960 --batch 32 --device 2 --workers 0
+
 # 视频推理
 python scripts/infer_video.py --source video.mp4 --det-weights <best.pt> --save
+
+python scripts/infer_video.py --source ../test.mp4 --config configs/pipeline.yaml --save
+
 ```
 
 ---
