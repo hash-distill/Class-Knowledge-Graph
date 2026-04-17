@@ -196,8 +196,8 @@ class ActionClassifier:
         head_range = float(np.mean(np.ptp(head, axis=1)))
 
         # Hand height relative to shoulders (keypoints 9,10 vs 5,6)
-        wrists_y = coords[1, :, [9, 10]].mean(axis=1)     # (T,)
-        shoulders_y = coords[1, :, [5, 6]].mean(axis=1)    # (T,)
+        wrists_y = coords[1, :, [9, 10]].mean(axis=0)      # (T,)
+        shoulders_y = coords[1, :, [5, 6]].mean(axis=0)    # (T,)
         hand_raised_ratio = float(np.mean(wrists_y < shoulders_y - 30))
 
         # Body lean: nose y relative to shoulder y
