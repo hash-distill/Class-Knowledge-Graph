@@ -188,10 +188,13 @@ class GazeEstimator:
     # ── helpers ──────────────────────────────────────────────
 
     def _classify_gaze(self, pitch: float, yaw: float) -> tuple[FocusZone, float]:
+        wander_score = float(self.zones.get("wandering", {}).get("score", self.wander_score))
         for zone_name, cfg in self.zones.items():
+            if "pitch_range" not in cfg or "yaw_range" not in cfg:
+                continue
             if _in_range(pitch, cfg["pitch_range"]) and _in_range(yaw, cfg["yaw_range"]):
                 return FocusZone(zone_name), float(cfg["score"])
-        return FocusZone.WANDERING, self.wander_score
+        return FocusZone.WANDERING, wander_score
 
     @staticmethod
     def _rotation_to_euler(rmat: np.ndarray) -> tuple[float, float, float]:
