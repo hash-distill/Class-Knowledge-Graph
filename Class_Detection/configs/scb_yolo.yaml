@@ -2,7 +2,7 @@
 # 7,428 images │ 106,830 labels │ 20 classes
 # Source: https://github.com/Whiffe/SCB-dataset
 
-path: E:\National Innovation\Class Knowledge Graph\SCB_yolo_dataset
+path: ../SCB_yolo_dataset
 train: images/train
 val: images/val
 

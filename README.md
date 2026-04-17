@@ -349,9 +349,8 @@ $$CTES = \mu_{CAS} \cdot \exp(-\lambda \cdot \sigma_{CAS})$$
 
 ```bash
 # 创建虚拟环境
-python -m venv .venv
-.venv\Scripts\activate        # Windows
-# source .venv/bin/activate   # Linux/Mac
+conda create -n Class_Detection python=3.12 -y
+conda activate Class_Detection
 
 # 安装依赖
 pip install -U pip
@@ -615,8 +614,8 @@ Class Knowledge Graph/
 ### 10.1 最小环境搭建
 
 ```bash
-python -m venv .venv
-.venv\Scripts\activate
+conda create -n Class_Detection python=3.12 -y
+conda activate Class_Detection
 pip install -U pip
 pip install -r requirements.txt
 ```
