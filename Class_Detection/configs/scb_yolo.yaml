@@ -1,0 +1,29 @@
+# SCB-Dataset5 YOLO detection config
+# 7,428 images │ 106,830 labels │ 20 classes
+# Source: https://github.com/Whiffe/SCB-dataset
+
+path: E:\National Innovation\Class Knowledge Graph\SCB_yolo_dataset
+train: images/train
+val: images/val
+
+names:
+  0: hand_raising
+  1: read
+  2: write
+  3: bow_head
+  4: turn_head
+  5: discuss
+  6: talk
+  7: answer
+  8: stage_interact
+  9: yawn
+  10: lean_desk
+  11: use_phone
+  12: use_computer
+  13: stand
+  14: clap
+  15: teacher
+  16: guide
+  17: board_writing
+  18: blackboard
+  19: screen

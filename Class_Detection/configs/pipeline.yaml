@@ -1,0 +1,86 @@
+# ── Global Pipeline Configuration ─────────────────────────────
+# All thresholds, window parameters, and scoring weights.
+
+# ── Detection ─────────────────────────────────────────────────
+detection:
+  model: yolo26s.pt
+  conf_threshold: 0.25
+  iou_threshold: 0.7
+  imgsz: 960
+  device: "0"
+
+# ── Tracking ──────────────────────────────────────────────────
+tracking:
+  tracker: bytetrack.yaml
+  persist: true
+  track_buffer: 30        # frames to keep lost tracks
+
+# ── Pose estimation ──────────────────────────────────────────
+pose:
+  model: yolo26n-pose.pt
+  conf_threshold: 0.3
+  min_face_kpt_conf: 0.4  # minimum confidence for PnP-eligible face keypoints
+
+# ── Action classification ────────────────────────────────────
+action:
+  window_size: 30          # number of frames for ST-GCN input
+  use_stgcn: false         # set true after ST-GCN training
+  stgcn_weights: null      # path to trained ST-GCN weights
+
+  # Rule-based action → S_action mapping (used when ST-GCN is off)
+  action_scores:
+    hand_raising: 0.95
+    write: 0.85
+    read: 0.80
+    answer: 0.90
+    discuss: 0.70
+    clap: 0.75
+    stand: 0.60
+    stage_interact: 0.80
+    talk: 0.50
+    bow_head: 0.30
+    turn_head: 0.25
+    yawn: 0.20
+    lean_desk: 0.15
+    use_phone: 0.10
+    use_computer: 0.40
+    teacher: 0.0           # excluded from student scoring
+    guide: 0.0
+    board_writing: 0.0
+    blackboard: 0.0
+    screen: 0.0
+
+# ── Gaze estimation ─────────────────────────────────────────
+gaze:
+  # PnP focus score thresholds
+  focus_zones:
+    board_focus:            # looking at board/screen
+      pitch_range: [-15, 15]
+      yaw_range: [-20, 20]
+      score: 0.90
+    desk_focus:             # looking down at desk
+      pitch_range: [-50, -15]
+      yaw_range: [-15, 15]
+      score: 0.65
+    wandering:              # looking around
+      score: 0.20
+  fallback_base_score: 0.55
+
+# ── VSAM (Visual-Semantic Alignment) ────────────────────────
+vsam:
+  mu: 3.0                 # prior delay (seconds)
+  sigma: 1.5              # Gaussian window width (seconds)
+  window_duration: 12.0   # total observation window after t_ocr (seconds)
+  ocr_interval_frames: 30 # run OCR every N frames
+  text_change_threshold: 0.3  # Levenshtein ratio for knowledge-point switch
+
+# ── Scoring ──────────────────────────────────────────────────
+scoring:
+  w_action: 1.0           # CAS action weight
+  w_gaze: 1.0             # CAS gaze weight
+  lambda_penalty: 1.0     # CTES variance penalty coefficient
+
+# ── Student class IDs (used to filter students from detections) ──
+student_class_ids: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
+teacher_class_ids: [15, 16, 17]
+environment_class_ids: [18, 19]

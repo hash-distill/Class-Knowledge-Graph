@@ -1,0 +1,37 @@
+# ── ST-GCN Training Configuration ─────────────────────────────
+
+model:
+  in_channels: 3           # (x, y, confidence)
+  num_classes: 9            # classroom actions
+  graph_layout: coco        # 17 COCO keypoints
+  edge_importance: true
+  dropout: 0.3
+
+training:
+  epochs: 100
+  batch_size: 32
+  learning_rate: 0.01
+  lr_scheduler: cosine
+  weight_decay: 0.0001
+  optimizer: sgd
+  momentum: 0.9
+
+data:
+  window_size: 30           # temporal window (frames)
+  num_keypoints: 17
+  augmentation:
+    random_shift: true
+    random_scale: [0.9, 1.1]
+    random_rotation: [-10, 10]  # degrees
+
+# Action label mapping
+labels:
+  0: writing
+  1: reading
+  2: hand_raising
+  3: discussing
+  4: attending
+  5: leaning
+  6: using_phone
+  7: yawning
+  8: looking_around
