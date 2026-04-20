@@ -29,26 +29,12 @@ action:
 
   # Rule-based action → S_action mapping (used when ST-GCN is off)
   action_scores:
-    hand_raising: 0.95
-    write: 0.85
-    read: 0.80
-    answer: 0.90
-    discuss: 0.70
-    clap: 0.75
-    stand: 0.60
-    stage_interact: 0.80
-    talk: 0.50
-    bow_head: 0.30
-    turn_head: 0.25
-    yawn: 0.20
-    lean_desk: 0.15
-    use_phone: 0.10
-    use_computer: 0.40
+    active_student: 0.90
+    focus_student: 0.75
+    distracted_student: 0.20
     teacher: 0.0           # excluded from student scoring
-    guide: 0.0
-    board_writing: 0.0
-    blackboard: 0.0
-    screen: 0.0
+    screen_board: 0.0
+
 
 # ── Gaze estimation ─────────────────────────────────────────
 gaze:
@@ -81,6 +67,6 @@ scoring:
   lambda_penalty: 1.0     # CTES variance penalty coefficient
 
 # ── Student class IDs (used to filter students from detections) ──
-student_class_ids: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
-teacher_class_ids: [15, 16, 17]
-environment_class_ids: [18, 19]
+student_class_ids: [0, 1, 2]
+teacher_class_ids: [3]
+environment_class_ids: [4]

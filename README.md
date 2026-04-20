@@ -95,42 +95,29 @@ YOLO26 是 Ultralytics 于 2026 年 1 月发布的最新 YOLO 系列模型，具
 | **下载地址** | https://github.com/Whiffe/SCB-dataset |
 | **许可** | 学术研究用途 |
 
-#### 完整类别映射表
+#### 完整类别映射表（已降维版）
+
+为解决 20 类复杂动作中单帧视觉特征歧义问题，目前系统已将特征降维合并为 5 大语义特征：
 
 ```yaml
-# configs/scb_yolo.yaml
+# configs/scb_yolo_merged.yaml
 names:
-  0: hand_raising     # 举手
-  1: read             # 阅读
-  2: write            # 书写
-  3: bow_head         # 低头
-  4: turn_head        # 转头
-  5: discuss          # 讨论
-  6: talk             # 说话
-  7: answer           # 回答
-  8: stage_interact   # 上台互动
-  9: yawn             # 打哈欠
-  10: lean_desk       # 趴桌
-  11: use_phone       # 使用手机
-  12: use_computer    # 使用电脑
-  13: stand           # 站立
-  14: clap            # 鼓掌
-  15: teacher         # 教师
-  16: guide           # 指导
-  17: board_writing   # 板书
-  18: blackboard      # 黑板
-  19: screen          # 投影屏幕
+  0: active_student     # 高活跃互动 (举手/回答/讨论/上台/鼓掌等)
+  1: focus_student      # 常规专注动作 (书写/阅读/低头/站立/用电脑等)
+  2: distracted_student # 注意力分散 (转头/打哈欠/趴桌/用手机等)
+  3: teacher            # 执教人员 (教师/指导/板书)
+  4: screen_board       # 环境锚点 (黑板/屏幕)
 ```
 
 #### 行为语义分组
 
-| 类型 | 包含行为 | 课堂含义 |
+| 类型 | 包含旧版行为 | 课堂含义 |
 |------|---------|---------|
-| **积极行为** | hand_raising, write, read, answer, discuss, clap | 学生高度参与 |
-| **中性行为** | stand, talk, stage_interact | 视情境判断 |
-| **消极行为** | bow_head, lean_desk, use_phone, yawn, turn_head | 注意力分散 |
-| **教师行为** | teacher, guide, board_writing | 教学活动识别 |
-| **环境要素** | blackboard, screen | 知识点锚点来源 |
+| **积极行为** | hand_raising, discuss, talk, answer, stage_interact, clap | 学生高度参与 |
+| **正常听讲** | read, write, bow_head, use_computer, stand | 常规专注听课 |
+| **游离行为** | turn_head, yawn, lean_desk, use_phone | 注意力分散/犯困 |
+| **教师行为** | teacher, guide, board_writing | 教学活动提取 |
+| **环境要素** | blackboard, screen | 知识点锚点提取 |
 
 ### 3.2 辅助数据参考
 
@@ -398,9 +385,9 @@ python scripts/train_det.py \
 
 | 参数 | 值 | 说明 |
 |------|------|------|
-| `--model` | `yolo26s.pt` | Small 版本，精度/速度平衡 |
+| `--model` | `yolo26m.pt` 或 `yolo26x.pt` | 改采大尺寸模型，极大提升远景小目标检测精度 |
 | `--imgsz` | 960 | 较大输入分辨率以检测后排小目标 |
-| `--epochs` | 150 | 配合 patience=30 的早停策略 |
+| `--epochs` | 150 | 因合并分类极易收敛，通常 50-100 Epochs 即可 |
 | `--batch` | 16 | 根据 GPU 显存调整（24GB → 16, 12GB → 8） |
 | `--cache` | - | 缓存图像到 RAM 加速训练 |
 
@@ -631,16 +618,18 @@ python scripts/smoke_test.py --mock
 ### 10.3 完整训练与推理
 
 ```bash
-# 训练检测模型
-python scripts/train_det.py --data configs/scb_yolo.yaml --model yolo26s.pt --device 0
+# 训练降维合并版模型（推荐大模型）
+python scripts/train_det.py --data configs/scb_yolo_merged.yaml --model yolo26m.pt --epochs 100 --imgsz 960 --batch 16 --device 0
 
-python scripts/train_det.py --data configs/scb_yolo.yaml --model yolo26s.pt --epochs 40 --imgsz 960 --batch 32 --device 2 --workers 0
+# 视频实时推理（支持低频抽取以引入重型网络）
+python scripts/infer_video.py \
+    --source classroom.mp4 \
+    --interval-sec 1.0 \
+    --config configs/pipeline.yaml \
+    --save
 
-# 视频推理
-python scripts/infer_video.py --source video.mp4 --det-weights <best.pt> --save
-
-python scripts/infer_video.py --source ../test.mp4 --config configs/pipeline.yaml --save
-
+# 冒烟测试（无需权重，mock 数据验证链路）
+python scripts/smoke_test.py --mock
 ```
 
 ---

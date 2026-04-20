@@ -31,6 +31,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--save", action="store_true", help="Save annotated video + JSON.")
     p.add_argument("--output", type=Path, default=Path("artifacts/results"))
     p.add_argument("--show", action="store_true", help="Display live preview window.")
+    p.add_argument("--interval-sec", type=float, default=1.0, help="Analyze 1 frame every N seconds to save compute.")
     p.add_argument("--max-frames", type=int, default=0, help="Process at most N frames (0=all).")
     return p.parse_args()
 
@@ -68,6 +69,12 @@ def main() -> None:
         if not ret:
             break
         frame_idx += 1
+        
+        # Frame extraction logic
+        frame_step = max(1, int(fps * args.interval_sec))
+        if args.interval_sec > 0 and (frame_idx - 1) % frame_step != 0:
+            continue
+            
         if 0 < args.max_frames < frame_idx:
             break
 
