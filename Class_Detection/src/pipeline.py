@@ -34,6 +34,18 @@ def _utc_iso() -> str:
     return datetime.now(tz=timezone.utc).isoformat()
 
 
+def _compute_iou(boxA: list[float], boxB: list[float]) -> float:
+    xA = max(boxA[0], boxB[0])
+    yA = max(boxA[1], boxB[1])
+    xB = min(boxA[2], boxB[2])
+    yB = min(boxA[3], boxB[3])
+    interArea = max(0.0, xB - xA) * max(0.0, yB - yA)
+    if interArea == 0:
+        return 0.0
+    boxAArea = (boxA[2] - boxA[0]) * (boxA[3] - boxA[1])
+    boxBArea = (boxB[2] - boxB[0]) * (boxB[3] - boxB[1])
+    return interArea / float(boxAArea + boxBArea - interArea)
+
 class ClassroomPipeline:
     """Full pipeline: frame in → ClassroomSnapshot out."""
 
@@ -99,14 +111,15 @@ class ClassroomPipeline:
 
         # ── scoring ───────────────────────────────────────────
         score_cfg = cfg.get("scoring", {})
-        self.w_action = score_cfg.get("w_action", 1.0)
-        self.w_gaze = score_cfg.get("w_gaze", 1.0)
+        self.w_action = score_cfg.get("w_action", 0.6) # updated default
+        self.w_gaze = score_cfg.get("w_gaze", 0.4)     # updated default
         self.lambda_penalty = score_cfg.get("lambda_penalty", 1.0)
 
         # ── role class IDs ────────────────────────────────────
-        self.student_ids = cfg.get("student_class_ids", list(range(15)))
-        self.teacher_ids = cfg.get("teacher_class_ids", [15, 16, 17])
-        self.env_ids = cfg.get("environment_class_ids", [18, 19])
+        # Default now matches the merged 5-class model mapping
+        self.student_ids = cfg.get("student_class_ids", [0, 1, 2])
+        self.teacher_ids = cfg.get("teacher_class_ids", [3])
+        self.env_ids = cfg.get("environment_class_ids", [4])
 
         # ── runtime state ────────────────────────────────────
         self._frame_count: int = 0
@@ -117,9 +130,17 @@ class ClassroomPipeline:
 
     # ── main entry point ─────────────────────────────────────
 
-    def process_frame(self, frame: np.ndarray) -> ClassroomSnapshot:
-        """Process a single BGR frame through the full pipeline."""
-        self._frame_count += 1
+    def process_frame(self, frame: np.ndarray, frame_id: Optional[int] = None) -> ClassroomSnapshot:
+        """Process a single BGR frame through the full pipeline.
+        
+        If frame_id is provided, it is used for timing; otherwise, 
+        internal self._frame_count is used.
+        """
+        if frame_id is not None:
+            self._frame_count = frame_id
+        else:
+            self._frame_count += 1
+            
         t_sec = self._frame_count / self._fps
 
         # 1. Detection + Tracking
@@ -129,7 +150,7 @@ class ClassroomPipeline:
         )
 
         # 2. Pose estimation (whole frame)
-        kpt_records = self.pose.estimate(frame)
+        kpt_records, pose_bboxes = self.pose.estimate(frame)
         h, w = frame.shape[:2]
 
         # 3. Per-student processing
@@ -137,8 +158,16 @@ class ClassroomPipeline:
         for i, det in enumerate(students):
             tid = det.track_id or (10000 + i)
 
-            # Match keypoint to detection (by bbox IoU or simple index)
-            kpt = kpt_records[i] if i < len(kpt_records) else None
+            # Match keypoint to detection by bbox IoU
+            best_iou = 0.0
+            best_kpt_idx = -1
+            for j, p_box in enumerate(pose_bboxes):
+                iou = _compute_iou(det.xyxy, p_box)
+                if iou > best_iou:
+                    best_iou = iou
+                    best_kpt_idx = j
+                    
+            kpt = kpt_records[best_kpt_idx] if best_iou > 0.3 else None
 
             # Action
             action_rec = self.action.classify_from_detection(
@@ -156,9 +185,9 @@ class ClassroomPipeline:
                 gaze_rec = self.gaze.estimate(kpt, frame_shape=(h, w))
 
             # CAS
-            s_action = action_rec.confidence
+            s_action = action_rec.engagement_score
             s_gaze = gaze_rec.focus_score
-            cas = calc_cas(s_action, s_gaze, self.w_action, self.w_gaze)
+            cas = calc_cas(s_action, s_gaze, action_rec.label, self.w_action, self.w_gaze)
 
             student_states.append(
                 StudentState(
@@ -169,6 +198,10 @@ class ClassroomPipeline:
                     cas=round(cas, 4),
                 )
             )
+
+        # Bug-7: Prune action buffer for stale tracks
+        active_tids = {s.track_id for s in student_states}
+        self.action.buffer.prune(active_tids)
 
         # 4. OCR on environment regions
         if self._frame_count % self.ocr_interval == 0:

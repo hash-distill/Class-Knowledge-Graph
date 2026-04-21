@@ -22,11 +22,10 @@ from src.schema import (
 )
 from src.scoring import calc_cas, calc_ctes, compute_classroom_metrics
 from src.vsam import VSAMAligner, gaussian_weight, score_knowledge_point
-from src.gaze import GazeEstimator
 
 
 def __getattr__(name: str):
-    """Lazy import for modules that require ultralytics / paddleocr."""
+    """Lazy import for modules that require ultralytics / paddleocr / opencv."""
     if name == "Detector":
         from src.detector import Detector
         return Detector
@@ -39,6 +38,9 @@ def __getattr__(name: str):
     if name == "OCRAnchorDetector":
         from src.ocr_anchor import OCRAnchorDetector
         return OCRAnchorDetector
+    if name == "GazeEstimator":
+        from src.gaze import GazeEstimator
+        return GazeEstimator
     if name == "ClassroomPipeline":
         from src.pipeline import ClassroomPipeline
         return ClassroomPipeline

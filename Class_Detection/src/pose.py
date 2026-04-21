@@ -41,8 +41,16 @@ class PoseEstimator:
         self.conf = conf
         self.imgsz = imgsz
 
-    def estimate(self, frame: np.ndarray) -> list[KeypointRecord]:
-        """Return keypoints for every person detected in *frame*."""
+    def estimate(self, frame: np.ndarray) -> tuple[list[KeypointRecord], list[list[float]]]:
+        """Return keypoints and bboxes for every person detected in *frame*.
+
+        Returns
+        -------
+        records : list[KeypointRecord]
+            Keypoints for each detected person.
+        bboxes : list[list[float]]
+            Corresponding bounding boxes as [x1, y1, x2, y2].
+        """
         results = self.model.predict(
             source=frame,
             conf=self.conf,
@@ -51,19 +59,29 @@ class PoseEstimator:
             verbose=False,
         )
         if not results:
-            return []
+            return [], []
 
         kpts = results[0].keypoints  # ultralytics Keypoints object
+        boxes = results[0].boxes
         if kpts is None or kpts.data is None:
-            return []
+            return [], []
 
         records: list[KeypointRecord] = []
+        bboxes: list[list[float]] = []
         data = kpts.data.cpu().numpy()  # (N, 17, 3)
-        for person in data:
+
+        for i, person in enumerate(data):
             pts = person.tolist()  # list[list[float]]  (17, 3)
             mean_conf = float(np.mean(person[:, 2]))
             records.append(KeypointRecord(points=pts, mean_confidence=mean_conf))
-        return records
+            # Extract bbox from pose model's detection
+            if boxes is not None and i < len(boxes):
+                bbox = boxes[i].xyxy.squeeze(0).tolist()
+                bboxes.append(bbox)
+            else:
+                bboxes.append([0.0, 0.0, 0.0, 0.0])
+
+        return records, bboxes
 
     @staticmethod
     def get_face_points(kpt: KeypointRecord) -> np.ndarray:

@@ -62,8 +62,8 @@ vsam:
 
 # ── Scoring ──────────────────────────────────────────────────
 scoring:
-  w_action: 1.0           # CAS action weight
-  w_gaze: 1.0             # CAS gaze weight
+  w_action: 0.6           # CAS action weight (optimized)
+  w_gaze: 0.4             # CAS gaze weight (optimized)
   lambda_penalty: 1.0     # CTES variance penalty coefficient
 
 # ── Student class IDs (used to filter students from detections) ──

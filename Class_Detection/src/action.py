@@ -88,6 +88,12 @@ class KeypointBuffer:
     def active_ids(self) -> set[int]:
         return set(self._buffers.keys())
 
+    def prune(self, keep_ids: set[int]) -> None:
+        """Remove buffers for track IDs not in *keep_ids*."""
+        stale = [tid for tid in self._buffers if tid not in keep_ids]
+        for tid in stale:
+            del self._buffers[tid]
+
 
 # ── Action classifier ────────────────────────────────────────
 
@@ -117,11 +123,18 @@ class ActionClassifier:
     def classify_from_detection(
         self, class_name: str, confidence: float
     ) -> ActionRecord:
-        """Quick classification using the detection class name directly."""
-        score = self.action_scores.get(class_name, 0.5)
+        """Quick classification using the detection class name directly.
+
+        The *engagement_score* (how engaged the action is) is kept separate
+        from *confidence* (how certain the detector is about the class).
+        CAS should use engagement_score, not the product of the two.
+        """
+        engagement = self.action_scores.get(class_name, 0.5)
         return ActionRecord(
             label=class_name,
-            confidence=round(score * confidence, 4),
+            confidence=round(engagement, 4),
+            engagement_score=round(engagement, 4),
+            det_confidence=round(confidence, 4),
             source=ActionSource.DETECTION,
         )
 
@@ -146,6 +159,12 @@ class ActionClassifier:
         from models.stgcn import STGCN
         from models.graph import Graph
 
+        # Resolve target device
+        if self.device.isdigit() and torch.cuda.is_available():
+            self._torch_device = torch.device(f"cuda:{self.device}")
+        else:
+            self._torch_device = torch.device("cpu")
+
         graph = Graph(layout="coco", strategy="spatial")
         model = STGCN(
             in_channels=3,
@@ -157,19 +176,23 @@ class ActionClassifier:
         ckpt = torch.load(str(weights_path), map_location="cpu", weights_only=True)
         model.load_state_dict(ckpt)
         model.eval()
+        model = model.to(self._torch_device)
         self._stgcn_model = model
 
     @torch.no_grad()
     def _stgcn_infer(self, window: np.ndarray) -> ActionRecord:
-        tensor = torch.from_numpy(window).unsqueeze(0)  # (1, C, T, V, M)
+        device = getattr(self, "_torch_device", torch.device("cpu"))
+        tensor = torch.from_numpy(window).unsqueeze(0).to(device)  # (1, C, T, V, M)
         logits = self._stgcn_model(tensor)
         probs = torch.softmax(logits, dim=1).squeeze()
         idx = int(probs.argmax().item())
         label = STGCN_LABELS.get(idx, "unknown")
         conf = float(probs[idx].item())
+        engagement = STGCN_ENGAGEMENT.get(label, 0.5)
         return ActionRecord(
             label=label,
             confidence=round(conf, 4),
+            engagement_score=round(engagement, 4),
             source=ActionSource.STGCN,
         )
 
@@ -186,8 +209,8 @@ class ActionClassifier:
         head_range = float(np.mean(np.ptp(head, axis=1)))
 
         # Hand height relative to shoulders (keypoints 9,10 vs 5,6)
-        wrists_y = coords[1, :, [9, 10]].mean(axis=0)      # (T,)
-        shoulders_y = coords[1, :, [5, 6]].mean(axis=0)    # (T,)
+        wrists_y = coords[1, :, [9, 10]].mean(axis=1)      # (T,) avg of both wrists per frame
+        shoulders_y = coords[1, :, [5, 6]].mean(axis=1)    # (T,) avg of both shoulders per frame
         hand_raised_ratio = float(np.mean(wrists_y < shoulders_y - 30))
 
         # Body lean: nose y relative to shoulder y
@@ -195,12 +218,12 @@ class ActionClassifier:
         lean_ratio = float(np.mean(nose_y > shoulders_y + 50))
 
         if hand_raised_ratio > 0.5:
-            return ActionRecord(label="hand_raising", confidence=0.85, source=ActionSource.RULE)
+            return ActionRecord(label="hand_raising", confidence=0.85, engagement_score=0.95, source=ActionSource.RULE)
         if lean_ratio > 0.5:
-            return ActionRecord(label="leaning", confidence=0.75, source=ActionSource.RULE)
+            return ActionRecord(label="leaning", confidence=0.75, engagement_score=0.15, source=ActionSource.RULE)
         if head_range > 40:
-            return ActionRecord(label="looking_around", confidence=0.65, source=ActionSource.RULE)
+            return ActionRecord(label="looking_around", confidence=0.65, engagement_score=0.25, source=ActionSource.RULE)
         if head_range < 10:
-            return ActionRecord(label="attending", confidence=0.60, source=ActionSource.RULE)
+            return ActionRecord(label="attending", confidence=0.60, engagement_score=0.70, source=ActionSource.RULE)
 
-        return ActionRecord(label="attending", confidence=0.50, source=ActionSource.RULE)
+        return ActionRecord(label="attending", confidence=0.50, engagement_score=0.60, source=ActionSource.RULE)

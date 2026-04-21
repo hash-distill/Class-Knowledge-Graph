@@ -52,6 +52,8 @@ class KeypointRecord(BaseModel):
 class ActionRecord(BaseModel):
     label: str = "unknown"
     confidence: float = Field(ge=0.0, le=1.0, default=0.0)
+    engagement_score: float = Field(ge=0.0, le=1.0, default=0.5)
+    det_confidence: float = Field(ge=0.0, le=1.0, default=0.0)
     source: ActionSource = ActionSource.RULE
 
 

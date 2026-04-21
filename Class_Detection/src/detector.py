@@ -113,10 +113,11 @@ class Detector:
         names = r.names or {}
 
         for box in boxes:
-            cls_id = int(box.cls.squeeze().item())
-            conf_val = float(box.conf.squeeze().item())
-            xyxy = [float(v) for v in box.xyxy.squeeze().tolist()]
-            track_id = int(box.id.squeeze().item()) if box.id is not None else None
+            # Bug-9: Use squeeze(0) instead of squeeze() for safer dimension handling
+            cls_id = int(box.cls.squeeze(0).item())
+            conf_val = float(box.conf.squeeze(0).item())
+            xyxy = [float(v) for v in box.xyxy.squeeze(0).tolist()]
+            track_id = int(box.id.squeeze(0).item()) if box.id is not None else None
 
             records.append(
                 BBoxRecord(
@@ -137,12 +138,17 @@ class Detector:
         env_ids: list[int],
     ) -> tuple[list[BBoxRecord], list[BBoxRecord], list[BBoxRecord]]:
         """Split detections into students / teachers / environment."""
+        # Bug-10: Convert to sets for O(1) lookup performance
+        s_set = set(student_ids)
+        t_set = set(teacher_ids)
+        e_set = set(env_ids)
+        
         students, teachers, envs = [], [], []
         for r in records:
-            if r.class_id in student_ids:
+            if r.class_id in s_set:
                 students.append(r)
-            elif r.class_id in teacher_ids:
+            elif r.class_id in t_set:
                 teachers.append(r)
-            elif r.class_id in env_ids:
+            elif r.class_id in e_set:
                 envs.append(r)
         return students, teachers, envs

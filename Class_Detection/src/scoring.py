@@ -25,18 +25,31 @@ def _clamp01(v: float) -> float:
 def calc_cas(
     action_score: float,
     gaze_score: float,
-    w_action: float = 1.0,
-    w_gaze: float = 1.0,
+    action_label: str = "",
+    w_action: float = 0.6,
+    w_gaze: float = 0.4,
 ) -> float:
     """Classroom Attention Score per student.
 
-    CAS = max(w1 * S_action, w2 * S_gaze)
+    CAS = (w_action * S_action + w_gaze * S_gaze) / (w_action + w_gaze)
 
-    Uses ``max`` instead of weighted average so that two valid but
-    asymmetric signals (e.g. high-action + low-gaze when writing)
-    do not dilute each other.
+    Uses a weighted average to balance body action and head pose.
+    Applies a severe penalty coefficient if the student is engaged
+    in obviously negative behaviors (e.g. using phone, yawning).
     """
-    return _clamp01(max(w_action * action_score, w_gaze * gaze_score))
+    weight_sum = w_action + w_gaze
+    if weight_sum <= 0:
+        return 0.0
+        
+    base_cas = (w_action * action_score + w_gaze * gaze_score) / weight_sum
+    
+    # 负面行为惩罚
+    penalty_factor = 1.0
+    negative_labels = ["distracted", "using_phone", "yawning", "sleeping"]
+    if any(neg in action_label.lower() for neg in negative_labels):
+        penalty_factor = 0.5  # 显著降低专注度得分
+        
+    return _clamp01(base_cas * penalty_factor)
 
 
 # ── Class-level CTES ─────────────────────────────────────────

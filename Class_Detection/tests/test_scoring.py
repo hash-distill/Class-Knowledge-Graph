@@ -10,19 +10,33 @@ from src.schema import StudentState, ActionRecord, GazeRecord
 
 
 class TestCalcCAS:
-    def test_max_fusion(self):
-        """CAS should take the max of weighted action and gaze."""
-        assert calc_cas(0.9, 0.3) == 0.9
-        assert calc_cas(0.3, 0.9) == 0.9
+    def test_weighted_fusion(self):
+        """CAS should take the weighted average of action and gaze."""
+        # Default weights: w_action=0.6, w_gaze=0.4
+        # 0.9 * 0.6 + 0.3 * 0.4 = 0.54 + 0.12 = 0.66
+        assert abs(calc_cas(0.9, 0.3) - 0.66) < 1e-6
+        # 0.3 * 0.6 + 0.9 * 0.4 = 0.18 + 0.36 = 0.54
+        assert abs(calc_cas(0.3, 0.9) - 0.54) < 1e-6
 
     def test_clamped_to_01(self):
         assert calc_cas(1.5, 0.5) == 1.0
         assert calc_cas(-0.1, 0.0) == 0.0
 
     def test_weights(self):
-        assert calc_cas(0.5, 0.8, w_action=2.0, w_gaze=1.0) == 1.0
+        # (0.5 * 2.0 + 0.8 * 1.0) / 3.0 = 1.8 / 3.0 = 0.6
+        assert abs(calc_cas(0.5, 0.8, w_action=2.0, w_gaze=1.0) - 0.6) < 1e-6
+        # (0.5 * 0.5 + 0.8 * 1.0) / 1.5 = (0.25 + 0.8) / 1.5 = 1.05 / 1.5 = 0.7
         result = calc_cas(0.5, 0.8, w_action=0.5, w_gaze=1.0)
-        assert abs(result - 0.8) < 1e-6
+        assert abs(result - 0.7) < 1e-6
+
+    def test_negative_penalty(self):
+        """Negative behaviors should trigger a 0.5x penalty."""
+        # Normal: 0.8*0.6 + 0.8*0.4 = 0.48 + 0.32 = 0.8
+        # With penalty: 0.8 * 0.5 = 0.4
+        assert abs(calc_cas(0.8, 0.8, action_label="using_phone") - 0.4) < 1e-6
+        assert abs(calc_cas(0.8, 0.8, action_label="sleeping") - 0.4) < 1e-6
+        assert abs(calc_cas(0.8, 0.8, action_label="yawning") - 0.4) < 1e-6
+
 
 
 class TestCalcCTES:

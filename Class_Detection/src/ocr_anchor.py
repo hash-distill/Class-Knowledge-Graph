@@ -76,12 +76,15 @@ class OCRAnchorDetector:
 
     @staticmethod
     def _change_ratio(old: str, new: str) -> float:
-        """Character-level Jaccard distance as a quick change metric."""
+        """Sequence-based similarity ratio (0 to 1).
+        
+        Returns 1.0 - ratio to represent 'change distance'.
+        """
         if not old and not new:
             return 0.0
-        s1, s2 = set(old), set(new)
-        union = s1 | s2
-        if not union:
-            return 0.0
-        intersection = s1 & s2
-        return 1.0 - len(intersection) / len(union)
+        if not old or not new:
+            return 1.0
+            
+        import difflib
+        ratio = difflib.SequenceMatcher(None, old, new).ratio()
+        return 1.0 - ratio

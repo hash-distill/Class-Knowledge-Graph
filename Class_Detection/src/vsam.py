@@ -89,29 +89,32 @@ class VSAMAligner:
         mu: float = 3.0,
         sigma: float = 1.5,
         window_duration: float = 12.0,
+        max_history: int = 50,
     ) -> None:
         self.mu = mu
         self.sigma = sigma
         self.window_duration = window_duration
-        self._anchors: list[KnowledgeAnchorEvent] = []
+        self.max_history = max_history
+        self._active: list[KnowledgeAnchorEvent] = []
+        self._history: list[KnowledgeAnchorEvent] = []
 
     @property
     def active_anchors(self) -> list[KnowledgeAnchorEvent]:
-        return [a for a in self._anchors if not a.closed]
+        return self._active
 
     @property
     def all_anchors(self) -> list[KnowledgeAnchorEvent]:
-        return list(self._anchors)
+        return self._history + self._active
 
     def trigger(self, entity: str, t_ocr: float) -> KnowledgeAnchorEvent:
         """Register a new knowledge-point anchor (called by OCR module)."""
         anchor = KnowledgeAnchorEvent(entity=entity, t_ocr=t_ocr)
-        self._anchors.append(anchor)
+        self._active.append(anchor)
         return anchor
 
     def feed(self, t: float, mean_cas: float) -> None:
         """Append a CAS observation to all active anchors."""
-        for anchor in self.active_anchors:
+        for anchor in self._active:
             if t - anchor.t_ocr <= self.window_duration:
                 anchor.cas_buffer.append(mean_cas)
                 anchor.time_buffer.append(t)
@@ -119,7 +122,9 @@ class VSAMAligner:
     def evaluate(self, current_time: float) -> list[KnowledgeAnchorEvent]:
         """Score and close mature anchors whose window has elapsed."""
         newly_closed: list[KnowledgeAnchorEvent] = []
-        for anchor in self.active_anchors:
+        still_active: list[KnowledgeAnchorEvent] = []
+        
+        for anchor in self._active:
             if current_time - anchor.t_ocr > self.window_duration:
                 anchor.score_k = score_knowledge_point(
                     anchor.cas_buffer, anchor.time_buffer,
@@ -127,4 +132,14 @@ class VSAMAligner:
                 )
                 anchor.closed = True
                 newly_closed.append(anchor)
+                self._history.append(anchor)
+            else:
+                still_active.append(anchor)
+        
+        self._active = still_active
+        
+        # Opt-3: Cap history size to prevent OOM on very long sessions
+        if len(self._history) > self.max_history:
+            self._history = self._history[-self.max_history:]
+            
         return newly_closed

@@ -13,6 +13,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+from datetime import datetime
 from pathlib import Path
 
 import cv2
@@ -61,33 +62,55 @@ def main() -> None:
     pipeline.set_fps(fps)
 
     writer = None
+    # Use timestamp to create unique output filenames, preventing overwrites
+    run_tag = datetime.now().strftime("%Y%m%d_%H%M%S")
+    source_stem = Path(args.source).stem if not args.source.isdigit() else "cam"
+    out_name = f"{source_stem}_{run_tag}"
+
+    # Output video should always run at the source original FPS
+    output_fps = fps
+
     if args.save:
         args.output.mkdir(parents=True, exist_ok=True)
-        out_video = args.output / "annotated.mp4"
+        out_video = args.output / f"{out_name}.mp4"
         fourcc = cv2.VideoWriter_fourcc(*"mp4v")
-        writer = cv2.VideoWriter(str(out_video), fourcc, fps, (w, h))
+        writer = cv2.VideoWriter(str(out_video), fourcc, output_fps, (w, h))
 
     snapshots: list[dict] = []
     frame_idx = 0
+    processed_count = 0
 
     print(f"Processing: {args.source}  ({w}x{h} @ {fps:.1f} fps)")
 
+    frame_step = max(1, int(fps * args.interval_sec))
+
     while True:
-        ret, frame = cap.read()
-        if not ret:
+        # Opt-1: Use grab() to skip decoding for non-analyzed frames
+        if not cap.grab():
             break
+        
         frame_idx += 1
         
-        # Frame extraction logic
-        frame_step = max(1, int(fps * args.interval_sec))
+        # Decide if we analyze this frame
         if args.interval_sec > 0 and (frame_idx - 1) % frame_step != 0:
             continue
             
-        if 0 < args.max_frames < frame_idx:
+        # Bug-3: Use processed_count for max_frames limit
+        processed_count += 1
+        if 0 < args.max_frames < processed_count:
             break
 
-        snapshot = pipeline.process_frame(frame)
-        snapshots.append(snapshot.model_dump())
+        # Actually decode the frame we want to process
+        ret, frame = cap.retrieve()
+        if not ret:
+            break
+
+        # Bug-5: Pass frame_idx to pipeline to ensure stable timing
+        snapshot = pipeline.process_frame(frame, frame_id=frame_idx)
+        
+        # Only record JSON representation once per second
+        if frame_idx % max(1, int(fps)) == 0:
+            snapshots.append(snapshot.model_dump())
 
         # Draw basic overlay
         annotated = frame.copy()
@@ -112,7 +135,7 @@ def main() -> None:
                 break
 
         if frame_idx % 100 == 0:
-            print(f"  frame {frame_idx}  CTES={ctes:.3f}")
+            print(f"  frame {frame_idx} (processed {processed_count})  CTES={ctes:.3f}")
 
     cap.release()
     if writer:
@@ -120,14 +143,14 @@ def main() -> None:
     cv2.destroyAllWindows()
 
     if args.save:
-        json_path = args.output / "snapshots.json"
+        json_path = args.output / f"{out_name}.json"
         json_path.write_text(
             json.dumps(snapshots, ensure_ascii=False, indent=2), encoding="utf-8"
         )
         print(f"Saved {len(snapshots)} snapshots to {json_path}")
-        print(f"Annotated video saved to {args.output / 'annotated.mp4'}")
+        print(f"Annotated video saved to {out_video}")
 
-    print(f"Done. Processed {frame_idx} frames.")
+    print(f"Done. Processed {processed_count} frames (video index {frame_idx}).")
 
 
 def _cas_color(cas: float) -> tuple[int, int, int]:
