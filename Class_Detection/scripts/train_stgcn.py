@@ -11,6 +11,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader, Dataset
+import yaml
 
 import sys
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -98,6 +99,8 @@ def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description="Train ST-GCN for classroom action recognition.")
     p.add_argument("--keypoints-dir", type=Path, required=True,
                    help="Root dir with train/ val/ and label.json")
+    p.add_argument("--config", type=Path, default=None,
+                   help="Path to YAML config (overrides defaults)")
     p.add_argument("--epochs", type=int, default=100)
     p.add_argument("--batch", type=int, default=32)
     p.add_argument("--lr", type=float, default=0.01)
@@ -109,6 +112,18 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> None:
     args = parse_args()
+    
+    # Load config if provided
+    if args.config and args.config.exists():
+        with open(args.config, "r", encoding="utf-8") as f:
+            cfg = yaml.safe_load(f)
+            if "training" in cfg:
+                args.epochs = cfg["training"].get("epochs", args.epochs)
+                args.batch = cfg["training"].get("batch_size", args.batch)
+                args.lr = cfg["training"].get("learning_rate", args.lr)
+            if "model" in cfg:
+                args.num_classes = cfg["model"].get("num_classes", args.num_classes)
+
     device = torch.device(f"cuda:{args.device}" if torch.cuda.is_available() else "cpu")
 
     graph = Graph(layout="coco", strategy="spatial")
