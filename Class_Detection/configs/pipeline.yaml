@@ -17,7 +17,7 @@ tracking:
 
 # ── Pose estimation ──────────────────────────────────────────
 pose:
-  model: yolo26m-pose.pt
+  model: yolo26n-pose.pt
   conf_threshold: 0.3
   min_face_kpt_conf: 0.4  # minimum confidence for PnP-eligible face keypoints
 
