@@ -28,6 +28,9 @@ def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description="Run full classroom pipeline on a video.")
     p.add_argument("--source", type=str, required=True, help="Video path or camera index.")
     p.add_argument("--config", type=Path, default=Path("configs/pipeline.yaml"))
+    p.add_argument("--det-weights", type=str, default=None, help="Detection model weights path (overrides config).")
+    p.add_argument("--pose-weights", type=str, default=None, help="Pose model weights path (overrides config).")
+    p.add_argument("--device", type=str, default=None, help="Device to run on (e.g. '0', overrides config).")
     p.add_argument("--save", action="store_true", help="Save annotated video + JSON.")
     p.add_argument("--output", type=Path, default=Path("artifacts/results"))
     p.add_argument("--show", action="store_true", help="Display live preview window.")
@@ -38,7 +41,12 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> None:
     args = parse_args()
-    pipeline = ClassroomPipeline(config_path=args.config)
+    pipeline = ClassroomPipeline(
+        config_path=args.config,
+        det_weights=args.det_weights,
+        pose_weights=args.pose_weights,
+        device=args.device,
+    )
 
     # Open video
     source = int(args.source) if args.source.isdigit() else args.source

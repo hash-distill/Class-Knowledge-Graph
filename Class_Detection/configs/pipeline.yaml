@@ -3,7 +3,7 @@
 
 # ── Detection ─────────────────────────────────────────────────
 detection:
-  model: yolo26s.pt
+  model: yolo26m.pt
   conf_threshold: 0.25
   iou_threshold: 0.7
   imgsz: 960
@@ -17,7 +17,7 @@ tracking:
 
 # ── Pose estimation ──────────────────────────────────────────
 pose:
-  model: yolo26n-pose.pt
+  model: yolo26m-pose.pt
   conf_threshold: 0.3
   min_face_kpt_conf: 0.4  # minimum confidence for PnP-eligible face keypoints
 

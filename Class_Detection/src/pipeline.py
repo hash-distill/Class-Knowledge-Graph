@@ -37,14 +37,21 @@ def _utc_iso() -> str:
 class ClassroomPipeline:
     """Full pipeline: frame in → ClassroomSnapshot out."""
 
-    def __init__(self, config_path: str | Path = "configs/pipeline.yaml") -> None:
+    def __init__(
+        self,
+        config_path: str | Path = "configs/pipeline.yaml",
+        det_weights: str | None = None,
+        pose_weights: str | None = None,
+        device: str | None = None,
+    ) -> None:
         cfg = yaml.safe_load(Path(config_path).read_text(encoding="utf-8"))
 
         # ── detection ─────────────────────────────────────────
         det_cfg = cfg.get("detection", {})
+        run_device = device if device is not None else det_cfg.get("device", "0")
         self.detector = Detector(
-            weights=det_cfg.get("model", "yolo26s.pt"),
-            device=det_cfg.get("device", "0"),
+            weights=det_weights if det_weights is not None else det_cfg.get("model", "yolo26s.pt"),
+            device=run_device,
             conf=det_cfg.get("conf_threshold", 0.25),
             iou=det_cfg.get("iou_threshold", 0.7),
             imgsz=det_cfg.get("imgsz", 960),
@@ -53,8 +60,8 @@ class ClassroomPipeline:
         # ── pose ──────────────────────────────────────────────
         pose_cfg = cfg.get("pose", {})
         self.pose = PoseEstimator(
-            weights=pose_cfg.get("model", "yolo26n-pose.pt"),
-            device=det_cfg.get("device", "0"),
+            weights=pose_weights if pose_weights is not None else pose_cfg.get("model", "yolo26n-pose.pt"),
+            device=run_device,
             conf=pose_cfg.get("conf_threshold", 0.3),
         )
 
@@ -65,7 +72,7 @@ class ClassroomPipeline:
             stgcn_weights=act_cfg.get("stgcn_weights"),
             window_size=act_cfg.get("window_size", 30),
             action_scores=act_cfg.get("action_scores"),
-            device=det_cfg.get("device", "0"),
+            device=run_device,
         )
 
         # ── gaze ──────────────────────────────────────────────
