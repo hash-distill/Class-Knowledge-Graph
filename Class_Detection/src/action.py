@@ -219,8 +219,8 @@ class ActionClassifier:
         coords = window[:2, :, :, 0]  # (2, T, 17)
 
         # Compute normalisation scale: median shoulder-to-hip distance
-        shoulders_y = coords[1, :, [5, 6]].mean(axis=1)    # (T,)
-        hips_y = coords[1, :, [11, 12]].mean(axis=1)       # (T,)
+        shoulders_y = coords[1, :, 5:7].mean(axis=1)       # (T,)
+        hips_y = coords[1, :, 11:13].mean(axis=1)          # (T,)
         torso_height = float(np.median(np.abs(hips_y - shoulders_y)))
         scale = max(torso_height, 1.0)  # avoid division by zero
 
@@ -229,7 +229,7 @@ class ActionClassifier:
         head_range = float(np.mean(np.ptp(head, axis=1))) / scale
 
         # Hand height relative to shoulders (keypoints 9,10 vs 5,6)
-        wrists_y = coords[1, :, [9, 10]].mean(axis=1)      # (T,)
+        wrists_y = coords[1, :, 9:11].mean(axis=1)         # (T,)
         hand_raised_ratio = float(np.mean(wrists_y < shoulders_y - 0.15 * scale))
 
         # Body lean: nose y relative to shoulder y
