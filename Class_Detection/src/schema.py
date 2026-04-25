@@ -83,6 +83,7 @@ class KnowledgeAnchor(BaseModel):
     trigger_time: str = ""
     gaussian_weight: float = Field(ge=0.0, le=1.0, default=0.0)
     score_k: float = Field(ge=0.0, le=1.0, default=0.0)
+    visual_score: float = Field(ge=0.0, le=1.0, default=0.0)
 
 
 # ── Classroom-level aggregation ──────────────────────────────
@@ -108,6 +109,7 @@ class ClassroomSnapshot(BaseModel):
     """The complete structured output of one evaluation cycle."""
     timestamp: str
     frame_id: int = 0
+    frame_image_path: Optional[str] = None
     knowledge_anchor: KnowledgeAnchor = Field(
         default_factory=KnowledgeAnchor
     )

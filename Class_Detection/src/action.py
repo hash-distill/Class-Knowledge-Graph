@@ -25,11 +25,21 @@ from src.schema import ActionRecord, ActionSource
 # Maps detection class names (from SCB-Dataset5) to engagement scores.
 # This table is the fallback when ST-GCN is not available.
 DEFAULT_ACTION_SCORES: dict[str, float] = {
-    "active_student": 0.90,
-    "focus_student": 0.75,
-    "distracted_student": 0.20,
+    # 学生行为 (13-class SCB system)
+    "hand_raising": 0.95,
+    "read": 0.72,
+    "write": 0.78,
+    "discuss": 0.82,
+    "talk": 0.75,
+    "answer": 0.90,
+    "stage_interact": 0.88,
+    "stand": 0.65,
+    # 教师/环境 (不计入学生评分)
     "teacher": 0.0,
-    "screen_board": 0.0,
+    "guide": 0.0,
+    "board_writing": 0.0,
+    "blackboard": 0.0,
+    "screen": 0.0,
 }
 
 # ST-GCN output labels (index → name)
@@ -132,7 +142,7 @@ class ActionClassifier:
         engagement = self.action_scores.get(class_name, 0.5)
         return ActionRecord(
             label=class_name,
-            confidence=round(engagement, 4),
+            confidence=round(confidence, 4),
             engagement_score=round(engagement, 4),
             det_confidence=round(confidence, 4),
             source=ActionSource.DETECTION,
@@ -200,30 +210,39 @@ class ActionClassifier:
 
     @staticmethod
     def _rule_infer(window: np.ndarray) -> ActionRecord:
-        """Simple heuristic from keypoint motion statistics."""
+        """Simple heuristic from keypoint motion statistics.
+
+        All thresholds are normalised by the median torso height
+        (shoulder-to-hip distance) so the rules are resolution-independent.
+        """
         # window shape: (3, T, 17, 1)
         coords = window[:2, :, :, 0]  # (2, T, 17)
 
-        # Head motion range (keypoints 0..4)
+        # Compute normalisation scale: median shoulder-to-hip distance
+        shoulders_y = coords[1, :, [5, 6]].mean(axis=1)    # (T,)
+        hips_y = coords[1, :, [11, 12]].mean(axis=1)       # (T,)
+        torso_height = float(np.median(np.abs(hips_y - shoulders_y)))
+        scale = max(torso_height, 1.0)  # avoid division by zero
+
+        # Head motion range (keypoints 0..4), normalised
         head = coords[:, :, :5]  # (2, T, 5)
-        head_range = float(np.mean(np.ptp(head, axis=1)))
+        head_range = float(np.mean(np.ptp(head, axis=1))) / scale
 
         # Hand height relative to shoulders (keypoints 9,10 vs 5,6)
-        wrists_y = coords[1, :, [9, 10]].mean(axis=1)      # (T,) avg of both wrists per frame
-        shoulders_y = coords[1, :, [5, 6]].mean(axis=1)    # (T,) avg of both shoulders per frame
-        hand_raised_ratio = float(np.mean(wrists_y < shoulders_y - 30))
+        wrists_y = coords[1, :, [9, 10]].mean(axis=1)      # (T,)
+        hand_raised_ratio = float(np.mean(wrists_y < shoulders_y - 0.15 * scale))
 
         # Body lean: nose y relative to shoulder y
         nose_y = coords[1, :, 0]                            # (T,)
-        lean_ratio = float(np.mean(nose_y > shoulders_y + 50))
+        lean_ratio = float(np.mean(nose_y > shoulders_y + 0.25 * scale))
 
         if hand_raised_ratio > 0.5:
             return ActionRecord(label="hand_raising", confidence=0.85, engagement_score=0.95, source=ActionSource.RULE)
         if lean_ratio > 0.5:
             return ActionRecord(label="leaning", confidence=0.75, engagement_score=0.15, source=ActionSource.RULE)
-        if head_range > 40:
+        if head_range > 0.20:
             return ActionRecord(label="looking_around", confidence=0.65, engagement_score=0.25, source=ActionSource.RULE)
-        if head_range < 10:
+        if head_range < 0.05:
             return ActionRecord(label="attending", confidence=0.60, engagement_score=0.70, source=ActionSource.RULE)
 
         return ActionRecord(label="attending", confidence=0.50, engagement_score=0.60, source=ActionSource.RULE)

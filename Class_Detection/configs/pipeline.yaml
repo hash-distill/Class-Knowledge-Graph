@@ -29,11 +29,19 @@ action:
 
   # Rule-based action → S_action mapping (used when ST-GCN is off)
   action_scores:
-    active_student: 0.90
-    focus_student: 0.75
-    distracted_student: 0.20
-    teacher: 0.0           # excluded from student scoring
-    screen_board: 0.0
+    hand_raising: 0.95
+    answer: 0.90
+    discuss: 0.82
+    talk: 0.75
+    read: 0.72
+    write: 0.78
+    stage_interact: 0.88
+    stand: 0.65
+    teacher: 0.0
+    guide: 0.0
+    board_writing: 0.0
+    blackboard: 0.0
+    screen: 0.0
 
 
 # ── Gaze estimation ─────────────────────────────────────────
@@ -62,11 +70,11 @@ vsam:
 
 # ── Scoring ──────────────────────────────────────────────────
 scoring:
-  w_action: 0.6           # CAS action weight (optimized)
-  w_gaze: 0.4             # CAS gaze weight (optimized)
-  lambda_penalty: 1.0     # CTES variance penalty coefficient
+  w_action: 0.75          # CAS action weight (student behavior dominant)
+  w_gaze: 0.25            # CAS gaze weight (noisy in side-view classroom shots)
+  lambda_penalty: 0.6     # CTES variance penalty coefficient
 
 # ── Student class IDs (used to filter students from detections) ──
-student_class_ids: [0, 1, 2]
-teacher_class_ids: [3]
-environment_class_ids: [4]
+student_class_ids: [0, 1, 2, 3, 4, 5, 6, 7]
+teacher_class_ids: [8, 9, 10]
+environment_class_ids: [11, 12]

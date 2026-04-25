@@ -31,24 +31,24 @@ def calc_cas(
 ) -> float:
     """Classroom Attention Score per student.
 
-    CAS = (w_action * S_action + w_gaze * S_gaze) / (w_action + w_gaze)
+    CAS = max(w_action · S_action, w_gaze · S_gaze)
 
-    Uses a weighted average to balance body action and head pose.
+    Uses max-fusion instead of weighted average to prevent signal
+    dilution: a student actively writing (high S_action) but looking
+    down (low S_gaze) should still be considered engaged.
+
     Applies a severe penalty coefficient if the student is engaged
     in obviously negative behaviors (e.g. using phone, yawning).
     """
-    weight_sum = w_action + w_gaze
-    if weight_sum <= 0:
-        return 0.0
-        
-    base_cas = (w_action * action_score + w_gaze * gaze_score) / weight_sum
-    
+    base_cas = max(w_action * float(action_score), w_gaze * float(gaze_score))
+
     # 负面行为惩罚
     penalty_factor = 1.0
-    negative_labels = ["distracted", "using_phone", "yawning", "sleeping"]
+    negative_labels = ["distracted", "using_phone", "yawning", "sleeping",
+                       "lean_desk", "use_phone", "yawn"]
     if any(neg in action_label.lower() for neg in negative_labels):
         penalty_factor = 0.5  # 显著降低专注度得分
-        
+
     return _clamp01(base_cas * penalty_factor)
 
 

@@ -1,0 +1,21 @@
+# SCB-Dataset 13-class YOLO detection config
+# Built from existing labeled classes in SCB_yolo_dataset.
+
+path: ../SCB_yolo_dataset_13cls
+train: images/train
+val: images/val
+
+names:
+  0: hand_raising
+  1: read
+  2: write
+  3: discuss
+  4: talk
+  5: answer
+  6: stage_interact
+  7: stand
+  8: teacher
+  9: guide
+  10: board_writing
+  11: blackboard
+  12: screen

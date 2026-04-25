@@ -55,7 +55,7 @@ __all__ = [
     "PoseEstimator",
     "ActionClassifier",
     "OCRAnchorDetector",
-    # Modules (eager)
+    # Modules (lazy)
     "GazeEstimator",
     "VSAMAligner",
     # Scoring (eager)

@@ -47,4 +47,5 @@ tensorboard/
 SCB-Dataset/
 SCB_yolo_dataset/
 SCB_yolo_dataset_merged/
+SCB_yolo_dataset_13cls/
 *.zip

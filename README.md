@@ -4,9 +4,21 @@
 
 ---
 
+## 0. 运行说明（已精简）
+
+本 README 仅保留系统设计与项目说明，训练/预测命令已统一迁移到独立手册：
+
+- [TRAINING_AND_INFERENCE.md](TRAINING_AND_INFERENCE.md)
+
+建议先阅读运行手册中的“13 类标准流程”，再回到本 README 了解系统设计细节。
+
 ## 1. 项目概述
 
 本项目面向真实线下中小学课堂，构建一套 **端到端的 CV 感知-评估 Pipeline**，解决三类核心问题：
+
+运行与实验复现入口：
+- 训练与预测手册：[TRAINING_AND_INFERENCE.md](TRAINING_AND_INFERENCE.md)
+- 实施方案说明：[Class_Detection/docs/implementation_plan.md](Class_Detection/docs/implementation_plan.md)
 
 1. **后排学生遮挡严重**：分辨率低、互相遮挡导致检测/追踪不稳定
 2. **小样本动作识别难收敛**：课堂行为种类多但标注数据有限
@@ -30,8 +42,8 @@
     │
     ▼
 ┌──────────────────────────────────┐
-│  YOLO26 Detection + ByteTrack    │  ← yolo26s.pt + 内置追踪器
-│  20 类目标检测 + Track ID 管理   │
+│  YOLO26 Detection + ByteTrack    │  ← yolo26m.pt + 内置追踪器
+│  13 类目标检测 + Track ID 管理   │
 └──────────┬───────────────────────┘
            │
     ┌──────┴──────┐
@@ -61,7 +73,7 @@
 
 | 功能 | 模型 | 权重文件 | 输出 |
 |------|------|---------|------|
-| 目标检测 | **YOLO26-S** | `yolo26s.pt` | 20 类目标 BBox + 置信度 |
+| 目标检测 | **YOLO26-M** | `yolo26m.pt` | 13 类目标 BBox + 置信度 |
 | 多目标追踪 | **ByteTrack** | ultralytics 内置 | 跨帧 Track ID |
 | 姿态估计 | **YOLO26-N-Pose** | `yolo26n-pose.pt` | 17 COCO 关键点 (x, y, conf) |
 | 动作分类 | **ST-GCN** | 自训练 | 行为标签 + 置信度 |
@@ -138,7 +150,7 @@ names:
 from ultralytics import YOLO
 
 # 初始化 YOLO26 检测器
-det_model = YOLO("yolo26s.pt")
+det_model = YOLO("yolo26m.pt")
 
 # 单帧检测
 results = det_model.predict(frame, conf=0.25, device="0")
@@ -309,12 +321,13 @@ def score_knowledge_point(cas_values, timestamps, t_ocr, mu=3.0, sigma=1.5):
 
 #### 个体积极度 CAS
 
-$$CAS = \max(w_1 \cdot S_{action},\ w_2 \cdot S_{gaze})$$
+$$CAS = \max(w_1 \cdot S_{action},\ w_2 \cdot S_{gaze}) \cdot P_{negative}$$
 
 **设计理由**：采用 `max` 而非加权平均：
 - 学生积极记笔记（$S_{action}$ 高）但低头不看黑板（$S_{gaze}$ 低）→ 仍视为专注
 - 学生静坐盯黑板（$S_{gaze}$ 高）但无明显动作（$S_{action}$ 低）→ 仍视为专注
 - 加权平均会导致两个合理信号互相稀释
+- $P_{negative}$：负面行为惩罚因子（使用手机/打哈欠等行为 × 0.5）
 
 #### 课堂教学效果指数 CTES
 
@@ -330,145 +343,18 @@ $$CTES = \mu_{CAS} \cdot \exp(-\lambda \cdot \sigma_{CAS})$$
 
 ---
 
-## 5. 训练流程
+## 5. 训练与预测（说明已迁移）
 
-### 5.1 环境搭建
+为避免 README 过长，训练、评估、推理的全部命令已统一整理至：
 
-```bash
-# 创建虚拟环境
-conda create -n Class_Detection python=3.12 -y
-conda activate Class_Detection
+- [TRAINING_AND_INFERENCE.md](TRAINING_AND_INFERENCE.md)
 
-# 安装依赖
-pip install -U pip
-pip install -r requirements.txt
-```
-
-### 5.2 数据准备
-
-```bash
-# 1. 下载 SCB-Dataset5（从 GitHub 或 Kaggle）
-#    放置目录结构如下：
-#    SCB_yolo_dataset/
-#    ├── images/
-#    │   ├── train/
-#    │   └── val/
-#    └── labels/
-#        ├── train/
-#        └── val/
-
-# 2. 验证数据完整性
-python tools/dataset_audit.py --dataset-root SCB_yolo_dataset --output artifacts/reports/scb_audit.json
-```
-
-审计脚本会检查：
-- 图像/标签文件配对完整性
-- 标注格式合规性（5 列，坐标归一化 [0, 1]）
-- 各类别样本分布直方图
-- 空标签和无效行的统计
-
-### 5.3 YOLO26 目标检测训练
-
-```bash
-python scripts/train_det.py \
-    --data configs/scb_yolo.yaml \
-    --model yolo26s.pt \
-    --epochs 20 \
-    --imgsz 960 \
-    --batch 16 \
-    --device 0 \
-    --name scb_yolo26s \
-    --cache
-```
-
-**关键训练参数说明**：
-
-| 参数 | 值 | 说明 |
-|------|------|------|
-| `--model` | `yolo26m.pt` 或 `yolo26x.pt` | 改采大尺寸模型，极大提升远景小目标检测精度 |
-| `--imgsz` | 960 | 较大输入分辨率以检测后排小目标 |
-| `--epochs` | 150 | 因合并分类极易收敛，通常 50-100 Epochs 即可 |
-| `--batch` | 16 | 根据 GPU 显存调整（24GB → 16, 12GB → 8） |
-| `--cache` | - | 缓存图像到 RAM 加速训练 |
-
-**训练产物路径**：
-```
-artifacts/runs/detect/scb_yolo26s/
-├── weights/
-│   ├── best.pt      # 最佳模型权重
-│   └── last.pt      # 最后一个 epoch 权重
-├── results.csv      # 训练日志
-├── confusion_matrix.png
-├── PR_curve.png
-└── results.png      # 损失/mAP 变化曲线
-```
-
-### 5.4 YOLO26-Pose 微调（可选）
-
-如果预训练 YOLO26-Pose 在课堂场景下姿态精度不足，可微调：
-
-```bash
-python scripts/train_pose.py \
-    --data <pose_dataset_yaml> \
-    --model yolo26n-pose.pt \
-    --epochs 80 \
-    --imgsz 640 \
-    --batch 32 \
-    --device 0 \
-    --name classroom_pose
-```
-
-> **注意**：姿态微调需要关键点标注数据。如使用 SCB-Dataset5（仅有 BBox 标注），建议使用预训练权重直接推理，无需微调。
-
-### 5.5 ST-GCN 动作分类训练
-
-ST-GCN 训练需要先从视频中提取关键点时序数据：
-
-```bash
-# Step 1: 从视频提取关键点序列
-python tools/extract_keypoints.py --video-dir <videos> --output keypoints_dataset/
-
-# Step 2: 训练 ST-GCN
-python scripts/train_stgcn.py \
-    --config configs/stgcn.yaml \
-    --keypoints-dir keypoints_dataset/ \
-    --epochs 100 \
-    --device 0
-```
-
-**ST-GCN 训练数据格式**：
-```
-keypoints_dataset/
-├── train/
-│   ├── writing_001.npy      # shape: (C=3, T=30, V=17, M=1)
-│   ├── hand_raising_001.npy
-│   └── ...
-├── val/
-│   └── ...
-└── label.json               # {"writing_001": 0, "hand_raising_001": 1, ...}
-```
-
-### 5.6 评估与推理
-
-```bash
-# 目标检测评估
-python scripts/eval_det.py \
-    --weights artifacts/runs/detect/scb_yolo26s/weights/best.pt \
-    --data configs/scb_yolo.yaml \
-    --device 0
-
-# 视频端到端推理
-python scripts/infer_video.py \
-    --source classroom_video.mp4 \
-    --det-weights artifacts/runs/detect/scb_yolo26s/weights/best.pt \
-    --pose-weights yolo26n-pose.pt \
-    --device 0 \
-    --save \
-    --output artifacts/results/
-
-# 冒烟测试（无需权重，mock 数据验证链路）
-python scripts/smoke_test.py --mock
-```
+该手册包含：
+1. 环境与依赖安装。
+2. 13 类数据构建与清洗。
+3. 检测/姿态/ST-GCN 训练命令。
+4. 评估、视频推理与冒烟测试命令。
+5. 常见报错与排查建议。
 
 ---
 
@@ -526,45 +412,24 @@ CV 模块通过 JSON Schema 向下游（知识图谱/大模型）传递评估数
 ## 7. 项目结构
 
 ```text
-Class Knowledge Graph/
-├── configs/
-│   ├── scb_yolo.yaml           # SCB-Dataset5 YOLO 配置（20 类）
-│   ├── pipeline.yaml           # 全局 pipeline 配置（阈值/窗口/权重）
-│   └── stgcn.yaml              # ST-GCN 训练配置
-├── src/
-│   ├── __init__.py             # 包初始化 & 公共导出
-│   ├── detector.py             # YOLO26 检测 + 内置追踪
-│   ├── pose.py                 # YOLO26-Pose 关键点提取
-│   ├── action.py               # ST-GCN 动作分类
-│   ├── gaze.py                 # PnP 头部姿态 + 躯干 Fallback
-│   ├── ocr_anchor.py           # PaddleOCR 屏幕文字检测
-│   ├── vsam.py                 # VSAM 高斯时间对齐
-│   ├── scoring.py              # CAS/CTES 评分引擎
-│   ├── pipeline.py             # ★ 端到端 Pipeline 编排器
-│   └── schema.py               # Pydantic 数据模型定义
-├── models/                     # 自定义模型定义
-│   ├── __init__.py
-│   ├── stgcn.py                # ST-GCN 网络结构
-│   └── graph.py                # 骨骼图拓扑定义
-├── scripts/
-│   ├── train_det.py            # YOLO26 检测训练
-│   ├── train_pose.py           # YOLO26-Pose 微调
-│   ├── train_stgcn.py          # ST-GCN 训练
-│   ├── eval_det.py             # 检测评估
-│   ├── infer_video.py          # ★ 视频推理主入口
-│   └── smoke_test.py           # 冒烟测试
-├── tools/
-│   ├── download_scb.py         # SCB 数据集下载脚本
-│   ├── dataset_audit.py        # 数据集完整性审计
-│   └── visualize.py            # 检测/姿态/热力图可视化
-├── tests/                      # 单元测试
-│   ├── test_scoring.py
-│   ├── test_vsam.py
-│   └── test_gaze.py
-├── docs/
-│   └── implementation_plan.md  # 实施计划
-├── requirements.txt            # Python 依赖
-└── README.md                   # 本文件
+Class-Knowledge-Graph/
+├── README.md
+├── TRAINING_AND_INFERENCE.md   # 训练/评估/推理命令统一手册
+├── requirements.txt
+├── test_GPU.py
+├── yolo26s.pt
+├── SCB_yolo_dataset/
+├── SCB_yolo_dataset_13cls/
+├── SCB_yolo_dataset_merged/
+└── Class_Detection/
+  ├── configs/
+  ├── docs/
+  │   └── implementation_plan.md
+  ├── models/
+  ├── scripts/
+  ├── src/
+  ├── tests/
+  └── tools/
 ```
 
 ---
@@ -598,39 +463,11 @@ Class Knowledge Graph/
 
 ## 10. 快速开始
 
-### 10.1 最小环境搭建
+按以下顺序执行即可：
 
-```bash
-conda create -n Class_Detection python=3.12 -y
-conda activate Class_Detection
-pip install -U pip
-pip install -r requirements.txt
-```
-
-### 10.2 冒烟测试（无需 GPU 和数据集）
-
-```bash
-python scripts/smoke_test.py --mock
-```
-
-该命令使用合成数据验证完整 Pipeline 链路：检测 → 姿态 → 动作 → 视线 → VSAM → CAS/CTES → JSON 输出。
-
-### 10.3 完整训练与推理
-
-```bash
-# 训练降维合并版模型（推荐大模型）
-python scripts/train_det.py --data configs/scb_yolo_merged.yaml --model yolo26m.pt --epochs 100 --imgsz 960 --batch 16 --device 0
-
-# 视频实时推理（支持低频抽取以引入重型网络）
-python scripts/infer_video.py \
-    --source classroom.mp4 \
-    --interval-sec 1.0 \
-    --config configs/pipeline.yaml \
-    --save
-
-# 冒烟测试（无需权重，mock 数据验证链路）
-python scripts/smoke_test.py --mock
-```
+1. 阅读并执行运行手册：[TRAINING_AND_INFERENCE.md](TRAINING_AND_INFERENCE.md)
+2. 优先使用“13 类标准流程”完成首轮训练与验证。
+3. 训练后使用 best.pt 进行评估与视频推理。
 
 ---
 

@@ -1,6 +1,6 @@
-# Python 3.12 + CUDA 12.x environment
-# Use PyTorch CUDA wheels from the official index.
---extra-index-url https://download.pytorch.org/whl/cu128
+# Python 3.12 + CUDA environment
+# Use PyTorch CUDA cu118 wheels from the official index.
+--extra-index-url https://download.pytorch.org/whl/cu118
 
 # ── Core runtime ──────────────────────────────────────────────
 numpy>=1.26.4,<2.1

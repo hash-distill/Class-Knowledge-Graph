@@ -6,6 +6,7 @@ generate knowledge-point anchor timestamps for VSAM alignment.
 
 from __future__ import annotations
 
+import difflib
 import hashlib
 from typing import Optional
 
@@ -85,6 +86,5 @@ class OCRAnchorDetector:
         if not old or not new:
             return 1.0
             
-        import difflib
         ratio = difflib.SequenceMatcher(None, old, new).ratio()
         return 1.0 - ratio

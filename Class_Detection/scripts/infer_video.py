@@ -1,11 +1,19 @@
-"""Video inference: run the full classroom pipeline on a video file.
+"""Video inference for classroom evaluation.
 
-Usage::
+Modes
+-----
+Single-stream mode:
+    python scripts/infer_video.py --source classroom.mp4 --save
 
-    python scripts/infer_video.py \\
-        --source classroom.mp4 \\
-        --config configs/pipeline.yaml \\
-        --save --output artifacts/results/
+Dual-stream mode:
+    python scripts/infer_video.py \
+        --student-source students.mp4 \
+        --ppt-source ppt.mp4 \
+        --save \
+        --save-frames
+
+The dual-stream mode aligns student engagement snapshots with PPT OCR anchors
+using timestamps on a shared timeline.
 """
 
 from __future__ import annotations
@@ -13,35 +21,235 @@ from __future__ import annotations
 import argparse
 import json
 import sys
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from typing import Iterable
 
 import cv2
+import yaml
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
+from src.ocr_anchor import OCRAnchorDetector
 from src.pipeline import ClassroomPipeline
 
 
 def parse_args() -> argparse.Namespace:
-    p = argparse.ArgumentParser(description="Run full classroom pipeline on a video.")
-    p.add_argument("--source", type=str, required=True, help="Video path or camera index.")
-    p.add_argument("--config", type=Path, default=Path("configs/pipeline.yaml"))
-    p.add_argument("--det-weights", type=str, default=None, help="Detection model weights path (overrides config).")
-    p.add_argument("--pose-weights", type=str, default=None, help="Pose model weights path (overrides config).")
-    p.add_argument("--device", type=str, default=None, help="Device to run on (e.g. '0', overrides config).")
-    p.add_argument("--save", action="store_true", help="Save annotated video + JSON.")
-    p.add_argument("--output", type=Path, default=Path("artifacts/results"))
-    p.add_argument("--show", action="store_true", help="Display live preview window.")
-    p.add_argument("--interval-sec", type=float, default=1.0, help="Analyze 1 frame every N seconds to save compute.")
-    p.add_argument("--max-frames", type=int, default=0, help="Process at most N frames (0=all).")
-    return p.parse_args()
+    parser = argparse.ArgumentParser(description="Run classroom evaluation in single- or dual-video mode.")
+
+    parser.add_argument("--source", type=str, default=None, help="Single classroom video path or camera index.")
+    parser.add_argument("--student-source", type=str, default=None, help="Student-facing video path.")
+    parser.add_argument("--ppt-source", type=str, default=None, help="PPT/screen-facing video path.")
+
+    parser.add_argument("--config", type=Path, default=Path("configs/pipeline.yaml"))
+    parser.add_argument("--det-weights", type=str, default=None, help="Detection model weights path (overrides config).")
+    parser.add_argument("--pose-weights", type=str, default=None, help="Pose model weights path (overrides config).")
+    parser.add_argument("--device", type=str, default=None, help="Device to run on (e.g. '0', overrides config).")
+
+    parser.add_argument("--save", action="store_true", help="Save annotated video and JSON output.")
+    parser.add_argument("--save-frames", action="store_true", help="Save sampled student frames for the frontend image player.")
+    parser.add_argument("--frames-dir-name", type=str, default="frames", help="Frame image subdirectory name under --output.")
+    parser.add_argument("--json-name", type=str, default="snapshots.json", help="Stable JSON filename written inside --output.")
+    parser.add_argument("--anchor-json-name", type=str, default="anchor_events.json", help="Anchor event JSON filename for dual-stream mode.")
+    parser.add_argument("--output", type=Path, default=Path("artifacts/results/latest"))
+
+    parser.add_argument("--show", action="store_true", help="Display live preview window.")
+    parser.add_argument("--interval-sec", type=float, default=1.0, help="Analyze one student frame every N seconds.")
+    parser.add_argument("--ppt-interval-sec", type=float, default=1.0, help="Run OCR on one PPT frame every N seconds in dual-stream mode.")
+    parser.add_argument("--max-frames", type=int, default=0, help="Process at most N sampled student frames (0=all).")
+    parser.add_argument("--ppt-max-frames", type=int, default=0, help="Process at most N sampled PPT frames (0=all).")
+
+    parser.add_argument("--student-offset-sec", type=float, default=0.0, help="Seconds added to the student video timeline before alignment.")
+    parser.add_argument("--ppt-offset-sec", type=float, default=0.0, help="Seconds added to the PPT video timeline before alignment.")
+    parser.add_argument(
+        "--ppt-crop",
+        type=str,
+        default=None,
+        help="Optional PPT crop box as x1,y1,x2,y2 for OCR.",
+    )
+    return parser.parse_args()
 
 
-def main() -> None:
-    args = parse_args()
+def validate_args(args: argparse.Namespace) -> None:
+    single_mode = bool(args.source)
+    dual_mode = bool(args.student_source and args.ppt_source)
+
+    if single_mode and dual_mode:
+        raise ValueError("Use either --source or (--student-source and --ppt-source), not both.")
+
+    if not single_mode and not dual_mode:
+        raise ValueError("You must provide --source or both --student-source and --ppt-source.")
+
+
+def video_timestamp(seconds: float) -> str:
+    base = datetime(1970, 1, 1, tzinfo=timezone.utc)
+    return (base + timedelta(seconds=seconds)).isoformat().replace("+00:00", "Z")
+
+
+def cas_color(cas: float) -> tuple[int, int, int]:
+    if cas >= 0.8:
+        return (0, 200, 0)
+    if cas >= 0.6:
+        return (0, 200, 200)
+    return (0, 0, 200)
+
+
+def open_capture(source: str):
+    resolved_source = int(source) if source.isdigit() else source
+    cap = cv2.VideoCapture(resolved_source)
+    if not cap.isOpened():
+        raise RuntimeError(f"Cannot open video source: {source}")
+    return cap
+
+
+def parse_crop_box(raw_crop: str | None) -> tuple[int, int, int, int] | None:
+    if not raw_crop:
+        return None
+
+    parts = [part.strip() for part in raw_crop.split(",")]
+    if len(parts) != 4:
+        raise ValueError("--ppt-crop must be in x1,y1,x2,y2 format.")
+
+    try:
+        x1, y1, x2, y2 = (int(part) for part in parts)
+    except ValueError as exc:
+        raise ValueError("--ppt-crop must contain integers only.") from exc
+
+    return x1, y1, x2, y2
+
+
+def clip_crop(frame, crop_box: tuple[int, int, int, int] | None):
+    if crop_box is None:
+        return frame
+
+    height, width = frame.shape[:2]
+    x1, y1, x2, y2 = crop_box
+    x1 = max(0, min(width, x1))
+    x2 = max(0, min(width, x2))
+    y1 = max(0, min(height, y1))
+    y2 = max(0, min(height, y2))
+
+    if x2 <= x1 or y2 <= y1:
+        return frame
+
+    return frame[y1:y2, x1:x2]
+
+
+def annotate_frame(frame, snapshot) -> tuple:
+    annotated = frame.copy()
+
+    for student in snapshot.student_states:
+        x1, y1, x2, y2 = [int(value) for value in student.bbox]
+        color = cas_color(student.cas)
+        cv2.rectangle(annotated, (x1, y1), (x2, y2), color, 2)
+        label = f"T{student.track_id} {student.action.label} CAS={student.cas:.2f}"
+        cv2.putText(annotated, label, (x1, y1 - 8), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 1)
+
+    ctes = snapshot.classroom_metrics.ctes_score
+    cv2.putText(
+        annotated,
+        f"CTES={ctes:.3f}  N={snapshot.classroom_metrics.active_tracks}",
+        (10, 30),
+        cv2.FONT_HERSHEY_SIMPLEX,
+        0.8,
+        (0, 255, 255),
+        2,
+    )
+    return annotated, ctes
+
+
+def sampled_frames(
+    cap,
+    fps: float,
+    interval_sec: float,
+    max_frames: int,
+) -> Iterable[tuple[int, float, any]]:
+    frame_idx = 0
+    processed_count = 0
+    frame_step = max(1, int(round(fps * interval_sec)))
+
+    while True:
+        frame_idx += 1
+        should_analyze = interval_sec <= 0 or (frame_idx - 1) % frame_step == 0
+
+        if not should_analyze:
+            # Opt: grab() moves the cursor without full decode (~60% faster)
+            if not cap.grab():
+                break
+            continue
+
+        ret, frame = cap.read()
+        if not ret:
+            break
+
+        processed_count += 1
+        if 0 < max_frames < processed_count:
+            break
+
+        timestamp_sec = (frame_idx - 1) / fps
+        yield frame_idx, timestamp_sec, frame
+
+
+def _flush_snapshots(snapshots: list[dict], json_path: Path) -> None:
+    """Append snapshots to a JSON Lines file incrementally."""
+    json_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(json_path, "a", encoding="utf-8") as f:
+        for snap in snapshots:
+            f.write(json.dumps(snap, ensure_ascii=False) + "\n")
+
+
+def load_vsam_config(config_path: Path) -> dict:
+    payload = yaml.safe_load(config_path.read_text(encoding="utf-8"))
+    return payload.get("vsam", {})
+
+
+def extract_anchor_events(
+    ppt_source: str,
+    config_path: Path,
+    interval_sec: float,
+    max_frames: int,
+    timeline_offset_sec: float,
+    crop_box: tuple[int, int, int, int] | None,
+):
+    vsam_config = load_vsam_config(config_path)
+    detector = OCRAnchorDetector(
+        change_threshold=vsam_config.get("text_change_threshold", 0.3),
+    )
+
+    cap = open_capture(ppt_source)
+    fps = cap.get(cv2.CAP_PROP_FPS) or 25.0
+    events: list[dict] = []
+
+    print(f"Scanning PPT stream: {ppt_source}  (fps={fps:.2f})")
+
+    try:
+        for frame_idx, relative_sec, frame in sampled_frames(cap, fps, interval_sec, max_frames):
+            merged_sec = timeline_offset_sec + relative_sec
+            crop = clip_crop(frame, crop_box)
+            detected_text = detector.detect_change(crop)
+            if detected_text is None:
+                continue
+
+            entity = detected_text[:60].strip()
+            if not entity:
+                continue
+
+            events.append({
+                "entity": entity,
+                "timestamp_sec": round(merged_sec, 4),
+                "ppt_frame_id": frame_idx,
+                "timestamp": video_timestamp(merged_sec),
+            })
+    finally:
+        cap.release()
+
+    print(f"Detected {len(events)} PPT knowledge anchors")
+    return events
+
+
+def run_single_stream(args: argparse.Namespace) -> None:
     pipeline = ClassroomPipeline(
         config_path=args.config,
         det_weights=args.det_weights,
@@ -49,118 +257,208 @@ def main() -> None:
         device=args.device,
     )
 
-    # Open video
-    source = int(args.source) if args.source.isdigit() else args.source
-    cap = cv2.VideoCapture(source)
-    if not cap.isOpened():
-        print(f"ERROR: Cannot open video source: {args.source}")
-        sys.exit(1)
-
+    cap = open_capture(args.source)
     fps = cap.get(cv2.CAP_PROP_FPS) or 25.0
-    w = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-    h = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+    width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+    height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
     pipeline.set_fps(fps)
 
     writer = None
-    # Use timestamp to create unique output filenames, preventing overwrites
+    out_video: Path | None = None
+    frames_dir: Path | None = None
+
     run_tag = datetime.now().strftime("%Y%m%d_%H%M%S")
     source_stem = Path(args.source).stem if not args.source.isdigit() else "cam"
     out_name = f"{source_stem}_{run_tag}"
-
-    # Output video should always run at the source original FPS
-    output_fps = fps
 
     if args.save:
         args.output.mkdir(parents=True, exist_ok=True)
         out_video = args.output / f"{out_name}.mp4"
         fourcc = cv2.VideoWriter_fourcc(*"mp4v")
-        writer = cv2.VideoWriter(str(out_video), fourcc, output_fps, (w, h))
+        # Use the actual sampling rate, not the source fps
+        out_fps = 1.0 / max(args.interval_sec, 0.04) if args.interval_sec > 0 else fps
+        writer = cv2.VideoWriter(str(out_video), fourcc, out_fps, (width, height))
+
+        if args.save_frames:
+            frames_dir = args.output / args.frames_dir_name
+            frames_dir.mkdir(parents=True, exist_ok=True)
 
     snapshots: list[dict] = []
-    frame_idx = 0
-    processed_count = 0
+    last_ctes = 0.0
 
-    print(f"Processing: {args.source}  ({w}x{h} @ {fps:.1f} fps)")
+    # Clear stale output from previous runs
+    if args.save:
+        json_path = args.output / args.json_name
+        if json_path.exists():
+            json_path.unlink()
 
-    frame_step = max(1, int(fps * args.interval_sec))
+    print(f"Processing single stream: {args.source}  ({width}x{height} @ {fps:.1f} fps)")
 
-    while True:
-        # Opt-1: Use grab() to skip decoding for non-analyzed frames
-        if not cap.grab():
-            break
-        
-        frame_idx += 1
-        
-        # Decide if we analyze this frame
-        if args.interval_sec > 0 and (frame_idx - 1) % frame_step != 0:
-            continue
-            
-        # Bug-3: Use processed_count for max_frames limit
-        processed_count += 1
-        if 0 < args.max_frames < processed_count:
-            break
+    try:
+        for frame_idx, relative_sec, frame in sampled_frames(cap, fps, args.interval_sec, args.max_frames):
+            merged_sec = args.student_offset_sec + relative_sec
+            snapshot = pipeline.process_frame(frame, frame_id=frame_idx, timestamp_sec=merged_sec, enable_ocr=True)
+            snapshot.timestamp = video_timestamp(merged_sec)
 
-        # Actually decode the frame we want to process
-        ret, frame = cap.retrieve()
-        if not ret:
-            break
+            if frames_dir is not None:
+                frame_name = f"frame_{frame_idx:06d}.jpg"
+                frame_file = frames_dir / frame_name
+                cv2.imwrite(str(frame_file), frame)
+                snapshot.frame_image_path = f"{args.frames_dir_name}/{frame_name}".replace("\\", "/")
 
-        # Bug-5: Pass frame_idx to pipeline to ensure stable timing
-        snapshot = pipeline.process_frame(frame, frame_id=frame_idx)
-        
-        # Only record JSON representation once per second
-        if frame_idx % max(1, int(fps)) == 0:
             snapshots.append(snapshot.model_dump())
 
-        # Draw basic overlay
-        annotated = frame.copy()
-        for s in snapshot.student_states:
-            x1, y1, x2, y2 = [int(v) for v in s.bbox]
-            color = _cas_color(s.cas)
-            cv2.rectangle(annotated, (x1, y1), (x2, y2), color, 2)
-            label = f"T{s.track_id} {s.action.label} CAS={s.cas:.2f}"
-            cv2.putText(annotated, label, (x1, y1 - 8),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 1)
+            annotated, last_ctes = annotate_frame(frame, snapshot)
+            if writer:
+                writer.write(annotated)
+            if args.show:
+                cv2.imshow("Classroom Pipeline", annotated)
+                if cv2.waitKey(1) & 0xFF == ord("q"):
+                    break
 
-        # CTES overlay
-        ctes = snapshot.classroom_metrics.ctes_score
-        cv2.putText(annotated, f"CTES={ctes:.3f}  N={snapshot.classroom_metrics.active_tracks}",
-                    (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 255), 2)
+            if frame_idx % 100 == 0:
+                print(f"  frame {frame_idx}  CTES={last_ctes:.3f}")
 
+            # Opt: flush to disk periodically to avoid OOM on long videos
+            if args.save and len(snapshots) >= 500:
+                _flush_snapshots(snapshots, args.output / args.json_name)
+                snapshots.clear()
+    finally:
+        cap.release()
         if writer:
-            writer.write(annotated)
-        if args.show:
-            cv2.imshow("Classroom Pipeline", annotated)
-            if cv2.waitKey(1) & 0xFF == ord("q"):
-                break
-
-        if frame_idx % 100 == 0:
-            print(f"  frame {frame_idx} (processed {processed_count})  CTES={ctes:.3f}")
-
-    cap.release()
-    if writer:
-        writer.release()
-    cv2.destroyAllWindows()
+            writer.release()
+        cv2.destroyAllWindows()
 
     if args.save:
-        json_path = args.output / f"{out_name}.json"
-        json_path.write_text(
-            json.dumps(snapshots, ensure_ascii=False, indent=2), encoding="utf-8"
-        )
-        print(f"Saved {len(snapshots)} snapshots to {json_path}")
-        print(f"Annotated video saved to {out_video}")
+        json_path = args.output / args.json_name
+        # Flush remaining snapshots
+        if snapshots:
+            _flush_snapshots(snapshots, json_path)
+        print(f"Saved snapshots to {json_path}")
+        if out_video is not None:
+            print(f"Annotated video saved to {out_video}")
+        if frames_dir is not None:
+            print(f"Frame images saved to {frames_dir}")
 
-    print(f"Done. Processed {processed_count} frames (video index {frame_idx}).")
+
+def run_dual_stream(args: argparse.Namespace) -> None:
+    ppt_crop = parse_crop_box(args.ppt_crop)
+    anchor_events = extract_anchor_events(
+        ppt_source=args.ppt_source,
+        config_path=args.config,
+        interval_sec=args.ppt_interval_sec,
+        max_frames=args.ppt_max_frames,
+        timeline_offset_sec=args.ppt_offset_sec,
+        crop_box=ppt_crop,
+    )
+
+    pipeline = ClassroomPipeline(
+        config_path=args.config,
+        det_weights=args.det_weights,
+        pose_weights=args.pose_weights,
+        device=args.device,
+    )
+
+    cap = open_capture(args.student_source)
+    fps = cap.get(cv2.CAP_PROP_FPS) or 25.0
+    width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+    height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+    pipeline.set_fps(fps)
+
+    writer = None
+    out_video: Path | None = None
+    frames_dir: Path | None = None
+
+    run_tag = datetime.now().strftime("%Y%m%d_%H%M%S")
+    student_stem = Path(args.student_source).stem
+    ppt_stem = Path(args.ppt_source).stem
+    out_name = f"{student_stem}__{ppt_stem}_{run_tag}"
+
+    if args.save:
+        args.output.mkdir(parents=True, exist_ok=True)
+        out_video = args.output / f"{out_name}.mp4"
+        fourcc = cv2.VideoWriter_fourcc(*"mp4v")
+        out_fps = 1.0 / max(args.interval_sec, 0.04) if args.interval_sec > 0 else fps
+        writer = cv2.VideoWriter(str(out_video), fourcc, out_fps, (width, height))
+
+        if args.save_frames:
+            frames_dir = args.output / args.frames_dir_name
+            frames_dir.mkdir(parents=True, exist_ok=True)
+
+    snapshots: list[dict] = []
+    last_ctes = 0.0
+    anchor_index = 0
+
+    print(
+        "Processing dual stream: "
+        f"students={args.student_source}, ppt={args.ppt_source}  "
+        f"({width}x{height} @ {fps:.1f} fps)"
+    )
+
+    try:
+        for frame_idx, relative_sec, frame in sampled_frames(cap, fps, args.interval_sec, args.max_frames):
+            merged_sec = args.student_offset_sec + relative_sec
+
+            while anchor_index < len(anchor_events) and anchor_events[anchor_index]["timestamp_sec"] <= merged_sec:
+                event = anchor_events[anchor_index]
+                pipeline.register_anchor(event["entity"], event["timestamp_sec"])
+                anchor_index += 1
+
+            snapshot = pipeline.process_student_frame(
+                frame=frame,
+                frame_id=frame_idx,
+                timestamp_sec=merged_sec,
+            )
+            snapshot.timestamp = video_timestamp(merged_sec)
+
+            if frames_dir is not None:
+                frame_name = f"frame_{frame_idx:06d}.jpg"
+                frame_file = frames_dir / frame_name
+                cv2.imwrite(str(frame_file), frame)
+                snapshot.frame_image_path = f"{args.frames_dir_name}/{frame_name}".replace("\\", "/")
+
+            snapshots.append(snapshot.model_dump())
+
+            annotated, last_ctes = annotate_frame(frame, snapshot)
+            if writer:
+                writer.write(annotated)
+            if args.show:
+                cv2.imshow("Classroom Pipeline", annotated)
+                if cv2.waitKey(1) & 0xFF == ord("q"):
+                    break
+
+            if frame_idx % 100 == 0:
+                print(f"  student frame {frame_idx}  CTES={last_ctes:.3f}")
+    finally:
+        cap.release()
+        if writer:
+            writer.release()
+        cv2.destroyAllWindows()
+
+    if args.save:
+        json_path = args.output / args.json_name
+        json_path.write_text(json.dumps(snapshots, ensure_ascii=False, indent=2), encoding="utf-8")
+        print(f"Saved {len(snapshots)} fused snapshots to {json_path}")
+
+        anchor_path = args.output / args.anchor_json_name
+        anchor_path.write_text(json.dumps(anchor_events, ensure_ascii=False, indent=2), encoding="utf-8")
+        print(f"Saved {len(anchor_events)} anchor events to {anchor_path}")
+
+        if out_video is not None:
+            print(f"Annotated student video saved to {out_video}")
+        if frames_dir is not None:
+            print(f"Frame images saved to {frames_dir}")
 
 
-def _cas_color(cas: float) -> tuple[int, int, int]:
-    """Map CAS [0,1] to BGR color: red(low) → yellow(mid) → green(high)."""
-    if cas > 0.7:
-        return (0, 200, 0)
-    elif cas > 0.4:
-        return (0, 200, 200)
-    else:
-        return (0, 0, 200)
+def main() -> None:
+    args = parse_args()
+    validate_args(args)
+
+    if args.source:
+        run_single_stream(args)
+        return
+
+    run_dual_stream(args)
 
 
 if __name__ == "__main__":
