@@ -139,9 +139,16 @@ class ActionClassifier:
         from *confidence* (how certain the detector is about the class).
         CAS should use engagement_score, not the product of the two.
         """
-        engagement = self.action_scores.get(class_name, 0.5)
+        # If the generic detector just outputs "person", map it to a neutral "attending" state
+        if class_name.lower() == "person":
+            label = "attending"
+            engagement = 0.70
+        else:
+            label = class_name
+            engagement = self.action_scores.get(class_name, 0.5)
+
         return ActionRecord(
-            label=class_name,
+            label=label,
             confidence=round(confidence, 4),
             engagement_score=round(engagement, 4),
             det_confidence=round(confidence, 4),
