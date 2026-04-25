@@ -49,3 +49,9 @@ SCB_yolo_dataset/
 SCB_yolo_dataset_merged/
 SCB_yolo_dataset_13cls/
 *.zip
+
+# Large media / binary files
+*.mp4
+*.avi
+*.mkv
+.vendor/
