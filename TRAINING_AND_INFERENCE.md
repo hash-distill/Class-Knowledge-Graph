@@ -198,6 +198,7 @@ python scripts/infer_video.py \
 
 #### 使用预训练 yolo26m.pt 直接推理（无需训练）
 
+**Linux / macOS (Bash)**
 ```bash
 cd /mnt/Data4/24zhs/Class-Knowledge-Graph/Class_Detection
 
@@ -208,6 +209,19 @@ python scripts/infer_video.py \
   --interval-sec 1.0 \
   --save \
   --save-frames \
+  --output artifacts/results/latest
+```
+
+**Windows (PowerShell)**
+```powershell
+# 确保在 Class_Detection 目录下运行
+python scripts/infer_video.py `
+  --source ../classroom.mp4 `
+  --config configs/pipeline.yaml `
+  --device 0 `
+  --interval-sec 1.0 `
+  --save `
+  --save-frames `
   --output artifacts/results/latest
 ```
 
