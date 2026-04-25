@@ -134,6 +134,7 @@ class ClassroomPipeline:
 
         self._frame_count: int = 0
         self._fps: float = 25.0
+        self._last_ocr_time: float = -999.0
 
     def set_fps(self, fps: float) -> None:
         self._fps = max(fps, 1.0)
@@ -167,12 +168,14 @@ class ClassroomPipeline:
         frame: np.ndarray,
         frame_id: Optional[int] = None,
         timestamp_sec: Optional[float] = None,
+        ppt_crop: tuple[int, int, int, int] | None = None,
     ) -> ClassroomSnapshot:
         return self.process_frame(
             frame=frame,
             frame_id=frame_id,
             timestamp_sec=timestamp_sec,
             enable_ocr=False,
+            ppt_crop=ppt_crop,
         )
 
     def process_frame(
@@ -181,6 +184,7 @@ class ClassroomPipeline:
         frame_id: Optional[int] = None,
         timestamp_sec: Optional[float] = None,
         enable_ocr: bool = True,
+        ppt_crop: tuple[int, int, int, int] | None = None,
     ) -> ClassroomSnapshot:
         """Process one frame.
 
@@ -251,18 +255,34 @@ class ClassroomPipeline:
         active_track_ids = {student.track_id for student in student_states}
         self.action.buffer.prune(active_track_ids)
 
-        if enable_ocr and self._frame_count % self.ocr_interval == 0:
-            for env_det in envs:
-                x1, y1, x2, y2 = [int(value) for value in env_det.xyxy]
-                x1, y1 = max(0, x1), max(0, y1)
-                x2, y2 = min(width, x2), min(height, y2)
-                if x2 - x1 <= 50 or y2 - y1 <= 50:
-                    continue
+        if enable_ocr:
+            ocr_interval_sec = self.ocr_interval / self._fps
+            if t_sec - self._last_ocr_time >= ocr_interval_sec:
+                ocr_triggered = False
+                
+                if ppt_crop is not None:
+                    crop = _clip_crop(frame, ppt_crop)
+                    detected_text = self.ocr.detect_change(crop)
+                    if detected_text is not None:
+                        self.register_anchor(detected_text, t_sec)
+                    ocr_triggered = True
+                else:
+                    for env_det in envs:
+                        x1, y1, x2, y2 = [int(value) for value in env_det.xyxy]
+                        x1, y1 = max(0, x1), max(0, y1)
+                        x2, y2 = min(width, x2), min(height, y2)
+                        if x2 - x1 <= 50 or y2 - y1 <= 50:
+                            continue
 
-                crop = frame[y1:y2, x1:x2]
-                detected_text = self.ocr.detect_change(crop)
-                if detected_text is not None:
-                    self.register_anchor(detected_text, t_sec)
+                        crop = frame[y1:y2, x1:x2]
+                        detected_text = self.ocr.detect_change(crop)
+                        if detected_text is not None:
+                            self.register_anchor(detected_text, t_sec)
+                        ocr_triggered = True
+                        break  # Only OCR the first valid screen box
+
+                if ocr_triggered:
+                    self._last_ocr_time = t_sec
 
         metrics = compute_classroom_metrics(student_states, self.lambda_penalty)
         self.vsam.feed(t_sec, metrics.mean_cas)

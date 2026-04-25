@@ -192,7 +192,6 @@ python scripts/infer_video.py \
   --device 0 \
   --interval-sec 1.0 \
   --save \
-  --save-frames \
   --output artifacts/results/latest
 ```
 
@@ -208,7 +207,6 @@ python scripts/infer_video.py \
   --device 0 \
   --interval-sec 1.0 \
   --save \
-  --save-frames \
   --output artifacts/results/latest
 ```
 
@@ -221,7 +219,6 @@ python scripts/infer_video.py `
   --device 0 `
   --interval-sec 1.0 `
   --save `
-  --save-frames `
   --output artifacts/results/latest
 ```
 

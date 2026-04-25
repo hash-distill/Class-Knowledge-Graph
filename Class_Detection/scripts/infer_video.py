@@ -83,9 +83,10 @@ def validate_args(args: argparse.Namespace) -> None:
         raise ValueError("You must provide --source or both --student-source and --ppt-source.")
 
 
+SCRIPT_START_TIME = datetime.now(timezone.utc)
+
 def video_timestamp(seconds: float) -> str:
-    base = datetime(1970, 1, 1, tzinfo=timezone.utc)
-    return (base + timedelta(seconds=seconds)).isoformat().replace("+00:00", "Z")
+    return (SCRIPT_START_TIME + timedelta(seconds=seconds)).isoformat().replace("+00:00", "Z")
 
 
 def cas_color(cas: float) -> tuple[int, int, int]:
@@ -250,6 +251,13 @@ def extract_anchor_events(
 
 
 def run_single_stream(args: argparse.Namespace) -> None:
+    run_tag = datetime.now().strftime("%Y%m%d_%H%M%S")
+    source_stem = Path(args.source).stem if not args.source.isdigit() else "cam"
+    out_name = f"{source_stem}_{run_tag}"
+    
+    ppt_crop = parse_crop_box(args.ppt_crop)
+    json_path = args.output / f"{out_name}_{args.json_name}"
+
     pipeline = ClassroomPipeline(
         config_path=args.config,
         det_weights=args.det_weights,
@@ -267,9 +275,6 @@ def run_single_stream(args: argparse.Namespace) -> None:
     out_video: Path | None = None
     frames_dir: Path | None = None
 
-    run_tag = datetime.now().strftime("%Y%m%d_%H%M%S")
-    source_stem = Path(args.source).stem if not args.source.isdigit() else "cam"
-    out_name = f"{source_stem}_{run_tag}"
 
     if args.save:
         args.output.mkdir(parents=True, exist_ok=True)
@@ -287,7 +292,6 @@ def run_single_stream(args: argparse.Namespace) -> None:
 
     # Clear stale output from previous runs
     if args.save:
-        json_path = args.output / args.json_name
         if json_path.exists():
             json_path.unlink()
 
@@ -320,6 +324,7 @@ def run_single_stream(args: argparse.Namespace) -> None:
                 snapshot = pipeline.process_frame(
                     frame, frame_id=frame_idx,
                     timestamp_sec=merged_sec, enable_ocr=True,
+                    ppt_crop=ppt_crop,
                 )
                 snapshot.timestamp = video_timestamp(merged_sec)
                 latest_snapshot = snapshot
@@ -339,7 +344,7 @@ def run_single_stream(args: argparse.Namespace) -> None:
 
                 # Flush to disk periodically to avoid OOM on long videos
                 if args.save and len(snapshots) >= 500:
-                    _flush_snapshots(snapshots, args.output / args.json_name)
+                    _flush_snapshots(snapshots, json_path)
                     snapshots.clear()
 
             # ── Always write annotated frame to the output video ──
@@ -361,7 +366,6 @@ def run_single_stream(args: argparse.Namespace) -> None:
         cv2.destroyAllWindows()
 
     if args.save:
-        json_path = args.output / args.json_name
         # Flush remaining snapshots
         if snapshots:
             _flush_snapshots(snapshots, json_path)
@@ -404,6 +408,8 @@ def run_dual_stream(args: argparse.Namespace) -> None:
     student_stem = Path(args.student_source).stem
     ppt_stem = Path(args.ppt_source).stem
     out_name = f"{student_stem}__{ppt_stem}_{run_tag}"
+
+    json_path = args.output / f"{out_name}_{args.json_name}"
 
     if args.save:
         args.output.mkdir(parents=True, exist_ok=True)
@@ -496,11 +502,10 @@ def run_dual_stream(args: argparse.Namespace) -> None:
         cv2.destroyAllWindows()
 
     if args.save:
-        json_path = args.output / args.json_name
         json_path.write_text(json.dumps(snapshots, ensure_ascii=False, indent=2), encoding="utf-8")
         print(f"Saved {len(snapshots)} fused snapshots to {json_path}")
 
-        anchor_path = args.output / args.anchor_json_name
+        anchor_path = args.output / f"{out_name}_{args.anchor_json_name}"
         anchor_path.write_text(json.dumps(anchor_events, ensure_ascii=False, indent=2), encoding="utf-8")
         print(f"Saved {len(anchor_events)} anchor events to {anchor_path}")
 
