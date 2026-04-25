@@ -275,9 +275,8 @@ def run_single_stream(args: argparse.Namespace) -> None:
         args.output.mkdir(parents=True, exist_ok=True)
         out_video = args.output / f"{out_name}.mp4"
         fourcc = cv2.VideoWriter_fourcc(*"mp4v")
-        # Use the actual sampling rate, not the source fps
-        out_fps = 1.0 / max(args.interval_sec, 0.04) if args.interval_sec > 0 else fps
-        writer = cv2.VideoWriter(str(out_video), fourcc, out_fps, (width, height))
+        # Output video uses native fps for smooth playback
+        writer = cv2.VideoWriter(str(out_video), fourcc, fps, (width, height))
 
         if args.save_frames:
             frames_dir = args.output / args.frames_dir_name
@@ -294,35 +293,67 @@ def run_single_stream(args: argparse.Namespace) -> None:
 
     print(f"Processing single stream: {args.source}  ({width}x{height} @ {fps:.1f} fps)")
 
+    # Determine analysis interval in frames (1 analysis per interval_sec)
+    analysis_step = max(1, int(round(fps * args.interval_sec))) if args.interval_sec > 0 else 1
+    frame_idx = 0
+    analyzed_count = 0
+    latest_snapshot = None
+
     try:
-        for frame_idx, relative_sec, frame in sampled_frames(cap, fps, args.interval_sec, args.max_frames):
+        while True:
+            ret, frame = cap.read()
+            if not ret:
+                break
+
+            frame_idx += 1
+            relative_sec = (frame_idx - 1) / fps
             merged_sec = args.student_offset_sec + relative_sec
-            snapshot = pipeline.process_frame(frame, frame_id=frame_idx, timestamp_sec=merged_sec, enable_ocr=True)
-            snapshot.timestamp = video_timestamp(merged_sec)
 
-            if frames_dir is not None:
-                frame_name = f"frame_{frame_idx:06d}.jpg"
-                frame_file = frames_dir / frame_name
-                cv2.imwrite(str(frame_file), frame)
-                snapshot.frame_image_path = f"{args.frames_dir_name}/{frame_name}".replace("\\", "/")
+            # Decide whether this frame triggers a full pipeline analysis
+            should_analyze = (frame_idx - 1) % analysis_step == 0
 
-            snapshots.append(snapshot.model_dump())
+            if should_analyze:
+                analyzed_count += 1
+                if 0 < args.max_frames < analyzed_count:
+                    break
 
-            annotated, last_ctes = annotate_frame(frame, snapshot)
+                snapshot = pipeline.process_frame(
+                    frame, frame_id=frame_idx,
+                    timestamp_sec=merged_sec, enable_ocr=True,
+                )
+                snapshot.timestamp = video_timestamp(merged_sec)
+                latest_snapshot = snapshot
+
+                if frames_dir is not None:
+                    frame_name = f"frame_{frame_idx:06d}.jpg"
+                    frame_file = frames_dir / frame_name
+                    cv2.imwrite(str(frame_file), frame)
+                    snapshot.frame_image_path = (
+                        f"{args.frames_dir_name}/{frame_name}".replace("\\", "/")
+                    )
+
+                snapshots.append(snapshot.model_dump())
+
+                if frame_idx % 100 == 0:
+                    print(f"  frame {frame_idx}  CTES={last_ctes:.3f}")
+
+                # Flush to disk periodically to avoid OOM on long videos
+                if args.save and len(snapshots) >= 500:
+                    _flush_snapshots(snapshots, args.output / args.json_name)
+                    snapshots.clear()
+
+            # ── Always write annotated frame to the output video ──
+            if latest_snapshot is not None:
+                annotated, last_ctes = annotate_frame(frame, latest_snapshot)
+            else:
+                annotated = frame  # before first analysis, write raw frame
+
             if writer:
                 writer.write(annotated)
             if args.show:
                 cv2.imshow("Classroom Pipeline", annotated)
                 if cv2.waitKey(1) & 0xFF == ord("q"):
                     break
-
-            if frame_idx % 100 == 0:
-                print(f"  frame {frame_idx}  CTES={last_ctes:.3f}")
-
-            # Opt: flush to disk periodically to avoid OOM on long videos
-            if args.save and len(snapshots) >= 500:
-                _flush_snapshots(snapshots, args.output / args.json_name)
-                snapshots.clear()
     finally:
         cap.release()
         if writer:
@@ -378,8 +409,8 @@ def run_dual_stream(args: argparse.Namespace) -> None:
         args.output.mkdir(parents=True, exist_ok=True)
         out_video = args.output / f"{out_name}.mp4"
         fourcc = cv2.VideoWriter_fourcc(*"mp4v")
-        out_fps = 1.0 / max(args.interval_sec, 0.04) if args.interval_sec > 0 else fps
-        writer = cv2.VideoWriter(str(out_video), fourcc, out_fps, (width, height))
+        # Output video uses native fps for smooth playback
+        writer = cv2.VideoWriter(str(out_video), fourcc, fps, (width, height))
 
         if args.save_frames:
             frames_dir = args.output / args.frames_dir_name
@@ -395,40 +426,69 @@ def run_dual_stream(args: argparse.Namespace) -> None:
         f"({width}x{height} @ {fps:.1f} fps)"
     )
 
+    # Determine analysis interval in frames (1 analysis per interval_sec)
+    analysis_step = max(1, int(round(fps * args.interval_sec))) if args.interval_sec > 0 else 1
+    frame_idx = 0
+    analyzed_count = 0
+    latest_snapshot = None
+
     try:
-        for frame_idx, relative_sec, frame in sampled_frames(cap, fps, args.interval_sec, args.max_frames):
+        while True:
+            ret, frame = cap.read()
+            if not ret:
+                break
+
+            frame_idx += 1
+            relative_sec = (frame_idx - 1) / fps
             merged_sec = args.student_offset_sec + relative_sec
 
+            # Inject any pending anchor events up to current timestamp
             while anchor_index < len(anchor_events) and anchor_events[anchor_index]["timestamp_sec"] <= merged_sec:
                 event = anchor_events[anchor_index]
                 pipeline.register_anchor(event["entity"], event["timestamp_sec"])
                 anchor_index += 1
 
-            snapshot = pipeline.process_student_frame(
-                frame=frame,
-                frame_id=frame_idx,
-                timestamp_sec=merged_sec,
-            )
-            snapshot.timestamp = video_timestamp(merged_sec)
+            # Decide whether this frame triggers a full pipeline analysis
+            should_analyze = (frame_idx - 1) % analysis_step == 0
 
-            if frames_dir is not None:
-                frame_name = f"frame_{frame_idx:06d}.jpg"
-                frame_file = frames_dir / frame_name
-                cv2.imwrite(str(frame_file), frame)
-                snapshot.frame_image_path = f"{args.frames_dir_name}/{frame_name}".replace("\\", "/")
+            if should_analyze:
+                analyzed_count += 1
+                if 0 < args.max_frames < analyzed_count:
+                    break
 
-            snapshots.append(snapshot.model_dump())
+                snapshot = pipeline.process_student_frame(
+                    frame=frame,
+                    frame_id=frame_idx,
+                    timestamp_sec=merged_sec,
+                )
+                snapshot.timestamp = video_timestamp(merged_sec)
+                latest_snapshot = snapshot
 
-            annotated, last_ctes = annotate_frame(frame, snapshot)
+                if frames_dir is not None:
+                    frame_name = f"frame_{frame_idx:06d}.jpg"
+                    frame_file = frames_dir / frame_name
+                    cv2.imwrite(str(frame_file), frame)
+                    snapshot.frame_image_path = (
+                        f"{args.frames_dir_name}/{frame_name}".replace("\\", "/")
+                    )
+
+                snapshots.append(snapshot.model_dump())
+
+                if frame_idx % 100 == 0:
+                    print(f"  student frame {frame_idx}  CTES={last_ctes:.3f}")
+
+            # ── Always write annotated frame to the output video ──
+            if latest_snapshot is not None:
+                annotated, last_ctes = annotate_frame(frame, latest_snapshot)
+            else:
+                annotated = frame  # before first analysis, write raw frame
+
             if writer:
                 writer.write(annotated)
             if args.show:
                 cv2.imshow("Classroom Pipeline", annotated)
                 if cv2.waitKey(1) & 0xFF == ord("q"):
                     break
-
-            if frame_idx % 100 == 0:
-                print(f"  student frame {frame_idx}  CTES={last_ctes:.3f}")
     finally:
         cap.release()
         if writer:
