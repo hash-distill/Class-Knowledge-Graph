@@ -58,9 +58,11 @@ class OCRAnchorDetector:
         current_hash = hashlib.md5(current_text.encode("utf-8")).hexdigest()
 
         if self._prev_hash is None:
-            # First observation — store but don't trigger
+            # First observation — store and trigger if there is text
             self._prev_hash = current_hash
             self._prev_text = current_text
+            if current_text.strip():
+                return current_text
             return None
 
         if current_hash == self._prev_hash:

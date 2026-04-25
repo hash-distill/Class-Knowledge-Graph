@@ -117,3 +117,4 @@ class ClassroomSnapshot(BaseModel):
         default_factory=ClassroomMetrics
     )
     student_states: list[StudentState] = Field(default_factory=list)
+    env_bboxes: list[list[float]] = Field(default_factory=list)

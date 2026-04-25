@@ -158,8 +158,13 @@ def annotate_frame(frame, snapshot) -> tuple:
         (0, 255, 255),
         2,
     )
+    
+    for bbox in getattr(snapshot, "env_bboxes", []):
+        x1, y1, x2, y2 = [int(v) for v in bbox]
+        cv2.rectangle(annotated, (x1, y1), (x2, y2), (255, 165, 0), 2)  # Orange for PPT/Screen
+        cv2.putText(annotated, "PPT/Screen", (x1, y1 - 8), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 165, 0), 1)
+        
     return annotated, ctes
-
 
 def sampled_frames(
     cap,

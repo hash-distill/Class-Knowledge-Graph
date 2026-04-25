@@ -294,6 +294,7 @@ class ClassroomPipeline:
             knowledge_anchor=self._build_current_anchor(),
             classroom_metrics=metrics,
             student_states=student_states,
+            env_bboxes=[env.xyxy for env in envs],
         )
 
     def _build_current_anchor(self) -> KnowledgeAnchor:
