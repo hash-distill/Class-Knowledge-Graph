@@ -1,7 +1,7 @@
 # 训练与预测运行手册
 
 本文档集中维护本项目全部训练、评估、推理命令。
-建议按“13 类标准流程”先跑通一轮，再进行对比实验。
+建议按"13 类标准流程"先跑通一轮，再进行对比实验。
 
 ---
 
@@ -25,17 +25,19 @@ pip install -U ultralytics
 
 ## 2. 数据准备与校验
 
-### 2.1 构建 13 类数据集（推荐）
+### 2.1 构建 SCB-5 统一 13 类数据集
 
 ```bash
 cd /mnt/Data4/24zhs/Class-Knowledge-Graph/Class_Detection
-python tools/build_scb_13cls.py
+python tools/build_scb5_unified.py
 ```
 
 说明：
-- 输出目录为 `../SCB_yolo_dataset_13cls`。
-- 脚本会将类别重映射为连续 ID `0..12`。
-- 脚本会自动清洗越界坐标到 `[0, 1]`，并丢弃无效框。
+- 输入目录为 `../SCB-Dataset/SCB-Dataset`（包含 9 个 SCB-5 原始子集）。
+- 输出目录为 `../SCB5_yolo_unified`。
+- 脚本会为每个子集独立重映射局部 class ID 到全局 13 类 ID `0..12`。
+- 自动去除重复图片（合并多子集中相同图片的标注）。
+- 自动清洗越界坐标到 `[0, 1]`，并丢弃无效框。
 
 ### 2.2 数据完整性审计
 
@@ -43,8 +45,8 @@ python tools/build_scb_13cls.py
 cd /mnt/Data4/24zhs/Class-Knowledge-Graph/Class_Detection
 
 python tools/dataset_audit.py \
-  --dataset-root ../SCB_yolo_dataset_13cls \
-  --output artifacts/reports/scb13_audit.json
+  --dataset-root ../SCB5_yolo_unified \
+  --output artifacts/reports/scb5_audit.json
 ```
 
 ### 2.3 快速检查类别分布与坐标越界
@@ -53,11 +55,11 @@ python tools/dataset_audit.py \
 cd /mnt/Data4/24zhs/Class-Knowledge-Graph
 
 # 类别分布（13 类应为 0..12）
-awk '{c[$1]++} END {for (k in c) print k, c[k]}' SCB_yolo_dataset_13cls/labels/train/*.txt | sort -n
-awk '{c[$1]++} END {for (k in c) print k, c[k]}' SCB_yolo_dataset_13cls/labels/val/*.txt | sort -n
+awk '{c[$1]++} END {for (k in c) print k, c[k]}' SCB5_yolo_unified/labels/train/*.txt | sort -n
+awk '{c[$1]++} END {for (k in c) print k, c[k]}' SCB5_yolo_unified/labels/val/*.txt | sort -n
 
 # 越界检查（正常应无输出）
-find SCB_yolo_dataset_13cls -name "*.txt" -exec \
+find SCB5_yolo_unified -name "*.txt" -exec \
 awk '$2 < 0 || $2 > 1 || $3 < 0 || $3 > 1 || $4 < 0 || $4 > 1 || $5 < 0 || $5 > 1 {print FILENAME, $0}' {} +
 ```
 
@@ -72,8 +74,8 @@ awk '$2 < 0 || $2 > 1 || $3 < 0 || $3 > 1 || $4 < 0 || $4 > 1 || $5 < 0 || $5 > 
 ```bash
 cd /mnt/Data4/24zhs/Class-Knowledge-Graph/Class_Detection
 
-/home/24xyx/miniconda3/envs/Class_Detection/bin/python scripts/train_det.py \
-  --data configs/scb_yolo_13cls.yaml \
+python scripts/train_det.py \
+  --data configs/scb_yolo.yaml \
   --model yolo26m.pt \
   --epochs 40 \
   --imgsz 960 \
@@ -81,24 +83,7 @@ cd /mnt/Data4/24zhs/Class-Knowledge-Graph/Class_Detection
   --device 3 \
   --workers 8 \
   --patience 10 \
-  --name scb13_yolo26m_e40 \
-  --cache
-```
-
-### 3.3 原始 SCB 配置训练（仅对照）
-
-```bash
-cd /mnt/Data4/24zhs/Class-Knowledge-Graph/Class_Detection
-
-python scripts/train_det.py \
-  --data configs/scb_yolo.yaml \
-  --model yolo26s.pt \
-  --epochs 20 \
-  --imgsz 960 \
-  --batch 16 \
-  --device 0 \
-  --workers 8 \
-  --name scb_yolo26s \
+  --name scb5_yolo26m_e40 \
   --cache
 ```
 
@@ -145,8 +130,8 @@ python scripts/train_stgcn.py \
 cd /mnt/Data4/24zhs/Class-Knowledge-Graph/Class_Detection
 
 python scripts/eval_det.py \
-  --weights artifacts/runs/detect/scb13_yolo26m_e40/weights/best.pt \
-  --data configs/scb_yolo_13cls.yaml \
+  --weights artifacts/runs/detect/scb5_yolo26m_e40/weights/best.pt \
+  --data configs/scb_yolo.yaml \
   --imgsz 960 \
   --batch 16 \
   --device 0
@@ -168,7 +153,7 @@ cd /mnt/Data4/24zhs/Class-Knowledge-Graph/Class_Detection
 python scripts/infer_video.py \
   --source ../classroom.mp4 \
   --config configs/pipeline.yaml \
-  --det-weights artifacts/runs/detect/scb13_yolo26m_e40/weights/best.pt \
+  --det-weights artifacts/runs/detect/scb5_yolo26m_e40/weights/best.pt \
   --pose-weights yolo26n-pose.pt \
   --device 0 \
   --interval-sec 1.0 \
@@ -180,7 +165,7 @@ python scripts/infer_video.py \
 
 #### 使用预训练 yolo26m.pt 直接推理（降级体验版，无需训练）
 
-官方预训练权重（COCO 80类）无法自动识别“黑板”或“屏幕”，因此**默认不会触发 OCR**。为了在免训练的情况下体验完整的知识点提取流程，你必须**手动指定 PPT/屏幕 的区域坐标** (`--ppt-crop`)，强制开启区域 OCR。
+官方预训练权重（COCO 80类）无法自动识别"黑板"或"屏幕"，因此**默认不会触发 OCR**。为了在免训练的情况下体验完整的知识点提取流程，你必须**手动指定 PPT/屏幕 的区域坐标** (`--ppt-crop`)，强制开启区域 OCR。
 
 **Linux / macOS (Bash)**
 ```bash
@@ -275,11 +260,28 @@ Class_Detection/artifacts/results/
 
 ---
 
-## 9. 13 类映射关系（原始 ID -> 新 ID）
+## 9. SCB-5 统一 13 类映射表
+
+数据集由 9 个 SCB-5 原始子集构建，每个子集的局部 ID 独立映射到全局 ID：
 
 ```text
-0->0(hand_raising), 1->1(read), 2->2(write), 5->3(discuss),
-6->4(talk), 7->5(answer), 8->6(stage_interact), 13->7(stand),
-15->8(teacher), 16->9(guide), 17->10(board_writing),
-18->11(blackboard), 19->12(screen)
+全局 ID → 类别名称
+  0: hand_raising    (举手)
+  1: read            (阅读)
+  2: write           (书写)
+  3: discuss         (讨论)
+  4: talk            (交谈)
+  5: answer          (回答)
+  6: stage_interact  (上台互动)
+  7: stand           (站立)
+  8: teacher         (教师)
+  9: guide           (指导)
+ 10: board_writing   (板书)
+ 11: blackboard      (黑板)
+ 12: screen          (屏幕)
 ```
+
+角色分组：
+- **学生行为 (0-7)**：hand_raising, read, write, discuss, talk, answer, stage_interact, stand
+- **教师行为 (8-10)**：teacher, guide, board_writing
+- **环境要素 (11-12)**：blackboard, screen

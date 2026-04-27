@@ -1,8 +1,11 @@
-# SCB-Dataset5 YOLO detection config
-# 7,428 images │ 106,830 labels │ 20 classes
+# SCB-5 Unified 13-Class YOLO Detection Config
+# Built from 9 original SCB-5 subsets with per-subset ID remapping.
 # Source: https://github.com/Whiffe/SCB-dataset
+#
+# Build command:
+#   cd Class_Detection && python tools/build_scb5_unified.py
 
-path: ../SCB_yolo_dataset
+path: ../SCB5_yolo_unified
 train: images/train
 val: images/val
 
@@ -10,20 +13,13 @@ names:
   0: hand_raising
   1: read
   2: write
-  3: bow_head
-  4: turn_head
-  5: discuss
-  6: talk
-  7: answer
-  8: stage_interact
-  9: yawn
-  10: lean_desk
-  11: use_phone
-  12: use_computer
-  13: stand
-  14: clap
-  15: teacher
-  16: guide
-  17: board_writing
-  18: blackboard
-  19: screen
+  3: discuss
+  4: talk
+  5: answer
+  6: stage_interact
+  7: stand
+  8: teacher
+  9: guide
+  10: board_writing
+  11: blackboard
+  12: screen
