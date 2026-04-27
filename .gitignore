@@ -29,6 +29,7 @@ Thumbs.db
 *.log
 *.tmp
 *.temp
+pymp-*/
 
 # Model/training artifacts
 artifacts/
