@@ -74,11 +74,10 @@ scoring:
   w_gaze: 0.25            # CAS gaze weight (noisy in side-view classroom shots)
   lambda_penalty: 0.6     # CTES variance penalty coefficient
 
-# ── Class role groups (SCB-5 unified 13-class taxonomy) ──────
-# Students : 0=hand_raising 1=read 2=write 3=discuss 4=talk
-#            5=answer 6=stage_interact 7=stand
-# Teachers : 8=teacher 9=guide 10=board_writing
-# Env      : 11=blackboard 12=screen
-student_class_ids: [0, 1, 2, 3, 4, 5, 6, 7]
-teacher_class_ids: [8, 9, 10]
-environment_class_ids: [11, 12]
+# ── Class role groups (SCB-5 robust 5-class taxonomy) ──────
+# Students : 0=active_student 1=focus_student 2=distracted_student
+# Teachers : 3=teacher
+# Env      : 4=screen_board
+student_class_ids: [0, 1, 2]
+teacher_class_ids: [3]
+environment_class_ids: [4]

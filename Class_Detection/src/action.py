@@ -25,21 +25,14 @@ from src.schema import ActionRecord, ActionSource
 # Maps detection class names (from SCB-Dataset5) to engagement scores.
 # This table is the fallback when ST-GCN is not available.
 DEFAULT_ACTION_SCORES: dict[str, float] = {
-    # 学生行为 (SCB-5 unified 13-class system)
-    "hand_raising": 0.95,
-    "read": 0.72,
-    "write": 0.78,
-    "discuss": 0.82,
-    "talk": 0.75,
-    "answer": 0.90,
-    "stage_interact": 0.88,
-    "stand": 0.65,
+    # 学生行为 (SCB-5 robust 5-class system)
+    "active_student": 0.95,     # 高度活跃 (举手/上台/回答)
+    "focus_student": 0.75,      # 常规专注 (听课/写字/读书/讨论)
+    "distracted_student": 0.30, # 游离状态 (开小差/交谈)
+    
     # 教师/环境 (不计入学生评分)
     "teacher": 0.0,
-    "guide": 0.0,
-    "board_writing": 0.0,
-    "blackboard": 0.0,
-    "screen": 0.0,
+    "screen_board": 0.0,
 }
 
 # ST-GCN output labels (index → name)

@@ -1,7 +1,7 @@
 """YOLO26 detection and ByteTrack multi-object tracking.
 
 This module wraps *ultralytics* YOLO26 for:
-  1. Per-frame object detection (13 SCB-5 classes).
+  1. Per-frame object detection (5 SCB-5 robust classes).
   2. Video-level multi-object tracking with built-in ByteTrack.
 """
 

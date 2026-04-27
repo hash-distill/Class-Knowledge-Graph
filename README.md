@@ -43,7 +43,7 @@
     ▼
 ┌──────────────────────────────────┐
 │  YOLO26 Detection + ByteTrack    │  ← yolo26m.pt + 内置追踪器
-│  SCB-5 统一 13 类检测 + Track ID │
+│  SCB-5 稳健 5 类检测 + Track ID  │
 └──────────┬───────────────────────┘
            │
     ┌──────┴──────┐
@@ -73,7 +73,7 @@
 
 | 功能 | 模型 | 权重文件 | 输出 |
 |------|------|---------|------|
-| 目标检测 | **YOLO26-M** | `yolo26m.pt` | SCB-5 统一 13 类 BBox + 置信度 |
+| 目标检测 | **YOLO26-M** | `yolo26m.pt` | SCB-5 稳健 5 类 BBox + 置信度 |
 | 多目标追踪 | **ByteTrack** | ultralytics 内置 | 跨帧 Track ID |
 | 姿态估计 | **YOLO26-N-Pose** | `yolo26n-pose.pt` | 17 COCO 关键点 (x, y, conf) |
 | 动作分类 | **ST-GCN** | 自训练 | 行为标签 + 置信度 |
@@ -93,7 +93,7 @@ YOLO26 是 Ultralytics 于 2026 年 1 月发布的最新 YOLO 系列模型，具
 
 ## 3. 数据集
 
-### 3.1 主训练数据集：SCB-Dataset5（统一 13 类）
+### 3.1 主训练数据集：SCB-Dataset5（业务 5 类）
 
 **SCB-Dataset5**（Student Classroom Behavior Dataset v5）是目前最全面的课堂行为检测公开数据集。
 
@@ -103,39 +103,30 @@ YOLO26 是 Ultralytics 于 2026 年 1 月发布的最新 YOLO 系列模型，具
 | **标注格式** | YOLO (`.txt`: `class_id x_center y_center width height`) |
 | **图像来源** | 真实课堂监控视频截帧 |
 | **下载地址** | https://github.com/Whiffe/SCB-dataset |
-| **许可** | 学术研究用途 |
 
-> **⚠️ 重要**：SCB-5 原始数据由 9 个子集组成，每个子集的 class ID 从 0 开始独立编号。
-> 直接合并会导致 ID 碰撞（多个不同类别共享同一 ID）。
-> 必须使用 `tools/build_scb5_unified.py` 进行 per-subset ID 重映射后才能训练。
+> **⚠️ 重要**：原 SCB-5 标签因为太过细粒度（如无法区分 read/write，造成极高漏标与验证集 Loss 爆炸）。
+> 本项目已采用 **5 大业务语义** 对齐重构。
+> 必须使用 `tools/build_scb5_unified.py` 进行跨子集的 5 类去重映射。
 
-#### 统一 13 类映射表
+#### 稳健 5 类映射表（解决标签冲突）
 
 ```yaml
 # configs/scb_yolo.yaml
 names:
-  0: hand_raising      # 举手
-  1: read              # 阅读
-  2: write             # 书写
-  3: discuss           # 讨论
-  4: talk              # 交谈
-  5: answer            # 回答
-  6: stage_interact    # 上台互动
-  7: stand             # 站立
-  8: teacher           # 教师
-  9: guide             # 指导
-  10: board_writing    # 板书
-  11: blackboard       # 黑板
-  12: screen           # 屏幕
+  0: active_student     # 积极互动 (举手/回答/上台)
+  1: focus_student      # 正常专注 (听课/写字/读书/讨论/站立)
+  2: distracted_student # 游离状态 (开小差/交谈)
+  3: teacher            # 教师 (讲课/板书等)
+  4: screen_board       # 环境锚点 (黑板/屏幕PPT)
 ```
 
 #### 角色分组
 
-| 角色 | 类别 ID | 类别名称 | 课堂含义 |
-|------|---------|---------|----------|
-| **学生行为** | 0-7 | hand_raising, read, write, discuss, talk, answer, stage_interact, stand | 学生参与/动作检测 |
-| **教师行为** | 8-10 | teacher, guide, board_writing | 教学活动提取 |
-| **环境要素** | 11-12 | blackboard, screen | 知识点锚点提取 |
+| 角色 | 类别 ID | 课堂含义 |
+|------|---------|----------|
+| **学生行为** | 0, 1, 2 | 直接用于计算学生专注度得分 |
+| **教师行为** | 3 | 辅助提取讲课行为，不计入学生得分 |
+| **环境要素** | 4 | 专供提取 PPT 知识点截图 (OCR 锚点) |
 
 ### 3.2 辅助数据参考
 
@@ -215,20 +206,15 @@ V = 17 (关键点数)
 M = 1 (单人)
 ```
 
-**动作标签映射**（SCB-5 统一 13 类系统的动作与专注度得分映射）：
+**动作标签映射**（SCB-5 稳健 5 类系统的专注度映射）：
 
-| 动作标签 (13 类) | 描述 | S_action 映射 (专注度) |
-|------------------|------|:----------:|
-| hand_raising     | 举手 | 0.95 |
-| answer           | 回答 | 0.90 |
-| stage_interact   | 讲台互动 | 0.88 |
-| discuss          | 讨论 | 0.82 |
-| write            | 书写/记笔记 | 0.78 |
-| talk             | 交谈 | 0.75 |
-| read             | 阅读 | 0.72 |
-| stand            | 站立 | 0.65 |
-| *teacher, guide, board_writing* | 教师行为 | 0.00 (不计入学生专注度) |
-| *blackboard, screen* | 环境要素 | 0.00 (用于 OCR 锚点) |
+| 动作标签 (5 类) | 描述 | S_action 映射 (专注度) |
+|-----------------|------|:----------:|
+| active_student  | 积极互动 | 0.95 |
+| focus_student   | 常规专注 | 0.75 |
+| distracted_student | 游离开小差 | 0.30 |
+| teacher         | 教师行为 | 0.00 (不计入学生专注度) |
+| screen_board    | 环境要素 | 0.00 (用于 OCR 锚点) |
 
 **方案二：规则降级（ST-GCN 训练数据不足时启用）**
 
@@ -358,7 +344,7 @@ $$CTES = \mu_{CAS} \cdot \exp(-\lambda \cdot \sigma_{CAS})$$
 
 该手册包含：
 1. 环境与依赖安装。
-2. SCB-5 统一 13 类数据集构建（`build_scb5_unified.py`）。
+2. SCB-5 稳健 5 类数据集构建（`build_scb5_unified.py`）。
 3. 检测/姿态/ST-GCN 训练命令。
 4. 评估、视频推理与冒烟测试命令。
 5. 常见报错与排查建议。
@@ -437,7 +423,7 @@ Class-Knowledge-Graph/
 ├── test_GPU.py
 ├── yolo26m.pt
 ├── SCB-Dataset/                # 原始 SCB-5 数据集（9 个子集）
-├── SCB5_yolo_unified/          # 构建后的统一 13 类 YOLO 数据集
+├── SCB5_yolo_unified/          # 构建后的稳健 5 类 YOLO 数据集
 └── Class_Detection/
   ├── configs/
   ├── docs/

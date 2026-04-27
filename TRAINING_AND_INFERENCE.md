@@ -25,7 +25,7 @@ pip install -U ultralytics
 
 ## 2. 数据准备与校验
 
-### 2.1 构建 SCB-5 统一 13 类数据集
+### 2.1 构建 SCB-5 稳健 5 类数据集
 
 ```bash
 cd /mnt/Data4/24zhs/Class-Knowledge-Graph/Class_Detection
@@ -35,7 +35,7 @@ python tools/build_scb5_unified.py
 说明：
 - 输入目录为 `../SCB-Dataset/SCB-Dataset`（包含 9 个 SCB-5 原始子集）。
 - 输出目录为 `../SCB5_yolo_unified`。
-- 脚本会为每个子集独立重映射局部 class ID 到全局 13 类 ID `0..12`。
+- 脚本会为每个子集独立重映射局部 class ID 到全局 5 大业务类 ID `0..4`。
 - 自动去除重复图片（合并多子集中相同图片的标注）。
 - 自动清洗越界坐标到 `[0, 1]`，并丢弃无效框。
 
@@ -54,7 +54,7 @@ python tools/dataset_audit.py \
 ```bash
 cd /mnt/Data4/24zhs/Class-Knowledge-Graph
 
-# 类别分布（13 类应为 0..12）
+# 类别分布（5 类应为 0..4）
 awk '{c[$1]++} END {for (k in c) print k, c[k]}' SCB5_yolo_unified/labels/train/*.txt | sort -n
 awk '{c[$1]++} END {for (k in c) print k, c[k]}' SCB5_yolo_unified/labels/val/*.txt | sort -n
 
@@ -69,7 +69,7 @@ awk '$2 < 0 || $2 > 1 || $3 < 0 || $3 > 1 || $4 < 0 || $4 > 1 || $5 < 0 || $5 > 
 
 以下命令均在 `Class_Detection` 目录执行。
 
-### 3.1 13 类标准训练（推荐）
+### 3.1 5 类标准训练（推荐）
 
 ```bash
 cd /mnt/Data4/24zhs/Class-Knowledge-Graph/Class_Detection
@@ -145,7 +145,7 @@ python scripts/eval_det.py \
 
 ### 6.1 视频推理（端到端）
 
-#### 使用训练好的 best.pt 推理（13 类全功能版，推荐）
+#### 使用训练好的 best.pt 推理（5 类全功能版，推荐）
 
 ```bash
 cd /mnt/Data4/24zhs/Class-Knowledge-Graph/Class_Detection
@@ -260,28 +260,20 @@ Class_Detection/artifacts/results/
 
 ---
 
-## 9. SCB-5 统一 13 类映射表
+## 9. SCB-5 稳健 5 类业务映射表
 
-数据集由 9 个 SCB-5 原始子集构建，每个子集的局部 ID 独立映射到全局 ID：
+数据集由 9 个 SCB-5 原始子集构建，以业务目标为导向映射至 5 大状态：
 
 ```text
 全局 ID → 类别名称
-  0: hand_raising    (举手)
-  1: read            (阅读)
-  2: write           (书写)
-  3: discuss         (讨论)
-  4: talk            (交谈)
-  5: answer          (回答)
-  6: stage_interact  (上台互动)
-  7: stand           (站立)
-  8: teacher         (教师)
-  9: guide           (指导)
- 10: board_writing   (板书)
- 11: blackboard      (黑板)
- 12: screen          (屏幕)
+  0: active_student     (积极互动，如举手/上台)
+  1: focus_student      (正常专注，如听课/写字)
+  2: distracted_student (游离状态，如交谈)
+  3: teacher            (教师讲课/板书)
+  4: screen_board       (屏幕/黑板)
 ```
 
 角色分组：
-- **学生行为 (0-7)**：hand_raising, read, write, discuss, talk, answer, stage_interact, stand
-- **教师行为 (8-10)**：teacher, guide, board_writing
-- **环境要素 (11-12)**：blackboard, screen
+- **学生行为 (0-2)**：active_student, focus_student, distracted_student
+- **教师行为 (3)**：teacher
+- **环境要素 (4)**：screen_board
