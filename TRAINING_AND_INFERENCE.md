@@ -179,7 +179,7 @@ python scripts/eval_det.py \
 
 ### 6.1 视频推理（端到端）
 
-#### 使用训练好的 best.pt 推理（推荐）
+#### 使用训练好的 best.pt 推理（13 类全功能版，推荐）
 
 ```bash
 cd /mnt/Data4/24zhs/Class-Knowledge-Graph/Class_Detection
@@ -195,7 +195,11 @@ python scripts/infer_video.py \
   --output artifacts/results/latest
 ```
 
-#### 使用预训练 yolo26m.pt 直接推理（无需训练）
+> **说明**：此模式下，模型不仅能精确识别学生动作，还能自动检测视频里的黑板/屏幕区域，并**自动触发 OCR 文字识别**。
+
+#### 使用预训练 yolo26m.pt 直接推理（降级体验版，无需训练）
+
+官方预训练权重（COCO 80类）无法自动识别“黑板”或“屏幕”，因此**默认不会触发 OCR**。为了在免训练的情况下体验完整的知识点提取流程，你必须**手动指定 PPT/屏幕 的区域坐标** (`--ppt-crop`)，强制开启区域 OCR。
 
 **Linux / macOS (Bash)**
 ```bash
@@ -206,6 +210,7 @@ python scripts/infer_video.py \
   --config configs/pipeline.yaml \
   --device 0 \
   --interval-sec 1.0 \
+  --ppt-crop "100,50,800,600" \
   --save \
   --output artifacts/results/latest
 ```
@@ -218,11 +223,12 @@ python scripts/infer_video.py `
   --config configs/pipeline.yaml `
   --device 0 `
   --interval-sec 1.0 `
+  --ppt-crop "100,50,800,600" `
   --save `
   --output artifacts/results/latest
 ```
 
-> 提示：不指定 `--det-weights` 时，使用 `pipeline.yaml` 中配置的 `yolo26m.pt`（ultralytics 会自动下载）。
+> **提示**：不指定 `--det-weights` 时，默认下载使用官方 `yolo26m.pt`。请记得将 `"100,50,800,600"` (x1, y1, x2, y2) 替换为你真实视频里的 PPT 坐标。
 
 ### 6.2 冒烟测试（快速验证链路）
 
