@@ -77,30 +77,11 @@ cd /mnt/Data4/24zhs/Class-Knowledge-Graph/Class_Detection
   --model yolo26m.pt \
   --epochs 40 \
   --imgsz 960 \
-  --batch 16 \
-
-  --device 0 \
+  --batch 32 \
+  --device 3 \
   --workers 8 \
-  --patience 20 \
+  --patience 10 \
   --name scb13_yolo26m_e40 \
-  --cache
-```
-
-### 3.2 5 类合并训练（对照）
-
-```bash
-cd /mnt/Data4/24zhs/Class-Knowledge-Graph/Class_Detection
-
-python scripts/train_det.py \
-  --data configs/scb_yolo_merged.yaml \
-  --model yolo26m.pt \
-  --epochs 60 \
-  --imgsz 960 \
-  --batch 16 \
-  --device 0 \
-  --workers 8 \
-  --patience 20 \
-  --name scb_yolo26m_merged \
   --cache
 ```
 

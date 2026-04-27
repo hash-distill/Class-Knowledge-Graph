@@ -106,8 +106,13 @@ import shutil
 
 def ensure_images_link(src_images: Path, dst_images: Path) -> None:
     """Create a symlink to source images (fallback to copying if unsupported)."""
-    if dst_images.exists():
+    if dst_images.is_dir():
         return
+    # On Windows, Git sometimes checks out symlinks as plain text files containing the path
+    if dst_images.exists() and not dst_images.is_dir():
+        print(f"Warning: {dst_images} is a file (likely a broken git symlink). Deleting it...")
+        dst_images.unlink()
+        
     try:
         dst_images.symlink_to(src_images, target_is_directory=True)
         print("Images linked via symlink.")
