@@ -102,11 +102,19 @@ def remap_split(src_split: Path, dst_split: Path) -> tuple[int, int, int, int]:
     return len(txt_files), box_count, clipped_count, dropped_count
 
 
+import shutil
+
 def ensure_images_link(src_images: Path, dst_images: Path) -> None:
-    """Create a symlink to source images (fallback to error if unsupported)."""
+    """Create a symlink to source images (fallback to copying if unsupported)."""
     if dst_images.exists():
         return
-    dst_images.symlink_to(src_images, target_is_directory=True)
+    try:
+        dst_images.symlink_to(src_images, target_is_directory=True)
+        print("Images linked via symlink.")
+    except OSError as e:
+        print(f"Symlink failed ({e}). Falling back to copying images. This may take a while...")
+        shutil.copytree(src_images, dst_images)
+        print("Images copied successfully.")
 
 
 def main() -> None:
@@ -136,7 +144,6 @@ def main() -> None:
 
     dst_dir.mkdir(parents=True, exist_ok=True)
     ensure_images_link(src_dir / "images", dst_dir / "images")
-    print("Images linked via symlink.")
     print("Done. Use configs/scb_yolo_13cls.yaml for training.")
 
 

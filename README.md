@@ -4,7 +4,7 @@
 
 ---
 
-## 0. 运行说明（已精简）
+## 0. 运行说明
 
 本 README 仅保留系统设计与项目说明，训练/预测命令已统一迁移到独立手册：
 
@@ -209,19 +209,19 @@ V = 17 (关键点数)
 M = 1 (单人)
 ```
 
-**动作标签映射**（从 SCB-Dataset5 行为中提取关键动作）：
+**动作标签映射**（当前 13 类系统的动作与专注度得分映射）：
 
-| 动作标签 | 描述 | S_action 映射 |
-|---------|------|:----------:|
-| writing | 书写/记笔记 | 0.85 |
-| reading | 阅读 | 0.80 |
-| hand_raising | 举手 | 0.95 |
-| discussing | 讨论 | 0.70 |
-| leaning | 趴桌 | 0.15 |
-| using_phone | 使用手机 | 0.10 |
-| yawning | 打哈欠 | 0.20 |
-| looking_around | 四处张望 | 0.25 |
-| attending | 正常听讲 | 0.70 |
+| 动作标签 (13 类) | 描述 | S_action 映射 (专注度) |
+|------------------|------|:----------:|
+| hand_raising     | 举手 | 0.95 |
+| answer           | 回答 | 0.90 |
+| stage_interact   | 讲台互动 | 0.88 |
+| discuss          | 讨论 | 0.82 |
+| write            | 书写/记笔记 | 0.78 |
+| talk             | 交谈 | 0.75 |
+| read             | 阅读 | 0.72 |
+| stand            | 站立 | 0.65 |
+| *teacher, guide, etc.* | 教师行为 | 0.00 (不计入学生专注度) |
 
 **方案二：规则降级（ST-GCN 训练数据不足时启用）**
 
@@ -366,24 +366,28 @@ CV 模块通过 JSON Schema 向下游（知识图谱/大模型）传递评估数
 {
   "timestamp": "2026-05-10T10:15:30Z",
   "frame_id": 750,
+  "frame_image_path": null,
   "knowledge_anchor": {
     "entity": "分数加减法",
-    "trigger_time": "10:15:25Z",
+    "trigger_time": "30.00s",
     "gaussian_weight": 0.95,
-    "score_k": 0.82
+    "score_k": 0.82,
+    "visual_score": 0.82
   },
   "classroom_metrics": {
-    "CTES_score": 0.81,
-    "mean_CAS": 0.78,
-    "std_CAS": 0.15,
+    "ctes_score": 0.81,
+    "mean_cas": 0.78,
+    "std_cas": 0.15,
     "active_tracks": 35,
     "behavior_distribution": {
-      "attending": 20,
-      "writing": 8,
-      "discussing": 3,
-      "bow_head": 2,
-      "lean_desk": 1,
-      "use_phone": 1
+      "counts": {
+        "read": 20,
+        "write": 8,
+        "discuss": 3,
+        "hand_raising": 2,
+        "talk": 1,
+        "stand": 1
+      }
     }
   },
   "student_states": [
@@ -391,18 +395,25 @@ CV 模块通过 JSON Schema 向下游（知识图谱/大模型）传递评估数
       "track_id": 7,
       "bbox": [100.0, 150.0, 200.0, 350.0],
       "action": {
-        "label": "writing",
+        "label": "write",
         "confidence": 0.89,
+        "engagement_score": 0.78,
+        "det_confidence": 0.85,
         "source": "stgcn"
       },
       "gaze": {
         "pitch": -22.5,
         "yaw": 5.0,
+        "roll": 0.0,
         "focus_score": 0.90,
+        "focus_zone": "board_focus",
         "source": "pnp"
       },
-      "CAS": 0.89
+      "cas": 0.89
     }
+  ],
+  "env_bboxes": [
+    [50.0, 50.0, 800.0, 600.0]
   ]
 }
 ```
@@ -417,10 +428,9 @@ Class-Knowledge-Graph/
 ├── TRAINING_AND_INFERENCE.md   # 训练/评估/推理命令统一手册
 ├── requirements.txt
 ├── test_GPU.py
-├── yolo26s.pt
+├── yolo26m.pt
 ├── SCB_yolo_dataset/
 ├── SCB_yolo_dataset_13cls/
-├── SCB_yolo_dataset_merged/
 └── Class_Detection/
   ├── configs/
   ├── docs/

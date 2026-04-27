@@ -231,6 +231,24 @@ cd /mnt/Data4/24zhs/Class-Knowledge-Graph/Class_Detection
 python scripts/smoke_test.py --mock
 ```
 
+### 6.3 独立测试 OCR (PPT文字提取)
+
+你可以独立测试文字提取能力，不加载 YOLO/骨骼/动作识别等大模型，加快调试速度。
+
+```bash
+cd /mnt/Data4/24zhs/Class-Knowledge-Graph/Class_Detection
+
+# 1. 默认测试 (使用目录自带的 test.mp4)
+python scripts/test_ocr_standalone.py
+
+# 2. 指定其他视频
+python scripts/test_ocr_standalone.py --source "/path/to/your/video.mp4"
+
+# 3. 指定视频并限制 PPT 的坐标范围 (x1,y1,x2,y2)，能大幅提升识别率并减少杂乱输出
+python scripts/test_ocr_standalone.py --source "test.mp4" --bbox "100,50,800,600"
+```
+> 提示：测试过程中，每一帧被识别的裁剪画面都会被保存在 `Class_Detection/artifacts/` 目录下。你可以查看这些图片，验证 `--bbox` 坐标是否刚好能框住 PPT 内容。
+
 ---
 
 ## 7. 训练产物与结果目录
