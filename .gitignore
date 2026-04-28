@@ -53,6 +53,8 @@ SCB5_yolo_unified/
 *.zip
 *.tar.gz
 scb5_yolo26m_e40/
+scb5_yolo26m_e60/
+
 
 # Large media / binary files
 *.mp4

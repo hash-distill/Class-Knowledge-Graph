@@ -1,6 +1,10 @@
-# SCB-5 Unified 5-Class YOLO Detection Config
-# Built from 9 original SCB-5 subsets with business-driven ID remapping.
+# SCB-5 Unified 3-Class YOLO Detection Config
+# Built from 9 original SCB-5 subsets with role-based ID remapping.
 # Source: https://github.com/Whiffe/SCB-dataset
+#
+# This 3-class system maximises detection robustness by focusing on
+# WHAT objects are (student/teacher/screen) rather than behavioral states.
+# Behavioral classification is handled downstream by pose/gaze/ST-GCN.
 #
 # Build command:
 #   cd Class_Detection && python tools/build_scb5_unified.py
@@ -10,8 +14,6 @@ train: images/train
 val: images/val
 
 names:
-  0: active_student
-  1: focus_student
-  2: distracted_student
-  3: teacher
-  4: screen_board
+  0: student
+  1: teacher
+  2: screen_board

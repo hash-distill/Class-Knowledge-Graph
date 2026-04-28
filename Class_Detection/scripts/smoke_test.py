@@ -43,7 +43,7 @@ def mock_students(n: int = 5) -> list[StudentState]:
                 track_id=i + 1,
                 bbox=[100.0 + i * 120, 100.0, 200.0 + i * 120, 350.0],
                 action=ActionRecord(
-                    label=["focus_student", "focus_student", "active_student", "distracted_student", "active_student"][i % 5],
+                    label="student",
                     confidence=round(action_conf, 4),
                     source=ActionSource.DETECTION,
                 ),

@@ -1,11 +1,12 @@
 """Action classification from keypoint sequences.
 
-Two paths:
+Three classification paths (in priority order):
   1. **ST-GCN** (primary) – temporal graph convolution on keypoint windows.
-  2. **Rule-based** (fallback) – heuristic scoring from detection class names.
+  2. **Pose heuristic** (secondary) – keypoint-based rules for common actions.
+  3. **Detection fallback** (tertiary) – neutral baseline from 3-class YOLO.
 
-The pipeline starts with rule-based classification by default and
-switches to ST-GCN once a trained checkpoint is available.
+The pipeline starts with detection fallback + pose heuristic by default
+and switches to ST-GCN once a trained checkpoint is available.
 """
 
 from __future__ import annotations
@@ -22,17 +23,14 @@ from src.schema import ActionRecord, ActionSource
 
 # ── Action label mapping ──────────────────────────────────────
 
-# Maps detection class names (from SCB-Dataset5) to engagement scores.
-# This table is the fallback when ST-GCN is not available.
+# Maps detection class names to engagement scores.
+# In the 3-class system, YOLO outputs 'student' / 'teacher' / 'screen_board'.
+# The real behavioral differentiation comes from pose rules or ST-GCN.
 DEFAULT_ACTION_SCORES: dict[str, float] = {
-    # 学生行为 (SCB-5 robust 5-class system)
-    "active_student": 0.95,     # 高度活跃 (举手/上台/回答)
-    "focus_student": 0.75,      # 常规专注 (听课/写字/读书/讨论)
-    "distracted_student": 0.30, # 游离状态 (开小差/交谈)
-    
-    # 教师/环境 (不计入学生评分)
-    "teacher": 0.0,
-    "screen_board": 0.0,
+    # 3-class detection system – student gets a neutral baseline
+    "student": 0.70,        # 中性基线，姿态规则或 ST-GCN 会细化该分数
+    "teacher": 0.0,         # 不计入学生专注度
+    "screen_board": 0.0,    # 用于 OCR 知识点提取
 }
 
 # ST-GCN output labels (index → name)
@@ -128,17 +126,12 @@ class ActionClassifier:
     ) -> ActionRecord:
         """Quick classification using the detection class name directly.
 
-        The *engagement_score* (how engaged the action is) is kept separate
-        from *confidence* (how certain the detector is about the class).
-        CAS should use engagement_score, not the product of the two.
+        In the 3-class system, YOLO outputs 'student' which gets a neutral
+        engagement baseline of 0.70. Pose heuristics or ST-GCN refine this
+        when keypoints are available.
         """
-        # If the generic detector just outputs "person", map it to a neutral "attending" state
-        if class_name.lower() == "person":
-            label = "attending"
-            engagement = 0.70
-        else:
-            label = class_name
-            engagement = self.action_scores.get(class_name, 0.5)
+        label = class_name
+        engagement = self.action_scores.get(class_name, 0.5)
 
         return ActionRecord(
             label=label,
@@ -210,7 +203,11 @@ class ActionClassifier:
 
     @staticmethod
     def _rule_infer(window: np.ndarray) -> ActionRecord:
-        """Simple heuristic from keypoint motion statistics.
+        """Pose heuristic from keypoint motion statistics.
+
+        COCO keypoint indices:
+          0: nose, 1-4: eyes/ears, 5-6: shoulders, 7-8: elbows,
+          9-10: wrists, 11-12: hips, 13-14: knees, 15-16: ankles.
 
         All thresholds are normalised by the median torso height
         (shoulder-to-hip distance) so the rules are resolution-independent.
@@ -224,6 +221,8 @@ class ActionClassifier:
         torso_height = float(np.median(np.abs(hips_y - shoulders_y)))
         scale = max(torso_height, 1.0)  # avoid division by zero
 
+        # ---- Feature extraction ----
+
         # Head motion range (keypoints 0..4), normalised
         head = coords[:, :, :5]  # (2, T, 5)
         head_range = float(np.mean(np.ptp(head, axis=1))) / scale
@@ -236,13 +235,42 @@ class ActionClassifier:
         nose_y = coords[1, :, 0]                            # (T,)
         lean_ratio = float(np.mean(nose_y > shoulders_y + 0.25 * scale))
 
-        if hand_raised_ratio > 0.5:
-            return ActionRecord(label="hand_raising", confidence=0.85, engagement_score=0.95, source=ActionSource.RULE)
-        if lean_ratio > 0.5:
-            return ActionRecord(label="leaning", confidence=0.75, engagement_score=0.15, source=ActionSource.RULE)
-        if head_range > 0.20:
-            return ActionRecord(label="looking_around", confidence=0.65, engagement_score=0.25, source=ActionSource.RULE)
-        if head_range < 0.05:
-            return ActionRecord(label="attending", confidence=0.60, engagement_score=0.70, source=ActionSource.RULE)
+        # Head down: nose significantly below shoulder midpoint (reading/writing)
+        head_down_ratio = float(np.mean(nose_y > shoulders_y + 0.10 * scale))
 
-        return ActionRecord(label="attending", confidence=0.50, engagement_score=0.60, source=ActionSource.RULE)
+        # ---- Classification rules (ordered by engagement level) ----
+
+        # 1. Hand raising: wrists consistently above shoulders
+        if hand_raised_ratio > 0.5:
+            return ActionRecord(
+                label="hand_raising", confidence=0.85,
+                engagement_score=0.95, source=ActionSource.RULE)
+
+        # 2. Severe lean / sleeping
+        if lean_ratio > 0.5:
+            return ActionRecord(
+                label="leaning", confidence=0.75,
+                engagement_score=0.15, source=ActionSource.RULE)
+
+        # 3. Looking around (large head motion)
+        if head_range > 0.20:
+            return ActionRecord(
+                label="looking_around", confidence=0.65,
+                engagement_score=0.25, source=ActionSource.RULE)
+
+        # 4. Reading/writing (head down, low motion)
+        if head_down_ratio > 0.4 and head_range < 0.10:
+            return ActionRecord(
+                label="writing", confidence=0.60,
+                engagement_score=0.80, source=ActionSource.RULE)
+
+        # 5. Attending (relatively still, head up)
+        if head_range < 0.08:
+            return ActionRecord(
+                label="attending", confidence=0.60,
+                engagement_score=0.75, source=ActionSource.RULE)
+
+        # 6. Default: moderate engagement
+        return ActionRecord(
+            label="attending", confidence=0.50,
+            engagement_score=0.65, source=ActionSource.RULE)

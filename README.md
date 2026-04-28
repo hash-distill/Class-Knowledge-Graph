@@ -43,7 +43,7 @@
     ▼
 ┌──────────────────────────────────┐
 │  YOLO26 Detection + ByteTrack    │  ← yolo26m.pt + 内置追踪器
-│  SCB-5 稳健 5 类检测 + Track ID  │
+│  稳健 3 类检测 + Track ID       │
 └──────────┬───────────────────────┘
            │
     ┌──────┴──────┐
@@ -73,7 +73,7 @@
 
 | 功能 | 模型 | 权重文件 | 输出 |
 |------|------|---------|------|
-| 目标检测 | **YOLO26-M** | `yolo26m.pt` | SCB-5 稳健 5 类 BBox + 置信度 |
+| 目标检测 | **YOLO26-M** | `yolo26m.pt` | 稳健 3 类 BBox + 置信度 (student/teacher/screen_board) |
 | 多目标追踪 | **ByteTrack** | ultralytics 内置 | 跨帧 Track ID |
 | 姿态估计 | **YOLO26-N-Pose** | `yolo26n-pose.pt` | 17 COCO 关键点 (x, y, conf) |
 | 动作分类 | **ST-GCN** | 自训练 | 行为标签 + 置信度 |
@@ -93,7 +93,7 @@ YOLO26 是 Ultralytics 于 2026 年 1 月发布的最新 YOLO 系列模型，具
 
 ## 3. 数据集
 
-### 3.1 主训练数据集：SCB-Dataset5（业务 5 类）
+### 3.1 主训练数据集：SCB-Dataset5（稳健 3 类）
 
 **SCB-Dataset5**（Student Classroom Behavior Dataset v5）是目前最全面的课堂行为检测公开数据集。
 
@@ -104,29 +104,27 @@ YOLO26 是 Ultralytics 于 2026 年 1 月发布的最新 YOLO 系列模型，具
 | **图像来源** | 真实课堂监控视频截帧 |
 | **下载地址** | https://github.com/Whiffe/SCB-dataset |
 
-> **⚠️ 重要**：原 SCB-5 标签因为太过细粒度（如无法区分 read/write，造成极高漏标与验证集 Loss 爆炸）。
-> 本项目已采用 **5 大业务语义** 对齐重构。
-> 必须使用 `tools/build_scb5_unified.py` 进行跨子集的 5 类去重映射。
+> **⚠️ 重要**：原 SCB-5 的细粒度行为标签存在严重的“漏标问题”（一张图 30 个学生只标注 3 个）。
+> 本项目将 YOLO 职责精简为 **3 类纯物体检测**，行为分类交给下游的姿态/视线/ST-GCN 模块。
+> 必须使用 `tools/build_scb5_unified.py` 进行跨子集的 3 类去重映射。
 
-#### 稳健 5 类映射表（解决标签冲突）
+#### 稳健 3 类映射表
 
 ```yaml
 # configs/scb_yolo.yaml
 names:
-  0: active_student     # 积极互动 (举手/回答/上台)
-  1: focus_student      # 正常专注 (听课/写字/读书/讨论/站立)
-  2: distracted_student # 游离状态 (开小差/交谈)
-  3: teacher            # 教师 (讲课/板书等)
-  4: screen_board       # 环境锚点 (黑板/屏幕PPT)
+  0: student       # 所有学生（不分行为，行为由姿态规则/ST-GCN 判断）
+  1: teacher       # 所有教师
+  2: screen_board  # 屏幕/黑板（OCR 知识点提取）
 ```
 
 #### 角色分组
 
 | 角色 | 类别 ID | 课堂含义 |
 |------|---------|----------|
-| **学生行为** | 0, 1, 2 | 直接用于计算学生专注度得分 |
-| **教师行为** | 3 | 辅助提取讲课行为，不计入学生得分 |
-| **环境要素** | 4 | 专供提取 PPT 知识点截图 (OCR 锚点) |
+| **学生** | 0 | YOLO 框出人体 → 姿态规则 + Gaze 计算专注度 |
+| **教师** | 1 | 辅助提取讲课行为，不计入学生得分 |
+| **环境** | 2 | 专供提取 PPT 知识点截图 (OCR 锚点) |
 
 ### 3.2 辅助数据参考
 
@@ -206,30 +204,26 @@ V = 17 (关键点数)
 M = 1 (单人)
 ```
 
-**动作标签映射**（SCB-5 稳健 5 类系统的专注度映射）：
+**专注度评分三层优先级架构**（稳健 3 类系统）：
 
-| 动作标签 (5 类) | 描述 | S_action 映射 (专注度) |
-|-----------------|------|:----------:|
-| active_student  | 积极互动 | 0.95 |
-| focus_student   | 常规专注 | 0.75 |
-| distracted_student | 游离开小差 | 0.30 |
-| teacher         | 教师行为 | 0.00 (不计入学生专注度) |
-| screen_board    | 环境要素 | 0.00 (用于 OCR 锚点) |
+| 优先级 | 来源 | 输出标签 | S_action |
+|---------|------|----------|:--------:|
+| 1️⃣ ST-GCN | 关键点时序图卷积 | hand_raising / writing / attending 等 | 查 STGCN_ENGAGEMENT 表 |
+| 2️⃣ 姿态规则 | 17 个 COCO 关键点 | hand_raising=0.95, writing=0.80, attending=0.75, looking_around=0.25, leaning=0.15 | 直接输出 |
+| 3️⃣ 检测 Fallback | YOLO 输出 'student' | student | 0.70 (中性基线) |
 
-**方案二：规则降级（ST-GCN 训练数据不足时启用）**
+> ℹ️ YOLO 仅负责框出人和屏幕，不再判断行为状态。行为分类由上述 3 层 fallback 链完成。
+
+**姿态规则详解**（ST-GCN 未训练时启用，已在 `src/action.py` 实现）：
 
 ```python
-def rule_based_action(keypoints_seq):
+def _rule_infer(window):
     """基于关键点运动统计特征的规则分类"""
-    head_motion = calc_head_motion_range(keypoints_seq)
-    hand_height = calc_hand_relative_height(keypoints_seq)
-    body_lean   = calc_body_lean_angle(keypoints_seq)
-
-    if hand_height > THRESHOLD_RAISE:
-        return "hand_raising", 0.90
-    if body_lean > THRESHOLD_LEAN:
-        return "leaning", 0.80
-    ...
+    # 手腕高于肩膀 → 举手 (0.95)
+    # 头部大幅低于肩膀 → 贴桌/睡觉 (0.15)
+    # 头部运动幅度大 → 左右张望 (0.25)
+    # 头部微低+平稳 → 读写 (0.80)
+    # 头部正向+平稳 → 听课 (0.75)
 ```
 
 ### 4.4 视线估计模块 (`src/gaze.py`)
@@ -344,7 +338,7 @@ $$CTES = \mu_{CAS} \cdot \exp(-\lambda \cdot \sigma_{CAS})$$
 
 该手册包含：
 1. 环境与依赖安装。
-2. SCB-5 稳健 5 类数据集构建（`build_scb5_unified.py`）。
+2. SCB-5 稳健 3 类数据集构建（`build_scb5_unified.py`）。
 3. 检测/姿态/ST-GCN 训练命令。
 4. 评估、视频推理与冒烟测试命令。
 5. 常见报错与排查建议。
@@ -423,7 +417,7 @@ Class-Knowledge-Graph/
 ├── test_GPU.py
 ├── yolo26m.pt
 ├── SCB-Dataset/                # 原始 SCB-5 数据集（9 个子集）
-├── SCB5_yolo_unified/          # 构建后的稳健 5 类 YOLO 数据集
+├── SCB5_yolo_unified/          # 构建后的稳健 3 类 YOLO 数据集
 └── Class_Detection/
   ├── configs/
   ├── docs/

@@ -22,12 +22,12 @@ DEFAULT_IMAGE = "frames/demo.png"
 DEFAULT_GRADE = "小学五年级上册"
 
 ACTION_POOL = [
-    ("hand_raising", 0.92),
-    ("read", 0.72),
-    ("write", 0.78),
-    ("discuss", 0.82),
-    ("attend", 0.86),
-    ("wander", 0.38),
+    ("hand_raising", 0.95),
+    ("writing", 0.80),
+    ("attending", 0.75),
+    ("attending", 0.70),
+    ("looking_around", 0.25),
+    ("leaning", 0.15),
 ]
 
 

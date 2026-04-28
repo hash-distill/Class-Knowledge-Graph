@@ -1,16 +1,14 @@
 #!/usr/bin/env python3
-"""Build a unified 5-class business-driven YOLO dataset from 9 SCB-5 subsets.
+"""Build a unified 3-class YOLO dataset from 9 SCB-5 subsets.
 
-To solve the severe label noise and intra-class confusion of the original
-dataset, we reduce the fine-grained semantics to 5 robust business states:
-  0: active_student (hand_raising, answer, stage_interact)
-  1: focus_student (read, write, stand, discuss)
-  2: distracted_student (talk)
-  3: teacher (teacher, guide, board_writing)
-  4: screen_board (blackboard, screen)
+The 3-class system is designed for maximum robustness against the
+incomplete-annotation problem inherent in SCB-5:
+  0: student      (all students regardless of behavior)
+  1: teacher      (all teacher activities)
+  2: screen_board (blackboard + projection screen)
 
-This script remaps every subset's local IDs to this robust 5-class taxonomy
-and merges identical bounding boxes if images overlap across subsets.
+Behavioral state classification (active/focus/distracted) is handled
+downstream by pose estimation + gaze + ST-GCN, NOT by the detector.
 """
 
 from __future__ import annotations
@@ -22,56 +20,57 @@ from collections import defaultdict
 from pathlib import Path
 
 # ──────────────────────────────────────────────────────────────────
-# Global 5-Class Business Taxonomy
+# Global 3-Class Taxonomy
 # ──────────────────────────────────────────────────────────────────
 GLOBAL_NAMES = {
-    0: "active_student",
-    1: "focus_student",
-    2: "distracted_student",
-    3: "teacher",
-    4: "screen_board",
+    0: "student",
+    1: "teacher",
+    2: "screen_board",
 }
 
-# Per-subset mapping: local_class_id → global_business_class_id
+# Per-subset mapping: local_class_id → global_class_id
+# Every human in student-oriented subsets → 0 (student)
+# Every teacher label → 1 (teacher)
+# Every board/screen label → 2 (screen_board)
 SUBSET_MAPPINGS: dict[str, dict[int, int]] = {
     "SCB5-Handrise-Read-write-2024-9-17": {
-        0: 0,   # hand_raising -> active
-        1: 1,   # read -> focus
-        2: 1,   # write -> focus
+        0: 0,   # hand_raising -> student
+        1: 0,   # read -> student
+        2: 0,   # write -> student
     },
     "SCB5-Stand-2024-9-17": {
-        0: 1,   # stand -> focus
+        0: 0,   # stand -> student
     },
     "SCB5-Talk-2024-9-17": {
-        0: 2,   # talk -> distracted
+        0: 0,   # talk -> student
     },
     "SCB5-Discuss-2024-9-17": {
-        0: 1,   # discuss -> focus
+        0: 0,   # discuss -> student
     },
     "SCB5-Teacher-2024-9-17": {
-        0: 3,   # teacher -> teacher
+        0: 1,   # teacher -> teacher
     },
     "SCB5-Teacher-Behavior-2024-9-17": {
-        0: 3,   # guide -> teacher
-        1: 0,   # answer -> active
-        2: 0,   # stage_interact -> active
-        3: 3,   # board_writing -> teacher
+        0: 1,   # guide -> teacher
+        1: 0,   # answer -> student
+        2: 0,   # stage_interact -> student
+        3: 1,   # board_writing -> teacher
     },
     "SCB5-Talk-Teacher-Behavior-2024-9-17": {
-        0: 2,   # talk -> distracted
-        1: 3,   # guide -> teacher
-        2: 0,   # answer -> active
-        3: 0,   # stage_interact -> active
-        4: 3,   # board_writing -> teacher
+        0: 0,   # talk -> student
+        1: 1,   # guide -> teacher
+        2: 0,   # answer -> student
+        3: 0,   # stage_interact -> student
+        4: 1,   # board_writing -> teacher
     },
     "SCB5-BlackBoard-Screen": {
-        0: 4,   # blackboard -> screen_board
-        1: 4,   # screen -> screen_board
+        0: 2,   # blackboard -> screen_board
+        1: 2,   # screen -> screen_board
     },
     "SCB5-BlackBoard-Sreen-Teacher": {
-        0: 4,   # blackboard -> screen_board
-        1: 4,   # screen -> screen_board
-        2: 3,   # teacher -> teacher
+        0: 2,   # blackboard -> screen_board
+        1: 2,   # screen -> screen_board
+        2: 1,   # teacher -> teacher
     },
 }
 
@@ -198,7 +197,7 @@ def print_class_distribution(dst_root: Path, split: str) -> None:
             if line.strip(): counts[int(line.split()[0])] += 1
     print(f"\n  [{split}] Class distribution:")
     for cls_id in sorted(counts.keys()):
-        print(f"    {cls_id:>2}: {GLOBAL_NAMES.get(cls_id, 'unknown'):<18s}  {counts[cls_id]:>6d} boxes")
+        print(f"    {cls_id:>2}: {GLOBAL_NAMES.get(cls_id, 'unknown'):<14s}  {counts[cls_id]:>6d} boxes")
 
 def main():
     p = argparse.ArgumentParser()
@@ -209,7 +208,7 @@ def main():
 
     if not args.src.exists(): sys.exit(f"ERROR: {args.src} not found.")
 
-    print(f"Building SCB-5 Unified 5-Class Dataset\n  Source : {args.src}\n  Target : {args.dst}\n")
+    print(f"Building SCB-5 Unified 3-Class Dataset\n  Source : {args.src}\n  Target : {args.dst}\n")
     for split in ("train", "val"):
         print(f"Processing split: {split}")
         imgs, labels = collect_split(args.src, split)

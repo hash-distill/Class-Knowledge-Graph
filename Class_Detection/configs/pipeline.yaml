@@ -27,21 +27,13 @@ action:
   use_stgcn: false         # set true after ST-GCN training
   stgcn_weights: null      # path to trained ST-GCN weights
 
-  # Rule-based action → S_action mapping (used when ST-GCN is off)
+  # Detection-level action → S_action mapping (3-class system).
+  # YOLO only outputs 'student' — a neutral baseline score.
+  # The real differentiation comes from pose-based rules or ST-GCN.
   action_scores:
-    hand_raising: 0.95
-    answer: 0.90
-    discuss: 0.82
-    talk: 0.75
-    read: 0.72
-    write: 0.78
-    stage_interact: 0.88
-    stand: 0.65
-    teacher: 0.0
-    guide: 0.0
-    board_writing: 0.0
-    blackboard: 0.0
-    screen: 0.0
+    student: 0.70       # neutral baseline; gaze + pose refine this
+    teacher: 0.0        # filtered out of student scoring
+    screen_board: 0.0   # used for OCR anchor, not scoring
 
 
 # ── Gaze estimation ─────────────────────────────────────────
@@ -74,10 +66,10 @@ scoring:
   w_gaze: 0.25            # CAS gaze weight (noisy in side-view classroom shots)
   lambda_penalty: 0.6     # CTES variance penalty coefficient
 
-# ── Class role groups (SCB-5 robust 5-class taxonomy) ──────
-# Students : 0=active_student 1=focus_student 2=distracted_student
-# Teachers : 3=teacher
-# Env      : 4=screen_board
-student_class_ids: [0, 1, 2]
-teacher_class_ids: [3]
-environment_class_ids: [4]
+# ── Class role groups (SCB-5 robust 3-class taxonomy) ──────
+# Students : 0=student
+# Teachers : 1=teacher
+# Env      : 2=screen_board
+student_class_ids: [0]
+teacher_class_ids: [1]
+environment_class_ids: [2]
