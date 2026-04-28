@@ -24,13 +24,18 @@ from src.schema import ActionRecord, ActionSource
 # ── Action label mapping ──────────────────────────────────────
 
 # Maps detection class names to engagement scores.
-# In the 3-class system, YOLO outputs 'student' / 'teacher' / 'screen_board'.
-# The real behavioral differentiation comes from pose rules or ST-GCN.
+# In the SCB-Dataset dual-model system, YOLO outputs 7 student states directly.
+# Env model outputs teacher and screen_board.
 DEFAULT_ACTION_SCORES: dict[str, float] = {
-    # 3-class detection system – student gets a neutral baseline
-    "student": 0.70,        # 中性基线，姿态规则或 ST-GCN 会细化该分数
-    "teacher": 0.0,         # 不计入学生专注度
-    "screen_board": 0.0,    # 用于 OCR 知识点提取
+    "write": 0.85,
+    "read": 0.80,
+    "lookup": 0.85,
+    "turn_head": 0.30,
+    "raise_hand": 0.95,
+    "stand": 0.90,
+    "discuss": 0.75,
+    "teacher": 0.0,         # filtered out of student scoring
+    "screen_board": 0.0,    # used for OCR anchor
 }
 
 # ST-GCN output labels (index → name)
@@ -126,9 +131,9 @@ class ActionClassifier:
     ) -> ActionRecord:
         """Quick classification using the detection class name directly.
 
-        In the 3-class system, YOLO outputs 'student' which gets a neutral
-        engagement baseline of 0.70. Pose heuristics or ST-GCN refine this
-        when keypoints are available.
+        In the SCB-Dataset dual-model system, YOLO directly outputs the 7 behavioral
+        states (write, read, lookup, etc.), so the detection label is the primary
+        source of action classification.
         """
         label = class_name
         engagement = self.action_scores.get(class_name, 0.5)

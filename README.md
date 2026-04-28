@@ -10,7 +10,7 @@
 
 - [TRAINING_AND_INFERENCE.md](TRAINING_AND_INFERENCE.md)
 
-建议先阅读运行手册中的“13 类标准流程”，再回到本 README 了解系统设计细节。
+建议先阅读运行手册中的“SCB-Dataset 7 类标准流程”，再回到本 README 了解系统设计细节。
 
 ## 1. 项目概述
 
@@ -27,7 +27,7 @@
 ### 1.1 核心创新点
 
 - **VSAM（Visual-Semantic Alignment Model）**：基于高斯先验的时间衰减窗口实现视觉与语义的零样本软对齐
-- **双流感知架构**：YOLO26 检测/追踪 + YOLO26-Pose 姿态提取统一化
+- **双流感知架构**：YOLO26 双模型检测 (行为模型 + 环境模型) + YOLO26-Pose 姿态提取统一化
 - **CAS/CTES 非线性评分体系**：max 融合避免指标稀释 + 方差指数惩罚检出极化课堂
 - **PnP + 躯干 Fallback 视线估计**：替代不可靠的表情识别，兼容低分辨率场景
 
@@ -73,7 +73,7 @@
 
 | 功能 | 模型 | 权重文件 | 输出 |
 |------|------|---------|------|
-| 目标检测 | **YOLO26-M** | `yolo26m.pt` | 稳健 3 类 BBox + 置信度 (student/teacher/screen_board) |
+| 目标检测 | **YOLO26-M** (双模型) | `behavior_model`, `env_model` | 7 类学生行为 + 屏幕/黑板锚点 |
 | 多目标追踪 | **ByteTrack** | ultralytics 内置 | 跨帧 Track ID |
 | 姿态估计 | **YOLO26-N-Pose** | `yolo26n-pose.pt` | 17 COCO 关键点 (x, y, conf) |
 | 动作分类 | **ST-GCN** | 自训练 | 行为标签 + 置信度 |
@@ -93,38 +93,35 @@ YOLO26 是 Ultralytics 于 2026 年 1 月发布的最新 YOLO 系列模型，具
 
 ## 3. 数据集
 
-### 3.1 主训练数据集：SCB-Dataset5（稳健 3 类）
+### 3.1 主训练数据集：SCB-Dataset（双模型策略）
 
-**SCB-Dataset5**（Student Classroom Behavior Dataset v5）是目前最全面的课堂行为检测公开数据集。
+本项目底层检测采用 **双模型策略 (Dual-Model Architecture)** 来解决单数据集标签缺失的问题。
 
-| 属性 | 值 |
-|------|-----|
-| **原始子集数** | 9 个（各子集使用独立的局部 class ID） |
-| **标注格式** | YOLO (`.txt`: `class_id x_center y_center width height`) |
-| **图像来源** | 真实课堂监控视频截帧 |
-| **下载地址** | https://github.com/Whiffe/SCB-dataset |
-
-> **⚠️ 重要**：原 SCB-5 的细粒度行为标签存在严重的“漏标问题”（一张图 30 个学生只标注 3 个）。
-> 本项目将 YOLO 职责精简为 **3 类纯物体检测**，行为分类交给下游的姿态/视线/ST-GCN 模块。
-> 必须使用 `tools/build_scb5_unified.py` 进行跨子集的 3 类去重映射。
-
-#### 稳健 3 类映射表
+#### 1. 行为模型 (Behavior Model)
+我们使用 **SCB-Dataset (原名 SCBehavior)** 来训练主干模型。该数据集精确标注了学生的 7 种日常课堂行为，使得模型能直接输出行为状态，免去复杂的后处理猜测。
 
 ```yaml
-# configs/scb_yolo.yaml
+# configs/scb_dataset_yolo.yaml
 names:
-  0: student       # 所有学生（不分行为，行为由姿态规则/ST-GCN 判断）
-  1: teacher       # 所有教师
-  2: screen_board  # 屏幕/黑板（OCR 知识点提取）
+  0: write       # 写字
+  1: read        # 阅读
+  2: lookup      # 抬头听课
+  3: turn_head   # 转头/分心
+  4: raise_hand  # 举手
+  5: stand       # 站立
+  6: discuss     # 讨论
 ```
 
-#### 角色分组
+#### 2. 环境模型 (Environment Model)
+由于行为数据集中不包含黑板/屏幕的标注，我们保留了一个基于 **SCB-5** 训练的辅助模型（只输出 `screen_board`），专门用于提取 PPT 知识点截图 (OCR 锚点)。
 
-| 角色 | 类别 ID | 课堂含义 |
-|------|---------|----------|
-| **学生** | 0 | YOLO 框出人体 → 姿态规则 + Gaze 计算专注度 |
-| **教师** | 1 | 辅助提取讲课行为，不计入学生得分 |
-| **环境** | 2 | 专供提取 PPT 知识点截图 (OCR 锚点) |
+#### 角色分组配置
+
+| 角色 | 来源模型 | 类别 ID | 课堂含义 |
+|------|----------|---------|----------|
+| **学生** | Behavior | 0~6 | YOLO 直接输出精确动作，配合姿态和 Gaze 综合打分 |
+| **教师** | Env | 1 | 辅助提取讲课行为，不计入学生得分 |
+| **环境** | Env | 2 | 专供提取 PPT 知识点截图 (OCR 锚点) |
 
 ### 3.2 辅助数据参考
 
@@ -142,16 +139,19 @@ names:
 **职责**：从视频帧中检测所有目标并维护跨帧追踪 ID。
 
 ```python
-from ultralytics import YOLO
+from src.detector import Detector
 
-# 初始化 YOLO26 检测器
-det_model = YOLO("yolo26m.pt")
+# 初始化双模型检测器
+det_model = Detector(
+    behavior_weights="yolo26m.pt",  # 7类行为
+    env_weights="artifacts/.../best.pt"  # 环境检测
+)
 
-# 单帧检测
-results = det_model.predict(frame, conf=0.25, device="0")
+# 单帧双模型融合检测
+results = det_model.detect_frame(frame)
 
-# 带追踪的视频处理（内置 ByteTrack）
-results = det_model.track(source=video_path, tracker="bytetrack.yaml", persist=True)
+# 带追踪的视频处理（内置 ByteTrack，仅对行为模型生效）
+results = det_model.track_video(source=video_path, tracker="bytetrack.yaml")
 ```
 
 **关键设计**：
@@ -416,8 +416,7 @@ Class-Knowledge-Graph/
 ├── requirements.txt
 ├── test_GPU.py
 ├── yolo26m.pt
-├── SCB-Dataset/                # 原始 SCB-5 数据集（9 个子集）
-├── SCB5_yolo_unified/          # 构建后的稳健 3 类 YOLO 数据集
+├── SCB-Dataset/                # 用于行为检测的 SCB-Dataset (7类动作)
 └── Class_Detection/
   ├── configs/
   ├── docs/
@@ -435,7 +434,7 @@ Class-Knowledge-Graph/
 
 | 层级 | 指标 | 目标值 | 说明 |
 |------|------|:------:|------|
-| 感知层 | 检测 mAP@50 | ≥ 0.75 | YOLO26 在 SCB-Dataset5 上的检测精度 |
+| 感知层 | 检测 mAP@50 | ≥ 0.75 | YOLO26 在 SCB-Dataset 上的检测精度 |
 | 感知层 | 追踪 IDF1 | ≥ 0.65 | ByteTrack 跨帧 ID 一致性 |
 | 感知层 | 动作分类 F1 | ≥ 0.70 | ST-GCN 行为分类加权 F1 |
 | 感知层 | 视线分类准确率 | ≥ 0.75 | PnP 视线方向三分类 |
@@ -463,7 +462,7 @@ Class-Knowledge-Graph/
 按以下顺序执行即可：
 
 1. 阅读并执行运行手册：[TRAINING_AND_INFERENCE.md](TRAINING_AND_INFERENCE.md)
-2. 优先使用“13 类标准流程”完成首轮训练与验证。
+2. 优先完成“SCB-Dataset 7类”首轮训练与验证。
 3. 训练后使用 best.pt 进行评估与视频推理。
 
 ---

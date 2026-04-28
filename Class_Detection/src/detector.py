@@ -1,7 +1,9 @@
 """YOLO26 detection and ByteTrack multi-object tracking.
 
 This module wraps *ultralytics* YOLO26 for:
-  1. Per-frame object detection (3 robust classes: student/teacher/screen_board).
+  1. Per-frame object detection using a dual-model architecture.
+     - Behavior Model: detects 7 student states (SCBehavior).
+     - Env Model: detects screen_board.
   2. Video-level multi-object tracking with built-in ByteTrack.
 """
 
@@ -21,13 +23,15 @@ class Detector:
 
     def __init__(
         self,
-        weights: str | Path = "yolo26s.pt",
+        behavior_weights: str | Path = "yolo26s.pt",
+        env_weights: str | Path | None = None,
         device: str = "0",
         conf: float = 0.25,
         iou: float = 0.7,
         imgsz: int = 960,
     ) -> None:
-        self.model = YOLO(str(weights))
+        self.behavior_model = YOLO(str(behavior_weights))
+        self.env_model = YOLO(str(env_weights)) if env_weights else None
         self.device = device
         self.conf = conf
         self.iou = iou
@@ -36,8 +40,8 @@ class Detector:
     # ── single-frame detection (no tracking) ──────────────────
 
     def detect_frame(self, frame: np.ndarray) -> list[BBoxRecord]:
-        """Run detection on a single BGR frame and return records."""
-        results = self.model.predict(
+        """Run detection on a single BGR frame and return merged records."""
+        results_beh = self.behavior_model.predict(
             source=frame,
             conf=self.conf,
             iou=self.iou,
@@ -45,7 +49,25 @@ class Detector:
             device=self.device,
             verbose=False,
         )
-        return self._parse_results(results)
+        records = self._parse_results(results_beh)
+
+        if self.env_model:
+            results_env = self.env_model.predict(
+                source=frame,
+                conf=self.conf,
+                iou=self.iou,
+                imgsz=self.imgsz,
+                device=self.device,
+                verbose=False,
+            )
+            # Offset class IDs for env model to avoid collision if necessary
+            # Actually, in pipeline.yaml we define env_ids=[2], but the 3-class model outputs:
+            # 0:student, 1:teacher, 2:screen_board
+            # We ONLY want class 2 from the env model.
+            env_records = self._parse_results(results_env)
+            records.extend([r for r in env_records if r.class_id == 2])
+
+        return records
 
     # ── video tracking (ByteTrack) ────────────────────────────
 
@@ -56,10 +78,10 @@ class Detector:
     ) -> Generator[list[BBoxRecord], None, None]:
         """Yield per-frame detection records with persistent track IDs.
 
-        Uses the *ultralytics* built-in tracker so there is no need to
-        install a separate ByteTrack package.
+        Note: Tracking is applied to the behavior model. Env model (screen_board)
+        typically doesn't need tracking.
         """
-        results_gen = self.model.track(
+        results_gen = self.behavior_model.track(
             source=str(source),
             conf=self.conf,
             iou=self.iou,
@@ -70,8 +92,26 @@ class Detector:
             stream=True,
             verbose=False,
         )
+        
+        # If env_model is present, we must run it per-frame as well.
+        # However, .track() returns a generator. We would have to run env_model.predict
+        # on the orig_img from the track result.
         for result in results_gen:
-            yield self._parse_results([result])
+            beh_records = self._parse_results([result])
+            
+            if self.env_model and result.orig_img is not None:
+                env_res = self.env_model.predict(
+                    source=result.orig_img,
+                    conf=self.conf,
+                    iou=self.iou,
+                    imgsz=self.imgsz,
+                    device=self.device,
+                    verbose=False,
+                )
+                env_records = self._parse_results(env_res)
+                beh_records.extend([r for r in env_records if r.class_id == 2])
+                
+            yield beh_records
 
     # ── track on a single frame (for live / frame-by-frame) ──
 
@@ -80,12 +120,8 @@ class Detector:
         frame: np.ndarray,
         tracker: str = "bytetrack.yaml",
     ) -> list[BBoxRecord]:
-        """Run detection + tracking on a single frame.
-
-        Must be called on sequential frames for tracking to work
-        (internally the model keeps state when ``persist=True``).
-        """
-        results = self.model.track(
+        """Run detection + tracking on a single frame."""
+        results = self.behavior_model.track(
             source=frame,
             conf=self.conf,
             iou=self.iou,
@@ -95,7 +131,21 @@ class Detector:
             persist=True,
             verbose=False,
         )
-        return self._parse_results(results)
+        records = self._parse_results(results)
+        
+        if self.env_model:
+            env_res = self.env_model.predict(
+                source=frame,
+                conf=self.conf,
+                iou=self.iou,
+                imgsz=self.imgsz,
+                device=self.device,
+                verbose=False,
+            )
+            env_records = self._parse_results(env_res)
+            records.extend([r for r in env_records if r.class_id == 2])
+            
+        return records
 
     # ── helpers ───────────────────────────────────────────────
 

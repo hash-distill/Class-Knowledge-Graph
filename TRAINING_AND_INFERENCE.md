@@ -8,7 +8,7 @@
 ## 1. 环境准备
 
 ```bash
-cd /mnt/Data4/24zhs/Class-Knowledge-Graph
+cd ..
 
 # 可按需修改环境名
 conda create -n classkg python=3.12 -y
@@ -28,7 +28,7 @@ pip install -U ultralytics
 ### 2.1 构建 SCB-5 稳健 3 类数据集
 
 ```bash
-cd /mnt/Data4/24zhs/Class-Knowledge-Graph/Class_Detection
+cd Class_Detection
 python tools/build_scb5_unified.py
 ```
 
@@ -42,7 +42,7 @@ python tools/build_scb5_unified.py
 ### 2.2 数据完整性审计
 
 ```bash
-cd /mnt/Data4/24zhs/Class-Knowledge-Graph/Class_Detection
+cd Class_Detection
 
 python tools/dataset_audit.py \
   --dataset-root ../SCB5_yolo_unified \
@@ -52,7 +52,7 @@ python tools/dataset_audit.py \
 ### 2.3 快速检查类别分布与坐标越界
 
 ```bash
-cd /mnt/Data4/24zhs/Class-Knowledge-Graph
+cd ..
 
 # 类别分布（3 类应为 0..2）
 awk '{c[$1]++} END {for (k in c) print k, c[k]}' SCB5_yolo_unified/labels/train/*.txt | sort -n
@@ -69,23 +69,29 @@ awk '$2 < 0 || $2 > 1 || $3 < 0 || $3 > 1 || $4 < 0 || $4 > 1 || $5 < 0 || $5 > 
 
 以下命令均在 `Class_Detection` 目录执行。
 
-### 3.1 3 类标准训练（推荐）
+### 3.1 SCB-Dataset 7 类行为检测训练（当前主干模型）
+
+使用全新的 SCB-Dataset 数据集直接训练学生的 7 类动作（读、写、抬头、举手、转头、站立、讨论）。
 
 ```bash
-cd /mnt/Data4/24zhs/Class-Knowledge-Graph/Class_Detection
+cd Class_Detection
 
 python scripts/train_det.py \
-  --data configs/scb_yolo.yaml \
+  --data configs/scb_dataset_yolo.yaml \
   --model yolo26m.pt \
-  --epochs 40 \
+  --epochs 60 \
   --imgsz 960 \
   --batch 32 \
   --device 3 \
   --workers 8 \
   --patience 10 \
-  --name scb5_yolo26m_e40 \
+  --name scbehavior_yolo26m \
   --cache
 ```
+
+### 3.2 SCB-5 屏幕检测模型（双模型之环境模型）
+
+此模型已训练完成（见 scb5_yolo26m_e402），用于补充 SCB-Dataset 数据集中缺失的屏幕(screen_board)标签。由于仅用于找屏幕，我们不需要重训，直接在 `configs/pipeline.yaml` 中配置加载即可。
 
 ---
 
@@ -94,7 +100,7 @@ python scripts/train_det.py \
 ### 4.1 YOLO Pose 微调（可选）
 
 ```bash
-cd /mnt/Data4/24zhs/Class-Knowledge-Graph/Class_Detection
+cd Class_Detection
 
 python scripts/train_pose.py \
   --data <pose_dataset_yaml> \
@@ -111,7 +117,7 @@ python scripts/train_pose.py \
 要求 `--keypoints-dir` 下已有 `train/`、`val/` 与 `label.json`。
 
 ```bash
-cd /mnt/Data4/24zhs/Class-Knowledge-Graph/Class_Detection
+cd Class_Detection
 
 python scripts/train_stgcn.py \
   --config configs/stgcn.yaml \
@@ -127,7 +133,15 @@ python scripts/train_stgcn.py \
 ### 5.1 检测评估
 
 ```bash
-cd /mnt/Data4/24zhs/Class-Knowledge-Graph/Class_Detection
+cd Class_Detection
+
+python scripts/eval_det.py \
+  --weights yolo26m.pt \
+  --data configs/scb_yolo.yaml \
+  --imgsz 960 \
+  --batch 32 \
+  --device 0
+
 
 python scripts/eval_det.py \
   --weights artifacts/runs/detect/scb5_yolo26m_e40/weights/best.pt \
@@ -148,7 +162,7 @@ python scripts/eval_det.py \
 #### 使用训练好的 best.pt 推理（3 类全功能版，推荐）
 
 ```bash
-cd /mnt/Data4/24zhs/Class-Knowledge-Graph/Class_Detection
+cd Class_Detection
 
 python scripts/infer_video.py \
   --source ../classroom.mp4 \
@@ -169,7 +183,7 @@ python scripts/infer_video.py \
 
 **Linux / macOS (Bash)**
 ```bash
-cd /mnt/Data4/24zhs/Class-Knowledge-Graph/Class_Detection
+cd Class_Detection
 
 python scripts/infer_video.py \
   --source ../classroom.mp4 \
@@ -199,7 +213,7 @@ python scripts/infer_video.py `
 ### 6.2 冒烟测试（快速验证链路）
 
 ```bash
-cd /mnt/Data4/24zhs/Class-Knowledge-Graph/Class_Detection
+cd Class_Detection
 python scripts/smoke_test.py --mock
 ```
 
@@ -208,7 +222,7 @@ python scripts/smoke_test.py --mock
 你可以独立测试文字提取能力，不加载 YOLO/骨骼/动作识别等大模型，加快调试速度。
 
 ```bash
-cd /mnt/Data4/24zhs/Class-Knowledge-Graph/Class_Detection
+cd Class_Detection
 
 # 1. 默认测试 (使用目录自带的 test.mp4)
 python scripts/test_ocr_standalone.py
@@ -256,7 +270,7 @@ Class_Detection/artifacts/results/
    - 先检查标签类别是否越界；
    - 再检查坐标是否越界；
    - 触发后请重启训练进程，避免使用已污染的 CUDA 上下文。
-4. 目录路径错误：建议始终先 `cd /mnt/Data4/24zhs/Class-Knowledge-Graph/Class_Detection` 后执行脚本。
+4. 目录路径错误：建议始终先 `cd Class_Detection` 后执行脚本。
 
 ---
 

@@ -1,0 +1,13 @@
+path: ../SCB-Dataset
+train: images/train
+val: images/val
+test: images/test
+
+names:
+  0: write
+  1: read
+  2: lookup
+  3: turn_head
+  4: raise_hand
+  5: stand
+  6: discuss

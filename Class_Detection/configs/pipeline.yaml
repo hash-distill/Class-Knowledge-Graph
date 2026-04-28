@@ -3,7 +3,11 @@
 
 # ── Detection ─────────────────────────────────────────────────
 detection:
-  model: yolo26m.pt
+  # The dual-model architecture:
+  # behavior_model detects 7 student states (write, read, lookup, turn_head, raise_hand, stand, discuss)
+  # env_model detects environment anchors (screen_board) from the legacy 3-class model
+  behavior_model: yolo26m.pt  # Placeholder for SCB-Dataset trained weights
+  env_model: artifacts/runs/detect/scb5_yolo26m_e40/weights/best.pt
   conf_threshold: 0.25
   iou_threshold: 0.7
   imgsz: 960
@@ -27,13 +31,19 @@ action:
   use_stgcn: false         # set true after ST-GCN training
   stgcn_weights: null      # path to trained ST-GCN weights
 
-  # Detection-level action → S_action mapping (3-class system).
-  # YOLO only outputs 'student' — a neutral baseline score.
-  # The real differentiation comes from pose-based rules or ST-GCN.
+  # Detection-level action → S_action mapping (SCB-Dataset 7-class system).
+  # YOLO directly outputs accurate behavior states.
   action_scores:
-    student: 0.70       # neutral baseline; gaze + pose refine this
-    teacher: 0.0        # filtered out of student scoring
-    screen_board: 0.0   # used for OCR anchor, not scoring
+    write: 0.85
+    read: 0.80
+    lookup: 0.85      # normal listening focus
+    turn_head: 0.30   # distracted/wandering
+    raise_hand: 0.95  # highly active
+    stand: 0.90
+    discuss: 0.75
+    # env model outputs
+    teacher: 0.0
+    screen_board: 0.0
 
 
 # ── Gaze estimation ─────────────────────────────────────────
@@ -66,10 +76,10 @@ scoring:
   w_gaze: 0.25            # CAS gaze weight (noisy in side-view classroom shots)
   lambda_penalty: 0.6     # CTES variance penalty coefficient
 
-# ── Class role groups (SCB-5 robust 3-class taxonomy) ──────
-# Students : 0=student
-# Teachers : 1=teacher
-# Env      : 2=screen_board
-student_class_ids: [0]
+# ── Class role groups (SCB-Dataset 7-class + Env Model) ──────
+# Students from behavior_model (0-6)
+student_class_ids: [0, 1, 2, 3, 4, 5, 6]
+# Teachers from env_model (1)
 teacher_class_ids: [1]
+# Env from env_model (2)
 environment_class_ids: [2]
