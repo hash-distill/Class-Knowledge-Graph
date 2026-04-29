@@ -15,9 +15,9 @@ detection:
 
 # ── Tracking ──────────────────────────────────────────────────
 tracking:
-  tracker: bytetrack.yaml
+  tracker: configs/bytetrack_low.yaml
   persist: true
-  track_buffer: 30        # frames to keep lost tracks
+  track_buffer: 60        # frames to keep lost tracks
 
 # ── Pose estimation ──────────────────────────────────────────
 pose:

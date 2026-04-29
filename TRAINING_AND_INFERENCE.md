@@ -159,7 +159,7 @@ python scripts/eval_det.py \
 
 ### 6.1 视频推理（端到端）
 
-#### 使用训练好的 best.pt 推理（3 类全功能版，推荐）
+#### 使用训练好的 behavior_model 推理（7 类双模型版，推荐）
 
 ```bash
 cd Class_Detection
@@ -167,7 +167,7 @@ cd Class_Detection
 python scripts/infer_video.py \
   --source ../classroom.mp4 \
   --config configs/pipeline.yaml \
-  --det-weights artifacts/runs/detect/scb5_yolo26m_e40/weights/best.pt \
+  --det-weights artifacts/runs/detect/scbehavior_yolo26m/weights/best.pt \
   --pose-weights yolo26n-pose.pt \
   --device 0 \
   --interval-sec 1.0 \
@@ -175,7 +175,7 @@ python scripts/infer_video.py \
   --output artifacts/results/latest
 ```
 
-> **说明**：此模式下，模型不仅能精确识别学生动作，还能自动检测视频里的黑板/屏幕区域，并**自动触发 OCR 文字识别**。
+> **说明**：此模式使用了最新的双模型架构。`--det-weights` 指定了预测学生 7 种行为的 `behavior_model`，而用于识别屏幕和黑板的 `env_model` 已经配置在 `configs/pipeline.yaml` 中。同时，系统默认加载了优化过低置信度的 `configs/bytetrack_low.yaml` 追踪器。若发现追踪丢框（抽帧导致的追踪断裂），可尝试将 `--interval-sec 1.0` 调整为 `0`（逐帧预测）。
 
 #### 使用预训练 yolo26m.pt 直接推理（降级体验版，无需训练）
 
@@ -274,18 +274,28 @@ Class_Detection/artifacts/results/
 
 ---
 
-## 9. SCB-5 稳健 3 类映射表
+## 9. 类别映射表 (双模型架构)
 
-数据集由 9 个 SCB-5 原始子集构建，YOLO 仅做物体类型检测，行为分类交给下游模块：
+系统当前采用双模型架构，YOLO 直接负责行为的初步分类：
 
+### 9.1 学生行为模型 (Behavior Model, 7 类)
 ```text
 全局 ID → 类别名称
-  0: student       (所有学生，行为由姿态规则/ST-GCN 判断)
-  1: teacher       (所有教师)
+  0: write       (写字)
+  1: read        (阅读)
+  2: lookup      (抬头听课)
+  3: turn_head   (转头/注意力不集中)
+  4: raise_hand  (举手)
+  5: stand       (站立)
+  6: discuss     (讨论)
+```
+- **学生角色 (0-6)**：所有 0-6 类的检测框均划分为“学生”，配合 Gaze 与动作规则计算最终专注度 CAS 分数。
+
+### 9.2 环境模型 (Env Model, 沿用老模型 3 类)
+```text
+全局 ID → 类别名称
+  0: student       (过滤，不使用)
+  1: teacher       (教师)
   2: screen_board  (屏幕/黑板)
 ```
-
-角色分组：
-- **学生 (0)**：student → 姿态规则 + Gaze 计算专注度
-- **教师 (1)**：teacher
-- **环境 (2)**：screen_board → OCR 知识点提取
+- **环境角色 (2)**：仅提取 ID=2 的 `screen_board`，自动送入 OCR 知识点提取模块。

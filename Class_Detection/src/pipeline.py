@@ -99,6 +99,9 @@ class ClassroomPipeline:
             conf=pose_cfg.get("conf_threshold", 0.3),
         )
 
+        track_cfg = cfg.get("tracking", {})
+        self.tracker_path = track_cfg.get("tracker", "bytetrack.yaml")
+
         act_cfg = cfg.get("action", {})
         self.action = ActionClassifier(
             use_stgcn=act_cfg.get("use_stgcn", False),
@@ -202,7 +205,7 @@ class ClassroomPipeline:
 
         t_sec = float(timestamp_sec) if timestamp_sec is not None else self._frame_count / self._fps
 
-        detections = self.detector.track_frame(frame)
+        detections = self.detector.track_frame(frame, tracker=self.tracker_path)
         students, _teachers, envs = Detector.filter_by_role(
             detections, self.student_ids, self.teacher_ids, self.env_ids,
         )
