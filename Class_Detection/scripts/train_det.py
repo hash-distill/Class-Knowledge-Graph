@@ -33,16 +33,16 @@ def train_detector(args: argparse.Namespace) -> None:
 
 
 def parse_args() -> argparse.Namespace:
-    p = argparse.ArgumentParser(description="Train YOLO26 detector on SCB-Dataset5.")
-    p.add_argument("--data", type=Path, default=Path("configs/scb_yolo.yaml"))
-    p.add_argument("--model", type=str, default="yolo26s.pt", help="YOLO26 base model.")
-    p.add_argument("--epochs", type=int, default=150)
+    p = argparse.ArgumentParser(description="Train YOLO26 detector on SCB-Dataset.")
+    p.add_argument("--data", type=Path, default=Path("configs/scb_dataset_yolo.yaml"))
+    p.add_argument("--model", type=str, default="yolo26m.pt", help="YOLO26 base model.")
+    p.add_argument("--epochs", type=int, default=60)
     p.add_argument("--imgsz", type=int, default=960)
-    p.add_argument("--batch", type=int, default=16)
+    p.add_argument("--batch", type=int, default=32)
     p.add_argument("--device", type=str, default="0")
     p.add_argument("--workers", type=int, default=8)
     p.add_argument("--project", type=Path, default=Path("artifacts/runs/detect"))
-    p.add_argument("--name", type=str, default="scb_yolo26s")
+    p.add_argument("--name", type=str, default="scbehavior_yolo26m")
     p.add_argument("--seed", type=int, default=42)
     p.add_argument("--patience", type=int, default=30)
     p.add_argument("--cache", action="store_true")
