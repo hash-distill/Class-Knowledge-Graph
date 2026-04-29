@@ -8,3 +8,7 @@ new_track_thresh: 0.25    # Default is 0.6. Detections > this threshold will ini
 
 track_buffer: 60          # Increased to tolerate longer time jumps if --interval-sec > 0
 match_thresh: 0.8         # Default 0.8
+
+# Required by newer Ultralytics versions
+fuse_score: True
+gmc_method: sparseOptFlow
