@@ -41,6 +41,8 @@ action:
     raise_hand: 0.95  # highly active
     stand: 0.90
     discuss: 0.75
+    # env model fallback for unannotated students (class 100)
+    attending: 0.75
     # env model outputs
     teacher: 0.0
     screen_board: 0.0
@@ -77,9 +79,9 @@ scoring:
   lambda_penalty: 0.6     # CTES variance penalty coefficient
 
 # ── Class role groups (SCB-Dataset 7-class + Env Model) ──────
-# Students from behavior_model (0-6)
-student_class_ids: [0, 1, 2, 3, 4, 5, 6]
-# Teachers from env_model (1)
-teacher_class_ids: [1]
-# Env from env_model (2)
-environment_class_ids: [2]
+# Students from behavior_model (0-6) + env fallback (100)
+student_class_ids: [0, 1, 2, 3, 4, 5, 6, 100]
+# Teachers from env_model (101)
+teacher_class_ids: [101]
+# Env from env_model (102)
+environment_class_ids: [102]

@@ -60,12 +60,8 @@ class Detector:
                 device=self.device,
                 verbose=False,
             )
-            # Offset class IDs for env model to avoid collision if necessary
-            # Actually, in pipeline.yaml we define env_ids=[2], but the 3-class model outputs:
-            # 0:student, 1:teacher, 2:screen_board
-            # We ONLY want class 2 from the env model.
             env_records = self._parse_results(results_env)
-            records.extend([r for r in env_records if r.class_id == 2])
+            self._merge_env_records(records, env_records)
 
         return records
 
@@ -109,7 +105,7 @@ class Detector:
                     verbose=False,
                 )
                 env_records = self._parse_results(env_res)
-                beh_records.extend([r for r in env_records if r.class_id == 2])
+                self._merge_env_records(beh_records, env_records)
                 
             yield beh_records
 
@@ -143,11 +139,53 @@ class Detector:
                 verbose=False,
             )
             env_records = self._parse_results(env_res)
-            records.extend([r for r in env_records if r.class_id == 2])
+            self._merge_env_records(records, env_records)
             
         return records
 
     # ── helpers ───────────────────────────────────────────────
+
+    @staticmethod
+    def _compute_iou(box1: list[float], box2: list[float]) -> float:
+        x1 = max(box1[0], box2[0])
+        y1 = max(box1[1], box2[1])
+        x2 = min(box1[2], box2[2])
+        y2 = min(box1[3], box2[3])
+        inter_area = max(0.0, x2 - x1) * max(0.0, y2 - y1)
+        if inter_area == 0:
+            return 0.0
+        area1 = (box1[2] - box1[0]) * (box1[3] - box1[1])
+        area2 = (box2[2] - box2[0]) * (box2[3] - box2[1])
+        return inter_area / (area1 + area2 - inter_area)
+
+    @classmethod
+    def _merge_env_records(cls, beh_records: list[BBoxRecord], env_records: list[BBoxRecord]) -> None:
+        """
+        Merge environment model records into behavior model records.
+        Env model classes (0: student, 1: teacher, 2: screen_board) are shifted to avoid collisions.
+        Generic students (class 0) are only added if they don't significantly overlap with 
+        an existing behavior model detection (NMS-like box fusion).
+        """
+        for r in env_records:
+            if r.class_id == 1:
+                r.class_id = 101
+                r.class_name = "teacher"
+                beh_records.append(r)
+            elif r.class_id == 2:
+                r.class_id = 102
+                r.class_name = "screen_board"
+                beh_records.append(r)
+            elif r.class_id == 0:
+                # NMS fusion: only add if behavior model completely missed this student
+                covered = False
+                for br in beh_records:
+                    if cls._compute_iou(r.xyxy, br.xyxy) > 0.5:
+                        covered = True
+                        break
+                if not covered:
+                    r.class_id = 100
+                    r.class_name = "attending"
+                    beh_records.append(r)
 
     @staticmethod
     def _parse_results(results) -> list[BBoxRecord]:

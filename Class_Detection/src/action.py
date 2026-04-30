@@ -34,6 +34,7 @@ DEFAULT_ACTION_SCORES: dict[str, float] = {
     "raise_hand": 0.95,
     "stand": 0.90,
     "discuss": 0.75,
+    "attending": 0.75,      # env model fallback for unannotated students
     "teacher": 0.0,         # filtered out of student scoring
     "screen_board": 0.0,    # used for OCR anchor
 }
