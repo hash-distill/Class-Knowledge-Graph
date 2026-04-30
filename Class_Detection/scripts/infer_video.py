@@ -44,8 +44,9 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--ppt-source", type=str, default=None, help="PPT/screen-facing video path.")
 
     parser.add_argument("--config", type=Path, default=Path("configs/pipeline.yaml"))
-    parser.add_argument("--det-weights", type=str, default=None, help="Detection model weights path (overrides config).")
-    parser.add_argument("--pose-weights", type=str, default=None, help="Pose model weights path (overrides config).")
+    parser.add_argument("--det-weights", type=str, default=None, help="Behavior model weights")
+    parser.add_argument("--env-weights", type=str, default=None, help="Environment model weights (e.g. yolo26m.pt)")
+    parser.add_argument("--pose-weights", type=str, default=None, help="Pose model weights")
     parser.add_argument("--device", type=str, default=None, help="Device to run on (e.g. '0', overrides config).")
 
     parser.add_argument("--save", action="store_true", help="Save annotated video and JSON output.")
@@ -266,6 +267,7 @@ def run_single_stream(args: argparse.Namespace) -> None:
     pipeline = ClassroomPipeline(
         config_path=args.config,
         det_weights=args.det_weights,
+        env_weights=args.env_weights,
         pose_weights=args.pose_weights,
         device=args.device,
     )
@@ -395,6 +397,7 @@ def run_dual_stream(args: argparse.Namespace) -> None:
     pipeline = ClassroomPipeline(
         config_path=args.config,
         det_weights=args.det_weights,
+        env_weights=args.env_weights,
         pose_weights=args.pose_weights,
         device=args.device,
     )
