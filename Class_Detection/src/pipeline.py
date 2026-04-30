@@ -73,6 +73,7 @@ class ClassroomPipeline:
         self,
         config_path: str | Path = "configs/pipeline.yaml",
         det_weights: str | None = None,
+        env_weights: str | None = None,
         pose_weights: str | None = None,
         device: str | None = None,
     ) -> None:
@@ -81,11 +82,11 @@ class ClassroomPipeline:
         det_cfg = cfg.get("detection", {})
         run_device = device if device is not None else det_cfg.get("device", "0")
         behavior_weights = det_weights if det_weights is not None else det_cfg.get("behavior_model", "yolo26s.pt")
-        env_weights = det_cfg.get("env_model")
+        final_env_weights = env_weights if env_weights is not None else det_cfg.get("env_model")
 
         self.detector = Detector(
             behavior_weights=behavior_weights,
-            env_weights=env_weights,
+            env_weights=final_env_weights,
             device=run_device,
             conf=det_cfg.get("conf_threshold", 0.25),
             iou=det_cfg.get("iou_threshold", 0.7),

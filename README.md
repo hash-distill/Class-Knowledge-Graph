@@ -147,8 +147,8 @@ from src.detector import Detector
 
 # 初始化双模型检测器
 det_model = Detector(
-    behavior_weights="yolo26m.pt",  # 7类行为
-    env_weights="artifacts/.../best.pt"  # 环境检测
+    behavior_weights="artifacts/runs/detect/scbehavior_yolo26m/weights/best.pt",  # 7类行为
+    env_weights="yolo26m.pt"  # 环境兜底模型 (COCO)
 )
 
 # 单帧双模型融合检测

@@ -5,9 +5,9 @@
 detection:
   # The dual-model architecture:
   # behavior_model detects 7 student states (write, read, lookup, turn_head, raise_hand, stand, discuss)
-  # env_model detects environment anchors (screen_board) from the legacy 3-class model
-  behavior_model: yolo26m.pt  # Placeholder for SCB-Dataset trained weights
-  env_model: artifacts/runs/detect/scb5_yolo26m_e40/weights/best.pt
+  # env_model uses native COCO yolo26m.pt to fallback missing quiet students and map 'tv' to screen_board
+  behavior_model: artifacts/runs/detect/scbehavior_yolo26m/weights/best.pt
+  env_model: yolo26m.pt
   conf_threshold: 0.25
   iou_threshold: 0.7
   imgsz: 960

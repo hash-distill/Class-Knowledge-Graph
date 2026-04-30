@@ -1,7 +1,7 @@
 # 训练与预测运行手册
 
 本文档集中维护本项目全部训练、评估、推理命令。
-建议按"13 类标准流程"先跑通一轮，再进行对比实验。
+建议先跑通一轮，再进行对比实验。
 
 ---
 
@@ -91,7 +91,7 @@ python scripts/train_det.py \
 
 ### 3.2 兜底环境模型（Dual-Model 兜底策略）
 
-SCBehavior 存在大量“漏标安静听课学生”的缺陷。为了拯救这些被漏标的背景学生，**不需要额外训练**。系统直接引入 Ultralytics 官方预训练的 **`yolo26m.pt`** (COCO 80类) 作为兜底的 `env_model`，在推理阶段通过 NMS 自动找回所有的学生（统一赋予 `attending` 状态），并提取黑板作为 OCR 锚点。
+SCBehavior 存在大量“漏标安静听课学生”的缺陷。为了拯救这些被漏标的背景学生，**不需要额外训练**。系统直接引入 Ultralytics 官方预训练的 **`yolo26m.pt`** 作为兜底的 `env_model`，在推理阶段通过 NMS 自动找回所有的学生（统一赋予 `attending` 状态），并提取黑板作为 OCR 锚点。
 
 ---
 
@@ -166,17 +166,11 @@ cd Class_Detection
 
 python scripts/infer_video.py \
   --source ../classroom.mp4 \
-  --config configs/pipeline.yaml \
-  --det-weights artifacts/runs/detect/scbehavior_yolo26m/weights/best.pt \
-  --env-weights yolo26m.pt \
-  --pose-weights yolo26n-pose.pt \
-  --device 0 \
-  --interval-sec 1.0 \
   --save \
   --output artifacts/results/latest
 ```
 
-> **说明**：此模式使用了最新的双模型架构。`--det-weights` 指定了预测学生 7 种行为的模型，而 `--env-weights yolo26m.pt` 则引入了 COCO 大模型来兜底找回所有“安静听课”的学生。同时，系统默认加载了 `configs/bytetrack_low.yaml` 追踪器。若发现追踪丢框，可尝试将 `--interval-sec 1.0` 调整为 `0`（逐帧预测）。
+> **说明**：此模式使用了最新的双模型架构。由于我们已在 `configs/pipeline.yaml` 中配置了全局默认模型：`behavior_model` 将预测学生 7 种行为，而 `env_model` 默认挂载 `yolo26m.pt` 来兜底找回所有“安静听课”的学生。同时，系统默认加载了 `configs/bytetrack_low.yaml` 追踪器。若发现追踪丢框，可尝试添加 `--interval-sec 0` 进行逐帧预测。
 
 #### 使用预训练 yolo26m.pt 直接推理（降级体验版，无需训练）
 
