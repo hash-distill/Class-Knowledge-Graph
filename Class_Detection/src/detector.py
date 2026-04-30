@@ -61,7 +61,10 @@ class Detector:
                 verbose=False,
             )
             env_records = self._parse_results(results_env)
-            self._merge_env_records(records, env_records)
+            
+            # Detect if env_model is COCO (80 classes) or SCB (3 classes)
+            num_env_classes = len(self.env_model.names) if hasattr(self.env_model, 'names') else 3
+            self._merge_env_records(records, env_records, num_env_classes)
 
         return records
 
@@ -105,7 +108,8 @@ class Detector:
                     verbose=False,
                 )
                 env_records = self._parse_results(env_res)
-                self._merge_env_records(beh_records, env_records)
+                num_env_classes = len(self.env_model.names) if hasattr(self.env_model, 'names') else 3
+                self._merge_env_records(beh_records, env_records, num_env_classes)
                 
             yield beh_records
 
@@ -139,7 +143,8 @@ class Detector:
                 verbose=False,
             )
             env_records = self._parse_results(env_res)
-            self._merge_env_records(records, env_records)
+            num_env_classes = len(self.env_model.names) if hasattr(self.env_model, 'names') else 3
+            self._merge_env_records(records, env_records, num_env_classes)
             
         return records
 
@@ -159,33 +164,49 @@ class Detector:
         return inter_area / (area1 + area2 - inter_area)
 
     @classmethod
-    def _merge_env_records(cls, beh_records: list[BBoxRecord], env_records: list[BBoxRecord]) -> None:
+    def _merge_env_records(cls, beh_records: list[BBoxRecord], env_records: list[BBoxRecord], num_env_classes: int = 3) -> None:
         """
         Merge environment model records into behavior model records.
-        Env model classes (0: student, 1: teacher, 2: screen_board) are shifted to avoid collisions.
-        Generic students (class 0) are only added if they don't significantly overlap with 
-        an existing behavior model detection (NMS-like box fusion).
+        Supports both SCB-5 (3-class) and COCO (80-class) as the env_model.
         """
+        is_coco = (num_env_classes == 80)
+        
         for r in env_records:
-            if r.class_id == 1:
-                r.class_id = 101
-                r.class_name = "teacher"
-                beh_records.append(r)
-            elif r.class_id == 2:
-                r.class_id = 102
-                r.class_name = "screen_board"
-                beh_records.append(r)
-            elif r.class_id == 0:
-                # NMS fusion: only add if behavior model completely missed this student
-                covered = False
-                for br in beh_records:
-                    if cls._compute_iou(r.xyxy, br.xyxy) > 0.5:
-                        covered = True
-                        break
-                if not covered:
-                    r.class_id = 100
-                    r.class_name = "attending"
+            if is_coco:
+                if r.class_id == 62: # COCO 'tv' -> screen_board
+                    r.class_id = 102
+                    r.class_name = "screen_board"
                     beh_records.append(r)
+                elif r.class_id == 0: # COCO 'person'
+                    covered = False
+                    for br in beh_records:
+                        if cls._compute_iou(r.xyxy, br.xyxy) > 0.5:
+                            covered = True
+                            break
+                    if not covered:
+                        r.class_id = 100
+                        r.class_name = "attending"
+                        beh_records.append(r)
+            else:
+                # SCB-5 (0: student, 1: teacher, 2: screen_board)
+                if r.class_id == 1:
+                    r.class_id = 101
+                    r.class_name = "teacher"
+                    beh_records.append(r)
+                elif r.class_id == 2:
+                    r.class_id = 102
+                    r.class_name = "screen_board"
+                    beh_records.append(r)
+                elif r.class_id == 0:
+                    covered = False
+                    for br in beh_records:
+                        if cls._compute_iou(r.xyxy, br.xyxy) > 0.5:
+                            covered = True
+                            break
+                    if not covered:
+                        r.class_id = 100
+                        r.class_name = "attending"
+                        beh_records.append(r)
 
     @staticmethod
     def _parse_results(results) -> list[BBoxRecord]:

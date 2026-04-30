@@ -89,9 +89,9 @@ python scripts/train_det.py \
   --cache
 ```
 
-### 3.2 SCB-5 屏幕检测模型（双模型之环境模型）
+### 3.2 兜底环境模型（Dual-Model 兜底策略）
 
-此模型已训练完成（见 scb5_yolo26m_e402），用于补充 SCB-Dataset 数据集中缺失的屏幕(screen_board)标签。由于仅用于找屏幕，我们不需要重训，直接在 `configs/pipeline.yaml` 中配置加载即可。
+SCBehavior 存在大量“漏标安静听课学生”的缺陷。为了拯救这些被漏标的背景学生，**不需要额外训练**。系统直接引入 Ultralytics 官方预训练的 **`yolo26m.pt`** (COCO 80类) 作为兜底的 `env_model`，在推理阶段通过 NMS 自动找回所有的学生（统一赋予 `attending` 状态），并提取黑板作为 OCR 锚点。
 
 ---
 
@@ -159,7 +159,7 @@ python scripts/eval_det.py \
 
 ### 6.1 视频推理（端到端）
 
-#### 使用训练好的 behavior_model 推理（7 类双模型版，推荐）
+#### 使用双模型架构推理（推荐：7 类行为 + COCO 兜底）
 
 ```bash
 cd Class_Detection
@@ -168,6 +168,7 @@ python scripts/infer_video.py \
   --source ../classroom.mp4 \
   --config configs/pipeline.yaml \
   --det-weights artifacts/runs/detect/scbehavior_yolo26m/weights/best.pt \
+  --env-weights yolo26m.pt \
   --pose-weights yolo26n-pose.pt \
   --device 0 \
   --interval-sec 1.0 \
@@ -175,7 +176,7 @@ python scripts/infer_video.py \
   --output artifacts/results/latest
 ```
 
-> **说明**：此模式使用了最新的双模型架构。`--det-weights` 指定了预测学生 7 种行为的 `behavior_model`，而用于识别屏幕和黑板的 `env_model` 已经配置在 `configs/pipeline.yaml` 中。同时，系统默认加载了优化过低置信度的 `configs/bytetrack_low.yaml` 追踪器。若发现追踪丢框（抽帧导致的追踪断裂），可尝试将 `--interval-sec 1.0` 调整为 `0`（逐帧预测）。
+> **说明**：此模式使用了最新的双模型架构。`--det-weights` 指定了预测学生 7 种行为的模型，而 `--env-weights yolo26m.pt` 则引入了 COCO 大模型来兜底找回所有“安静听课”的学生。同时，系统默认加载了 `configs/bytetrack_low.yaml` 追踪器。若发现追踪丢框，可尝试将 `--interval-sec 1.0` 调整为 `0`（逐帧预测）。
 
 #### 使用预训练 yolo26m.pt 直接推理（降级体验版，无需训练）
 
