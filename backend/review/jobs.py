@@ -26,7 +26,7 @@ PUBLIC_SELECTION=','.join((*PUBLIC_FIELDS,'cancel_requested','error_code'))
 
 class JobCancelled(ReviewError):
     def __init__(self):
-        super().__init__('job_cancelled', 'The task was cancelled. No import result was published.', 409)
+        super().__init__('job_cancelled', '任务已取消，未发布导入结果。', 409)
 
 
 def now():
@@ -82,14 +82,14 @@ class JobQueue:
                   if row[key] is not None}
         result['cancel_requested'] = bool(row['cancel_requested'])
         if row['error_code']:
-            result['error'] = {'code': row['error_code'], 'message': 'The courseware task did not complete. Retry or import again.'}
+            result['error'] = {'code': row['error_code'], 'message': '课件任务未完成，请重试或重新导入。'}
         return result
 
     def status(self, job_id):
         with self._connection() as db:
             row = db.execute('SELECT '+PUBLIC_SELECTION+' FROM jobs WHERE job_id=?', (job_id,)).fetchone()
         if row is None:
-            raise ReviewError('job_not_found', 'The task does not exist.', 404)
+            raise ReviewError('job_not_found', '任务不存在。', 404)
         return self._summary(row)
 
     def list(self, lesson_id=None):
@@ -111,7 +111,7 @@ class JobQueue:
                               VALUES(?,?,'courseware_import',?,'queued',?,?,?)''',
                            (job_id, lesson_id, filename, now(), job_id, json.dumps(payload, ensure_ascii=False)))
         except sqlite3.IntegrityError as exc:
-            raise ReviewError('courseware_busy', 'This lesson already has pending courseware. Please try again shortly.', 409) from exc
+            raise ReviewError('courseware_busy', '这节课已有待处理课件，请稍后重试。', 409) from exc
         self._wake.set()
         return self.status(job_id)
 
@@ -121,20 +121,20 @@ class JobQueue:
             db.execute('BEGIN IMMEDIATE')
             row = db.execute('SELECT * FROM jobs WHERE job_id=?', (job_id,)).fetchone()
             if row is None:
-                raise ReviewError('job_not_found', 'The task does not exist.', 404)
+                raise ReviewError('job_not_found', '任务不存在。', 404)
             if row['status'] not in ('queued', 'running'):
-                raise ReviewError('invalid_job_operation', 'Only pending or running tasks can be cancelled.', 409)
+                raise ReviewError('invalid_job_operation', '只有待处理或运行中的任务可以取消。', 409)
             if row['status']=='running':
                 recovered=self._recover_publication(db,row)
                 if recovered is None:
-                    raise ReviewError('job_recovery_pending','The task is confirming publication. Refresh shortly before trying again.',409)
+                    raise ReviewError('job_recovery_pending','任务正在确认发布结果，请稍后刷新再操作。',409)
                 if recovered is True:too_late=True
             if not too_late:db.execute('''UPDATE jobs SET cancel_requested=1,
                        status=CASE WHEN status='queued' THEN 'cancelled' ELSE status END,
                        completed_at=CASE WHEN status='queued' THEN ? ELSE completed_at END
                        WHERE job_id=?''', (now(), job_id))
         if too_late:
-            raise ReviewError('invalid_job_operation','The task result has been published and cannot be cancelled.',409)
+            raise ReviewError('invalid_job_operation','任务结果已经发布，无法取消。',409)
         self._wake.set()
         return self.status(job_id)
 
@@ -145,16 +145,16 @@ class JobQueue:
                 db.execute('BEGIN IMMEDIATE')
                 row = db.execute('SELECT * FROM jobs WHERE job_id=?', (job_id,)).fetchone()
                 if row is None:
-                    raise ReviewError('job_not_found', 'The task does not exist.', 404)
+                    raise ReviewError('job_not_found', '任务不存在。', 404)
                 if row['status'] not in ('failed', 'cancelled'):
-                    raise ReviewError('invalid_job_operation', 'Only failed or cancelled tasks can be retried.', 409)
+                    raise ReviewError('invalid_job_operation', '只有失败或已取消的任务可以重试。', 409)
                 db.execute('''INSERT INTO jobs(job_id,lesson_id,kind,filename,status,created_at,
                               attempt,retry_of,root_job_id,payload)
                               VALUES(?,?,?,?,'queued',?,?,?,?,?)''',
                            (new_id, row['lesson_id'], row['kind'], row['filename'], now(),
                             row['attempt'] + 1, job_id, row['root_job_id'], row['payload']))
         except sqlite3.IntegrityError as exc:
-            raise ReviewError('courseware_busy', 'This lesson already has pending courseware. Please try again shortly.', 409) from exc
+            raise ReviewError('courseware_busy', '这节课已有待处理课件，请稍后重试。', 409) from exc
         self._wake.set()
         return self.status(new_id)
 
@@ -175,7 +175,7 @@ class JobQueue:
     def _running(db, job_id, token):
         row = db.execute('SELECT * FROM jobs WHERE job_id=?', (job_id,)).fetchone()
         if row is None or row['status'] != 'running' or row['claim_token'] != token:
-            raise ReviewError('job_interrupted', 'The task was interrupted. The old process cannot publish results.', 409)
+            raise ReviewError('job_interrupted', '任务已中断，旧进程不能发布结果。', 409)
         if row['cancel_requested']:
             raise JobCancelled()
         return row
@@ -213,7 +213,7 @@ class JobQueue:
         if receipt is None:return False
         directory=Path(receipt['directory']).resolve()
         expected_directory=Path(json.loads(row['payload'])['directory']).resolve()
-        if directory!=expected_directory:raise ReviewError('invalid_publication','The publication record directory does not match.',409)
+        if directory!=expected_directory:raise ReviewError('invalid_publication','发布记录目录不一致。',409)
         try:lease=LessonMutationLock(directory).acquire()
         except ReviewError:return None
         try:return self._reconcile_files(db,row,receipt,directory)
@@ -234,7 +234,7 @@ class JobQueue:
             if current==original_hash:
                 for name,encoded in previous.items():
                     if name not in ('bundle.json','report.json','report.md'):
-                        raise ReviewError('invalid_publication','Invalid publication record file.',409)
+                        raise ReviewError('invalid_publication','发布记录文件无效。',409)
                     target=directory/name
                     if encoded is None:target.unlink(missing_ok=True)
                     else:
@@ -272,7 +272,7 @@ class JobQueue:
             try:
                 lease = LessonMutationLock(self.db_path.parent / (self.db_path.name + '.controller')).acquire()
             except ReviewError as exc:
-                raise ReviewError('job_controller_busy', 'The task controller is already running.', 409) from exc
+                raise ReviewError('job_controller_busy', '任务控制器已在运行。', 409) from exc
             anchor = None
             try:
                 # Keep the WAL open while short-lived polling and worker
@@ -310,7 +310,7 @@ class JobQueue:
             if self._thread is not None:
                 self._thread.join(timeout=35)
                 if self._thread.is_alive():
-                    raise ReviewError('job_controller_busy', 'The task controller has not stopped yet.', 409)
+                    raise ReviewError('job_controller_busy', '任务控制器尚未结束。', 409)
                 self._thread = None
             if self._wal_anchor is not None:
                 self._wal_anchor.close()

@@ -64,7 +64,7 @@ def assemble(directory, measured):
                         for row in result['segments']],
             'native_segments':[{'transcript_id':row['transcript_id'],'start_sec':row['start_sec'],'end_sec':row['end_sec'],
                 'original_text':row['original_text'],'text':row['corrected_text'],
-                'uncertainties':[] if row.get('status')=='complete' else [row.get('error',{}).get('message','Request failed; original text retained')]}
+                'uncertainties':[] if row.get('status')=='complete' else [row.get('error',{}).get('message','请求失败，保留原文')]}
                 for row in native['native_outputs']],
             'conditions':envelope['conditions'],'native_conditions':native['conditions'],
             'runtime':runtime,'native_runtime':native['runtime'],
@@ -76,13 +76,13 @@ def assemble(directory, measured):
         'scope':'same_lesson_controlled_model_comparison',
         'reference_status':'no_human_verbatim_reference','runs':runs,
         'limitations':[
-            'This lesson has no independent manual transcript. Reliable correction accuracy or actual erroneous correction rates cannot be calculated.',
-            'Guarded results include contributions from OCR, the secondary recognizer, and contextual rules. Shared changes cannot all be attributed to the model.',
-            'Accepted model candidates are counted by recorded origin. One of the two Qwen candidates is also repaired by rules alone; only one change goes beyond the rule-only result and still requires verification.',
-            'Direct model output is unapproved and contains additions, deletions, and rewrites. It is for audio review only and is excluded from graph and Q&A evidence.',
-            'Rule rejection statistics include model and source-rule candidates. Counts of standard-form groups describe only the diagnostic vocabulary for this lesson.',
-            'GPU memory was sampled across the local RTX 4060 Laptop 8GB device, including display and other processes. Peaks between samples may be missed.',
-            'See the external Chinese-LiPS report for complete manual-reference scoring. Its three samples are separate from this lesson and cannot establish whole-lesson accuracy.']}
+            '本课没有独立人工逐字稿，无法计算可靠的纠错准确率或真实误改率。',
+            '守卫后结果包含 OCR、第二识别器和上下文规则贡献；共享改动不能全部归给模型。',
+            '接受模型候选按记录来源计数。Qwen 的 2 条中有 1 条也能由纯规则修复，只有 1 处超出纯规则结果，仍待核验。',
+            '模型直接输出尚未核准，含新增、删减和改写；仅供回听，不进入图谱或问答证据。',
+            '规则拦截统计包含模型与来源规则候选；规范词形出现组数只描述本课诊断词表。',
+            '显存为本机 RTX 4060 Laptop 8GB 整卡采样，含显示和其他进程，可能漏掉采样间峰值。',
+            '完整人工参考评分另见 Chinese-LiPS 外部报告；其 3 段样本独立于本课，不能外推为整课准确率。']}
     validate_comparison(data,bundle,asr_hash)
     return data
 

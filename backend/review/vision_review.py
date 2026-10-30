@@ -32,22 +32,22 @@ def frame_context(store, bundle, frame_id):
     analysis = bundle.get('activity_analysis') or {}
     frame = next((row for row in analysis.get('frames', []) if row['id'] == frame_id), None)
     if frame is None:
-        raise ReviewError('vision_frame_not_found', 'This sampled frame does not exist in the current lesson.', 404)
+        raise ReviewError('vision_frame_not_found', '当前课堂没有这一采样帧。', 404)
     source = bundle['lesson'].get('source_video', {}).get('sha256', '')
     if not re.fullmatch('[0-9a-f]{64}', source) or analysis.get('source_sha256', source) != source:
-        raise ReviewError('vision_source_missing', 'The current frame has no consistent video source digest. Review is unavailable.', 409)
+        raise ReviewError('vision_source_missing', '当前帧缺少一致的录像来源摘要，暂不能复核。', 409)
     prefix = f'/api/review/media/{lesson_id}/'
     url = frame.get('image_url', '')
     if not url.startswith(prefix) or '?' in url or '#' in url:
-        raise ReviewError('vision_image_invalid', 'Review images must come from the original frames registered for this lesson.', 409)
+        raise ReviewError('vision_image_invalid', '复核图片必须来自本课注册的原始帧。', 409)
     path = store.media(lesson_id, unquote(url[len(prefix):]))
     if path.suffix.lower() not in ('.jpg', '.jpeg', '.png', '.webp') or path.stat().st_size > 16*1024*1024:
-        raise ReviewError('vision_image_invalid', 'The review image format or size is not supported.', 409)
+        raise ReviewError('vision_image_invalid', '复核图片格式或大小不受支持。', 409)
     data = path.read_bytes()
     with Image.open(io.BytesIO(data)) as image:
         width, height = image.size
     if width * height > 24_000_000 or width != frame.get('width', width) or height != frame.get('height', height):
-        raise ReviewError('vision_image_changed', 'The frame dimensions do not match the detection coordinates. Process the frame again.', 409)
+        raise ReviewError('vision_image_changed', '帧图片尺寸与检测坐标不一致，请重新处理。', 409)
     image_sha = hashlib.sha256(data).hexdigest()
     return {'frame': frame, 'image': data, 'image_sha256': image_sha, 'width': width,
             'height': height, 'source_video_sha256': source,
@@ -56,30 +56,30 @@ def frame_context(store, bundle, frame_id):
 
 def validate_annotations(rows, context):
     if not isinstance(rows, list) or len(rows) > 200:
-        invalid('At most 200 reviewed objects can be saved per frame.')
+        invalid('每帧最多保存 200 个已复核对象。')
     model = {p['track_id'] for p in context['frame'].get('participants', [])}
     seen = set(); cleaned = []
     for row in rows:
-        if not isinstance(row, dict): invalid('Invalid review object format.')
+        if not isinstance(row, dict): invalid('复核对象格式无效。')
         identifier = row.get('id')
         if not isinstance(identifier, str) or not re.fullmatch(r'[A-Za-z0-9_-]{1,100}', identifier) or identifier in seen:
-            invalid('Invalid or duplicate review object ID.')
+            invalid('复核对象编号无效或重复。')
         seen.add(identifier)
         origin = row.get('origin')
         if origin not in ('model', 'manual') or (origin == 'model' and identifier not in model) or (
                 origin == 'manual' and (not identifier.startswith('manual-') or identifier in model)):
-            invalid('The review object source does not match the current detections.')
+            invalid('复核对象来源与当前检测结果不一致。')
         label, role, status = row.get('label'), row.get('role'), row.get('status')
         if label not in LABELS or role not in ('unknown', 'student', 'teacher') or status not in ('confirmed', 'ignored'):
-            invalid('Select a valid state, object role, and review verdict.')
+            invalid('请选择有效的状态、对象角色和复核结论。')
         reason = row.get('reason', '')
         if not isinstance(reason, str) or len(reason) > 500 or status == 'ignored' and not reason.strip():
-            invalid('Provide a reason for excluding a false detection. Notes may contain at most 500 characters.')
+            invalid('排除误检需填写原因，说明最多 500 字。')
         box = row.get('bbox')
         if (not isinstance(box, list) or len(box) != 4 or any(type(v) not in (int, float) or not math.isfinite(v) for v in box)
                 or not 0 <= box[0] < box[2] <= context['width'] or not 0 <= box[1] < box[3] <= context['height']
                 or box[2]-box[0] < 2 or box[3]-box[1] < 2):
-            invalid('Bounding boxes must be inside the original image and at least 2 pixels wide and high.')
+            invalid('边框需位于原图内，宽高至少为 2 像素。')
         cleaned.append({'id': identifier, 'origin': origin, 'label': label, 'role': role,
                         'status': status, 'bbox': box, 'reason': reason.strip()})
     return cleaned
@@ -121,19 +121,19 @@ class VisionReviewStore:
 
     def save(self, lesson_id, context, version, basis, rows, restore_version=None):
         if basis != context['basis_fingerprint']:
-            raise ReviewError('vision_source_changed', 'The frame evidence changed. Reload and review it again.', 409)
+            raise ReviewError('vision_source_changed', '帧证据已变化，请重新加载并复核。', 409)
         frame_id = context['frame']['id']
         with self.connect() as db:
             db.execute('BEGIN IMMEDIATE')
             previous = self.latest(db, lesson_id, frame_id)
             current = previous['version'] if previous else 0
             if type(version) is not int or current != version:
-                raise ReviewError('vision_review_changed', 'Another window updated this frame. Keep your draft, reload, and check it again.', 409)
+                raise ReviewError('vision_review_changed', '该帧已被另一窗口更新。请保留草稿并重新加载后核对。', 409)
             if restore_version is not None:
                 old = db.execute('SELECT * FROM vision_review_versions WHERE lesson_id=? AND frame_id=? AND version=?',
                                  (lesson_id, frame_id, restore_version)).fetchone()
                 if not old or old['basis'] != basis:
-                    raise ReviewError('vision_history_unavailable', 'This historical version does not belong to the current frame evidence and cannot be restored.', 409)
+                    raise ReviewError('vision_history_unavailable', '该历史版本不属于当前帧证据，不能恢复。', 409)
                 rows = json.loads(old['annotations'])
             rows = validate_annotations(rows, context)
             db.execute('INSERT INTO vision_review_versions VALUES (?,?,?,?,?,?)',
@@ -156,7 +156,7 @@ class VisionReviewStore:
                 ON r.frame_id=latest.frame_id AND r.version=latest.version WHERE r.lesson_id=? ORDER BY r.frame_id''',
                 (lesson_id, lesson_id)).fetchall()
         if not rows or not any(json.loads(r['annotations']) for r in rows):
-            raise ReviewError('vision_review_empty', 'No manually reviewed objects have been saved. Confirm each object and save first.', 409)
+            raise ReviewError('vision_review_empty', '尚无已保存的人工复核对象。请先逐对象确认并保存。', 409)
         archive = tempfile.SpooledTemporaryFile(max_size=8*1024*1024)
         manifest = {'schema_version': '1.0', 'lesson_id': lesson_id,
                     'source_video_sha256': bundle['lesson']['source_video']['sha256'],
@@ -175,10 +175,10 @@ class VisionReviewStore:
                         continue
                     context = frame_context(store, bundle, row['frame_id'])
                     if context['basis_fingerprint'] != row['basis']:
-                        raise ReviewError('vision_source_changed', 'An image or model result referenced by a review changed. Review it again before exporting.', 409)
+                        raise ReviewError('vision_source_changed', '有复核记录对应的图片或模型结果已变化，请重新复核后导出。', 409)
                     input_bytes += len(context['image'])
                     if input_bytes > 128*1024*1024 or manifest['classification_sample_count'] > 2000:
-                        raise ReviewError('vision_export_limit', 'Too many samples for one export. Export each lesson separately.', 413)
+                        raise ReviewError('vision_export_limit', '本次样本过多，请分课堂导出。', 413)
                     filename = f'frames/{index:04d}.jpg'
                     with Image.open(io.BytesIO(context['image'])) as original:
                         image = original.convert('RGB')
@@ -198,14 +198,14 @@ class VisionReviewStore:
                         'width': context['width'], 'height': context['height'], 'review_version': row['version'],
                         'reviewed_at': row['updated_at'], 'annotations': annotations})
                 if not manifest['frames']:
-                    raise ReviewError('vision_review_empty', 'The reviewed frames are no longer in the current analysis. Review current frames before exporting.', 409)
+                    raise ReviewError('vision_review_empty', '原复核帧已不在当前分析中，请复核当前画面后再导出。', 409)
                 output.writestr('manifest.json', json.dumps(manifest, ensure_ascii=False, indent=2))
-                output.writestr('README.txt', 'Manually reviewed vision samples\n\nOnly objects in crops explicitly confirmed as students with a known state can serve as labels for the seven state classes.\n'
-                    'The manifest retains unknown states, teachers, excluded objects, and provenance. Unreviewed objects are not negative samples. Full frames are partially annotated and cannot directly serve as complete person detection training labels.\n'
-                    'Images are JPEG copies of original frames; original_image_sha256 refers to the original file. Crops use the annotated boxes.\n'
-                    'Training and test sets are not split automatically. Group by lesson video to prevent adjacent-frame leakage. Manual annotation is not independent accuracy validation.\n')
+                output.writestr('README.txt', '人工视觉复核样本\n\n仅 crops 内显式确认学生且非未知状态的对象可作为七类状态分类标注。\n'
+                    'manifest 保留未知、教师、排除对象与来源。未复核对象不是负样本。整帧为部分标注，不可直接作为完整人物检测训练标签。\n'
+                    '图片是原始帧的 JPEG 副本，original_image_sha256 指原始文件；裁剪使用标注框。\n'
+                    '没有自动划分训练和测试集；应按课堂录像分组，防止相邻帧泄漏。人工标注不等于独立准确率验收。\n')
                 if manifest['archived_missing_frames']:
-                    output.writestr('ARCHIVED_FRAMES.txt', 'The following old frames are absent from the current analysis. Their history is retained, but they are not exported as current training samples.\n' +
+                    output.writestr('ARCHIVED_FRAMES.txt', '以下旧帧已不在当前分析中，历史保留但不导出为当前训练样本。\n' +
                                     json.dumps(manifest['archived_missing_frames'], ensure_ascii=False, indent=2))
             archive.seek(0)
             return archive

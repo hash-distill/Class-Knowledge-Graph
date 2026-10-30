@@ -78,7 +78,7 @@ def test_non_monotonic_samples_rejected():
 
 
 def test_context_half_open_segments_and_overlap_validation():
-    context = ContextTimeline([{'start_sec':0,'end_sec':3,'task':'lecture','knowledge_point':'Permutations'},
+    context = ContextTimeline([{'start_sec':0,'end_sec':3,'task':'lecture','knowledge_point':'排列'},
                                {'start_sec':3,'end_sec':5,'task':'exercise'}])
     assert context.at(2)['task'] == 'lecture'
     assert context.at(3)['task'] == 'exercise'

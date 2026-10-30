@@ -1,7 +1,7 @@
-param(
-    [string]$Video=(Join-Path $PSScriptRoot '../speech-models/lesson1.mp4'),
+﻿param(
+    [string]$Video=(Join-Path $PSScriptRoot '../语音模型/lesson1.mp4'),
     [string]$LessonId='lesson1-real',
-    [string]$Title='Jingxi Insight lesson review',
+    [string]$Title='课堂复盘',
     [double[]]$Roi=@(0.49,0.055,0.91,0.47),
     [double]$SampleInterval=5,
     [switch]$SkipModelStart,

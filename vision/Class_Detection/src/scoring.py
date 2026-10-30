@@ -42,12 +42,12 @@ def calc_cas(
     """
     base_cas = max(w_action * float(action_score), w_gaze * float(gaze_score))
 
-    # Negative-behavior penalty
+    # 负面行为惩罚
     penalty_factor = 1.0
     negative_labels = ["distracted", "using_phone", "yawning", "sleeping",
                        "lean_desk", "use_phone", "yawn"]
     if any(neg in action_label.lower() for neg in negative_labels):
-        penalty_factor = 0.5  # Reduce the attention rule score
+        penalty_factor = 0.5  # 显著降低专注度得分
 
     return _clamp01(base_cas * penalty_factor)
 

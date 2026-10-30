@@ -1,27 +1,27 @@
-# Blue workbench interface refresh
+# 蓝色工作台界面调整
 
-Historical record dated 2026-10-28, covering classroom overview, speech/courseware, student behavior, knowledge graph, review report, and teaching improvement.
+2026-10-28。覆盖课堂总览、语音与课件、学生行为、知识图谱、复盘报告和教学改进 6 个页面。
 
-## Titles and colors
+## 标题与颜色
 
-Decorative trailing punctuation was removed from page, assistant, and brand titles. Dynamic report, concept, and teacher-record titles are cleaned for display; stored data is unchanged.
+页面标题、助手标题和品牌名称去掉末尾装饰标点。报告、概念和教师记录的动态标题在显示时清理末尾标点，保存的数据保持原样。
 
-The shared palette uses dark-blue navigation, pale-blue backgrounds, white cards, and blue buttons across graphs, charts, timelines, tags, forms, and the assistant. Charts retain actual values and text labels; color only distinguishes items.
+全局色板改为深蓝导航、浅蓝背景、白色卡片和蓝色按钮。图谱节点、行为图表、证据时间轴、状态标签、表单和助手使用同一色系。图表仍显示真实数值和文字标签，颜色只用于区分。
 
-## Layout and interaction
+## 布局与交互
 
-Desktop columns share row height and align at top/bottom. Long content scrolls within its functional panel. The player sidebar adds current time, original-audio clues, and shortcuts. Overview retains a large player with three evidence cards arranged to fit available height.
+桌面双栏共用同一行高度，顶部和底部对齐。内容较长时，在功能区内滚动；播放器侧栏补充当前时间、原声线索和快捷入口。总览页保留大播放器，右侧三类证据卡片按可用高度排列。
 
-At widths of 1000 px or less, player and content stack with natural heights. Teaching improvement has four sections: goals/revisions, actions, exercises/feedback, and history/jobs. Switching retains unsaved input.
+窗口宽度不超过 1000 px 时，播放器与功能区上下排列，内容恢复自然高度。教学改进页分为目标与核对、改进行动、练习与反馈、历史与任务 4 个分区。切换分区保留未保存输入。
 
-Animations cover entry, view changes, staggered cards, buttons, graph hover, and playback. Reduced-motion preferences disable prominent movement.
+增加页面进入、视图切换、卡片错峰进入、按钮反馈、图谱节点悬停和播放状态动画。系统开启减少动态效果后，关闭明显的位移动画。
 
-## Historical acceptance and desktop assets
+## 验收与桌面资源
 
-Frontend `test:review`, `test:activity`, and production build passed. Browser checks covered five widths × six pages (30 cases). Desktop-column top/bottom deviations were 0 px; narrow layouts had no horizontal overflow. No decorative trailing title punctuation or green controls were found.
+前端 `test:review`、`test:activity` 和生产构建均通过。浏览器检查覆盖 5 种窗口宽度及 6 个页面，共 30 组；桌面双栏顶部和底部偏差均为 0 px。窄屏无横向溢出，标题末尾没有装饰标点，界面未发现绿色控件颜色。
 
-Checks also covered player-instance/time retention, all four teacher sections, draft retention, assistant display, and reduced motion. Teacher regressions covered goals, corrections/undo, actual improvement results/answers, and explicit zero scores. Writes used only acceptance lesson copies and a separate database.
+浏览器还验证了播放器实例与播放位置保留、4 个教师分区可达、草稿保留、助手显示和减少动态效果。教师操作回归覆盖保存目标、修订与撤销、改进结果、实际作答及零分保存。写入只发生在验收课堂副本和单独数据库。
 
-Desktop frontend resources were synchronized. Existing running executable/backend versions were preserved; only frontend assets changed. An installer was built separately; local `desktop/build/release-manifest.json` records paths and hashes. The current window was not force-refreshed; a refresh loaded the new interface. The installation wizard was not run.
+桌面资源已同步。正在使用的主程序和后台文件保持原有版本，仅更新前端。安装包在独立构建目录生成，路径与摘要见 `4C/desktop/build/release-manifest.json`。当前桌面窗口没有强制刷新；刷新页面后加载新界面。本次没有执行安装向导。
 
-Local records/screenshots are in `artifacts/verification/blue-ui-20261028/`. Backups include `frontend-before.zip` and `4C-0.1.0-before-blue-setup.exe`. Generated records and binaries are excluded from source releases.
+完整记录与截图位于 `artifacts/verification/blue-ui-20261028/`。旧前端快照为 `frontend-before.zip`，旧安装包为 `4C-0.1.0-before-blue-setup.exe`。

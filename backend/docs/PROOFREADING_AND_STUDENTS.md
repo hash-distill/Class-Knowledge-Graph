@@ -1,43 +1,42 @@
-# Chinese proofreading and current visible states
+# 中文校对与当前学生状态
 
-After `start_trained_demo.ps1`, open the [local workbench](http://127.0.0.1:5175/). The prepared Chinese chemistry demo aligns speech, observed slides, and behavior on the source-video timeline. Switching views preserves the player/time. Prepared private demo data is excluded from source releases.
+运行 `start_trained_demo.ps1` 后，打开 <http://127.0.0.1:5175/>。默认中文化学课把语音、观测课件与行为放在同一条原录像时间轴上。切换功能视图会保留播放器和当前时刻。
 
-## Build-time proofreading
+## 生成时校对
 
-`build_review.py` creates proofreading before concept extraction using full context, observed courseware terms, and same-source secondary ASR. Replacements retain original terms, suggestions, evidence, and uncertainty. Formulas, numbers, negation, and syntax have separate guards. Text the model cannot fully handle remains original.
+`build_review.py` 在提取概念之前生成校对稿。校对参考整段上下文、观测课件词汇和同源的其他识别结果。每次替换保留原词、建议、依据与疑点。公式、数字、否定及句式受到单独校验。模型无法完整处理的内容保留原文。
 
-Speech defaults to machine proofreading, with an original-ASR comparison. Original T segments/times are unchanged; proofreading uses P IDs and continuous evidence PB IDs. Q&A/concepts use sourced proofreading; explicitly uncertain text is excluded from concepts. Replay is still required for human verification.
+语音列表默认显示机器校对稿，点击“对照原始转写”查看原文。原始 T 段及时间不变；校对段使用 P 编号，连续校对证据使用 PB 编号。问答和概念提取使用有来源的校对证据，明确不确定的文字会从概念提取中排除。机器校对仍需回听核验。
 
-A lesson with prepared audio can add secondary Chinese ASR. From `backend/`, explicitly configure the remote environment first, as described in the [backend README](../README.md):
+已准备原声的课堂可增加中文二次识别：
 
 ```powershell
+cd 'D:\全球校园人工智能精英大赛\4C\课堂复盘'
 .venv-media/Scripts/python.exe scripts/generate_chinese_reference.py --media-dir artifacts/unified-chemistry-001-9
 ```
 
-The configured SSH environment runs Seaco Paraformer, VAD, and punctuation. There is no default private host. Only `asr.secondary.json` matching both audio/video digests is published; Whisper is retained. Install `requirements-asr-chinese.txt` remotely; caches retain models/revisions. Override `--host`, `--remote-python`, `--remote-root`, and `--gpu` as needed. Enabling this transfers lesson audio to that host.
+脚本使用已配置的 A6000 SSH 环境，运行 SeACo Paraformer、VAD 和标点模型。它只发布音频与视频 SHA 均一致的 `asr.secondary.json`，保留原始 Whisper 结果。依赖单独列在 `requirements-asr-chinese.txt`；服务器缓存保留模型文件与固定 revision。可用 `--host`、`--remote-python`、`--remote-root`、`--gpu` 更换运行环境。
 
-For another lesson:
+处理另一节中文课时，可在原有流程加上 `-ChineseReference`：
 
 ```powershell
-./run_lesson.ps1 -Video 'D:\lesson-materials\lesson.mp4' -LessonId 'lesson-new' -Title 'New lesson' -ChineseReference
+./run_lesson.ps1 -Video 'D:\课堂资料\一节课.mp4' -LessonId 'lesson-new' -Title '新的课堂' -ChineseReference
 ```
 
-Secondary ASR and proofreading retain separate provenance. Cache checks include original ASR, courseware, other recognizers, and model identity; changed inputs regenerate proofreading.
+二次识别和校对各自保留来源。修订文件的缓存检查包含原始 ASR、课件、其他识别结果和模型信息，输入变化会重新生成校对稿。
 
-## Current-state display and historical metrics
+## 查看当前状态
 
-Overview prioritizes the sampled frame, boxes, state counts, and detected-action fraction. The behavior view has time trends; cumulative counts/coverage are in technical diagnostics.
+课堂总览优先显示当前采样画面、状态框、各状态人数和已检出参与动作比例。学生行为页提供时间趋势；原累计观测数和覆盖率放在折叠的技术诊断中。
 
-The earlier pretrained action path recognizes reading, writing, and hand raising. Separate pose rules cover head up/down, hand near head, and standing with sufficient leg evidence. Rules record COCO17 points, confidence, and thresholds; absent categories are not filled with invented counts. The newer seven-class path is described in [Vision changes](VISION_IMPROVEMENT_20261029.md).
+动作模型支持阅读、书写和举手。姿态规则另列头部抬起、头部降低、手靠近头部，以及有完整腿部依据时的站姿线索。姿态规则记录实际 COCO17 关键点、置信度及阈值依据。本片未观测到的类别不填假人数。
 
-In the earlier path, detected-action fraction is reading/writing/hand-raising count divided by detected people. Its reference score averages only explicit action weights; geometric poses are unscored and missing/no-person frames remain unknown. These historical metrics differ from the [current overall behavior engagement](CLASS_ENGAGEMENT_20261029.md). Neither measures psychological engagement or mastery.
+“已检出参与动作比例”是阅读、书写和举手人数除以当前检测人数。“行为积极度参考”只对已检出的明确动作求规则均值，权重在技术详情公开。姿态本身不赋积极度分；未知与无人物画面保留未知。以上指标描述可见行为，不能证明心理投入或知识掌握。
 
-## Acceptance commands
-
-From `backend/`, then switch to the flattened frontend directory:
+## 实际验收
 
 ```powershell
-cd ../frontend
+cd '../frontend'
 npm run test:review
 npm run test:activity
 npm run build
@@ -45,4 +44,4 @@ python scripts/verify-proofread-students.py
 python scripts/verify-unified-workbench.py
 ```
 
-The browser scripts use real local API, source video, and local models. The first checks proofreading comparison, current states, removed entry points, and mobile layout. The second checks playback across views, courseware import, three-source Q&A, and full export. Records/screenshots go to local `output/playwright/`. Historical browser acceptance does not validate later prompt translations or prove model accuracy.
+两个浏览器脚本直接访问本机 API、原录像与本地模型。前者检查校对对照、当前状态、入口移除及手机布局；后者检查跨视图播放、独立课件导入、三类证据问答和完整导出。截图和检查记录写入 `output/playwright/`。

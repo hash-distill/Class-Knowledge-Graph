@@ -1,28 +1,28 @@
-# Source release readiness record — 2026-10-29
+# 源码发布准备记录
 
-This historical record describes source entry points, documentation, and GitHub layout prepared for the complete Jingxi Insight application. Existing classroom and model files were preserved. The subsequent publication round includes the application source, English directory names, and an English-default interface; source-language lesson evidence is retained.
+本次围绕“精析智评”完整应用整理源码入口、README 和 GitHub 发布结构，保留已有课堂与模型文件。
 
-## Changes in the recorded preparation
+## 改动
 
-- Added workspace initialization, read-only checks, source launch, and source export at the root; initialization preserves existing registries.
-- Resolved lesson-relative paths from the registry file. Legacy evidence-directory entries remain readable; missing source-video entries produce explicit media errors.
-- Allowed API-only startup before the frontend build. A service started before that build is not treated as serving static pages afterward. Configuration changes request a restart in the original terminal while preserving the running service.
-- Separated application and media/model dependencies, included pytesseract for scanned courseware, and fixed the desktop packaging Pillow version conflict.
-- Removed default private SSH hosts, interpreter paths, and GPU IDs from secondary Chinese ASR; remote transfer requires explicit configuration.
-- Updated root, backend, frontend, and vision documentation, linking historical vision records to current scoring and manual review.
-- Removed an unused Vue DevTools build dependency, upgraded Vite to 6.4.5, and updated compatible dependencies and lockfiles.
-- Added GitHub Actions for backend/frontend tests, production builds, and source audits.
+- 新增根目录工作区初始化、只读检查、源码启动和源码导出入口；初始化不覆盖已有登记。
+- 课程相对路径改为以登记文件所在目录解析；旧版仅登记证据目录的课堂仍可读取，未登记录像时返回明确媒体错误。
+- 仅 API 模式支持未构建前端；前端首次构建后，旧服务不会被误认为具备静态页面。启动配置变化时提示关闭原终端，保留原服务。
+- 应用依赖与媒体/模型依赖分开，补齐扫描课件所需 pytesseract，并修复桌面打包 Pillow 版本冲突。
+- 中文二次识别移除默认私有 SSH 主机、解释器目录和 GPU 编号，远程发送需明确配置。
+- 更新根、后端、前端和视觉模块说明；旧视觉改造记录增加现行评分与复核入口。
+- 移除未使用的 Vue DevTools 构建依赖，升级 Vite 至 6.4.5，更新兼容范围内的依赖与锁文件。
+- 增加 GitHub Actions 的前后端测试、构建与源码审计工作流。
 
-## Historical validation
+## 已完成验证
 
-A fresh Python 3.11 application environment reported **345 passed, 6 skipped** backend tests. Skips concerned separately configured frozen backends and optional conditions. This recorded round did not rerun the Windows installation wizard or train models.
+Python 3.11 全新应用依赖环境的后端测试为 **345 通过、6 跳过**。跳过项涉及单独配置的冻结后端与可选运行条件；本轮没有重新运行 Windows 安装向导或训练模型。
 
-Frontend contract, teaching-record, behavior-analysis, manual-review draft, and scoring tests passed, as did Vue/TypeScript checks and the Vite 6.4.5 production build. After dependency updates, `npm audit` reported **0 known vulnerabilities** for that query and lockfile; this is a dated result.
+前端合同、教学记录、行为分析、人工复核草稿和评分测试通过，Vue/TypeScript 检查及 Vite 6.4.5 生产构建通过。更新依赖后 `npm audit` 报告 **0 个已知漏洞**；该结论对应本次查询与锁文件，不表示未来不出现新通报。
 
-Independent review checked empty-workspace startup, health/lesson/runtime endpoints, service reuse, frontend build transitions, and asset integrity. No unresolved P1/P2 findings remained within the reviewed scope. Unit tests, builds, and source audits do not establish real classroom model accuracy.
+独立复核验证了空课堂源码启动、健康/课程/运行时接口、服务复用、前端构建状态转换和资源完整性。受审范围内无未解决 P1/P2。单元测试、构建和源码检查不代表真实课堂模型准确率已经验收。
 
-Detailed local logs, README backups, JUnit results, and screenshots are in the ignored `backend/artifacts/verification/github-ready-20261029` directory. These records are excluded from public source packages. The source package has a separate per-file manifest; original classroom files are excluded.
+本地详细日志、原 README 备份、JUnit 结果和截图位于被忽略的 `backend/artifacts/verification/github-ready-20261029`。这些记录不包含在公共源码包中。新源码包具有独立逐文件摘要；用户原始课堂文件没有纳入发布。
 
-## Publication scope
+## 发布范围
 
-The GitHub README title and description use Jingxi Insight while the repository URL remains unchanged. Application source is prepared and pushed from a separate checkout while preserving existing remote commit history. Publication excludes private media, generated evidence, workspaces, and weights. The overall license remains for the maintainer to establish; existing third-party terms continue to apply.
+GitHub 首页 README 标题与简介已更新为精析智评，仓库地址保持不变。完整应用在独立目录中准备发布分支，保留既有远程提交历史；本次准备不自动将完整应用推送到默认分支。统一许可证仍待维护者明确，现有第三方许可继续适用。

@@ -1,16 +1,16 @@
 import type { ActivityFrame, ActivityParticipant } from '../types/lessonReview'
 
 export const studentStateLabels: Record<string, string> = {
-  read: 'Reading', reading: 'Reading', write: 'Writing', writing: 'Writing', raise_hand: 'Hand raising', raising_hand: 'Hand raising', hand_raising: 'Hand raising',
-  head_up: 'Head raised', head_lowered: 'Head lowered', hand_near_head: 'Hand near head', standing: 'Standing posture cue', unknown: 'Unknown state',
-  lookup: 'Head-up cue', turn_head: 'Head-turn cue', stand: 'Standing cue', discuss: 'Discussion cue',
+  read: '阅读', reading: '阅读', write: '书写', writing: '书写', raise_hand: '举手', raising_hand: '举手', hand_raising: '举手',
+  head_up: '头部抬起', head_lowered: '头部降低', hand_near_head: '手靠近头部', standing: '站姿线索', unknown: '状态未知',
+  lookup: '抬头线索', turn_head: '转头线索', stand: '站立线索', discuss: '讨论线索',
 }
 export const studentStateColors: Record<string, string> = {
   read: '#4b8ce7', reading: '#4b8ce7', write: '#78b5f1', writing: '#78b5f1', raise_hand: '#2454bc', raising_hand: '#2454bc', hand_raising: '#2454bc',
   head_up: '#6bb8e8', head_lowered: '#a0b4df', hand_near_head: '#4b72b6', standing: '#8aa8d4', unknown: '#aebbd0',
   lookup: '#3f82dd', turn_head: '#8aa0c8', stand: '#597bb6', discuss: '#2768c2',
 }
-export function studentStateName(label: string) { return studentStateLabels[label] || 'Other visible cues' }
+export function studentStateName(label: string) { return studentStateLabels[label] || '其他可见线索' }
 export function studentStateColor(label: string) { return studentStateColors[label] || studentStateColors.unknown }
 export function participantState(participant: ActivityParticipant) { return participant.student_state?.label || participant.label || 'unknown' }
 export function frameStateCounts(frame: ActivityFrame): [string, number][] {

@@ -1,33 +1,33 @@
-# Manual vision review and correction
+# 视觉复核与纠错
 
-This change added manual correction and sample export while retaining original model outputs. It did not change model weights or engagement rules and was not model-accuracy acceptance.
+本轮补齐人工纠错入口和标注导出链路，保留原始模型输出。模型权重和积极度规则未在本轮改动；这不是一次模型准确率验收。
 
-## Use
+## 使用方法
 
-Open **Student behavior**, then **Vision review and correction** under the state and engagement section. Interface wording may evolve; these steps describe the review workflow.
+打开工作台的“学生行为”，在“学生状态与积极度”中找到“视觉复核与纠错”。
 
-1. Seek to a video time and start reviewing the current frame. The editor locks that frame; moving playback does not save edits to another frame.
-2. Select a box or its numbered entry to inspect state and role. Changing the state records a human correction. If only role or coordinates change, explicitly confirm the object. A geometric pose does not automatically become a human seven-class behavior label.
-3. Enter a reason before excluding a false detection. Draw a box for a missed object, then choose role and state; coordinate inputs also adjust boxes. Fullscreen inspection can be closed with its button or Esc.
-4. Save the frame review. Withdrawal preserves history; version history restores older records from the same source. Workspace switches retain the current tab's draft. Save or download a draft backup before reloading or closing.
-5. Export lesson samples as a ZIP. Unsaved drafts are excluded. If another window saved the same frame, saving an older version is rejected and the draft is retained. Reload the server version and download the old draft for comparison.
+1. 定位录像时间，点击“开始复核当前帧”。编辑器锁定该帧，播放位置变化不会把修改写入其他帧。
+2. 点击画面边框或下方编号，核对可见状态与对象角色。修改状态代表人工修正；只修改角色或坐标时仍需点击“确认此对象”。几何姿态不会自动成为七类行为的人工真值。
+3. 误检对象填写原因后点击“排除此对象”。漏检对象使用“拖框补漏检”，再选择角色与状态；也可在坐标输入框中调整边框。“放大复核”支持全屏，按钮可退出，Esc 也可退出。
+4. 点击“保存本帧复核”。“撤回本帧复核”保留历史；“版本历史”可以恢复同一来源的旧记录。切换工作区会保留本标签页草稿，刷新或关闭页面前请保存或下载草稿备份。
+5. 点击“导出本课样本”下载 ZIP。未保存草稿不会导出；另一窗口已修改同帧时，旧版本保存会被拒绝，草稿保留，可重新加载服务器记录并下载旧草稿作对照。
 
-## Export contents
+## 导出内容
 
-- `manifest.json` records video/image digests, frame time, shot, pixel coordinates, human labels, roles, exclusion reasons, and review versions.
-- `frames/` contains JPEG copies of reviewed frames. `original_image_sha256` hashes the original file; a re-encoded JPEG copy may have a different digest.
-- `crops/<class>/` includes only explicitly confirmed students with a known behavior. Unknown states, unconfirmed roles, teachers, and excluded objects remain in the manifest without seven-class training crops.
-- Unreviewed objects are not negative examples. Frames are partially annotated and must not be used directly as complete person-detection labels. The exporter does not split train/test sets; group later splits by recording to prevent adjacent-frame leakage.
-- Frames removed by new analysis are listed in `archived_missing_frames` and `ARCHIVED_FRAMES.txt`, retained in history, and excluded from current samples. Changed images or model records disable the previous review until it is checked again.
+- `manifest.json` 记录录像摘要、原图摘要、帧时间、镜头、像素坐标、人工标签、对象角色、排除原因和复核版本。
+- `frames/` 保存复核帧的 JPEG 副本。清单中的 `original_image_sha256` 对应原始文件，JPEG 副本重新编码后摘要可能不同。
+- `crops/<类别>/` 只包含明确确认、角色为学生且状态非未知的分类样本。未知状态、角色未确认、教师和排除对象只在清单中留档，不生成七类分类样本。
+- 未复核对象不是负样本。整帧属于部分标注，不能直接作为完整人物检测训练标签。系统不自动划分训练与测试集，后续必须按课堂录像分组，防止相邻帧泄漏。
+- 新分析中已删除的旧帧在 `archived_missing_frames` 和 `ARCHIVED_FRAMES.txt` 中说明，历史可查，不混入当前样本。现存帧的图片或模型结果变化时，旧复核停用，须重新核对后才能导出。
 
-## Storage and interpretation
+## 保存与解释边界
 
-Reviews use the separate `vision_review_versions` table in the workbench's `workspace.sqlite3`. They do not overwrite `bundle.json`, `activity.json`, original images, or weights. Saves bind to the video digest, complete current frame record, and original-image digest; frame versions prevent multi-window overwrites.
+复核保存在工作台数据目录的 `workspace.sqlite3` 内，使用独立表 `vision_review_versions`，不改写 `bundle.json`、`activity.json`、原始图片或模型权重。保存绑定录像摘要、当前完整帧记录和原图摘要；逐帧版本防止多窗口覆盖。
 
-Confirmed/excluded counts in the review editor are human records. Detection overlays, lesson-wide temporal charts, and engagement rules continue to use original model results. A partial review does not establish class-wide recall, psychological engagement, or teaching effectiveness, and does not automatically generate an accepted lesson-wide engagement curve.
+复核视图的确认与排除数量属于人工记录。上方检测图、全课时序图和积极度规则继续显示原始模型结果。局部复核不能证明全班检测召回率、心理积极度或教学效果，也不会自动生成经过验收的全课积极度曲线。
 
-## Historical validation — 2026-10-29
+## 验证
 
-The full backend suite, including frozen desktop-backend execution, reported 336 passed and four skipped. Fourteen added API tests covered save/restart persistence, conflicts, image changes, source preservation, restoration, coordinate/label validation, role/sample filters, lesson/source boundaries, and export recovery after old-frame deletion.
+后端全量测试包含冻结后的桌面后端运行验证：336 通过，4 跳过。新增 14 项接口测试覆盖保存、重启持久化、版本冲突、图片变化、原数据不变、历史恢复、坐标和标签校验、角色与样本筛选、跨课堂与来源边界、删除旧帧后的导出恢复。
 
-Frontend type checks, production build, review contracts, behavior analysis, and draft-coordinate tests passed. Browser write tests used a separate preview database; they did not add automated labels to real lessons. Local records and screenshots are in `artifacts/verification/visual-review-20261029/`, excluded from source releases. A new installer was built; its installation wizard was not run.
+前端通过类型检查、生产构建、复盘契约、行为分析和草稿坐标测试。浏览器写入测试使用独立预览数据库，真实课堂不写入自动化标签；验收记录和截图在 `artifacts/verification/visual-review-20261029/`。新安装包已生成，安装向导未实际执行。

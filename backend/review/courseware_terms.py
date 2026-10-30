@@ -15,7 +15,6 @@ import unicodedata
 METHOD = 'aligned_page_exact_homophone_suggestion_v1'
 CHINESE = re.compile(r'^[\u3400-\u4dbf\u4e00-\u9fff]{2,10}$')
 RUNS = re.compile(r'[\u3400-\u4dbf\u4e00-\u9fff]+')
-# Chinese lexical guards and mathematical suffixes are processing data, not UI text.
 PROTECTED = set('不非无無未没沒莫勿别別否零〇一二三四五六七八九十百千万萬亿億两兩壹贰貳叁參肆伍陆陸柒捌玖拾')
 MATH_SUFFIX = re.compile(r'[\u3400-\u4dbf\u4e00-\u9fff]{1,6}(?:定理|公理|公式|法则|法則|函数|函數|方程|不等式|恒等式|恆等式|向量|矩阵|矩陣|导数|導數|积分|積分)')
 CLAUSE_BOUNDARY = re.compile(r'[。！？!?；;\n，]')

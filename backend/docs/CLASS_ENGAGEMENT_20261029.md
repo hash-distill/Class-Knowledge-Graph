@@ -1,41 +1,41 @@
-# Overall student behavior engagement
+# 学生整体积极度评分
 
-The overview and student-behavior detail show overall behavior engagement. The current frame, trend, lesson mean, and exports share `frontend/src/utils/classEngagement.ts`. Scores are derived from validated vision observations; models do not need to run again.
+概览和学生行为详情现在显示“学生整体积极度”。当前帧、趋势曲线、本课均值和导出共用 `frontend/src/utils/classEngagement.ts`。评分从已经校验的视觉观测计算，不需要重新运行模型。
 
-## Weights and calculation
+## 权重与计算
 
-Seven rule weights come from `vision/Class_Detection/configs/pipeline_legacy.yaml`:
+七类权重来自原项目 `vision/Class_Detection/configs/pipeline_legacy.yaml`。
 
-| Behavior | Rule score |
+| 行为 | 规则分 |
 | --- | ---: |
-| Writing | 85 |
-| Reading | 80 |
-| Looking up | 85 |
-| Turning the head | 30 |
-| Raising a hand | 95 |
-| Standing | 90 |
-| Discussion | 75 |
+| 书写 | 85 |
+| 阅读 | 80 |
+| 抬头 | 85 |
+| 转头 | 30 |
+| 举手 | 95 |
+| 站立 | 90 |
+| 讨论 | 75 |
 
-The calculation retains the original class-level dispersion adjustment. Normalize behavior weights to 0–1, compute the valid objects' mean μ and population standard deviation σ, then use `100 × μ × exp(-0.6 × σ)`. Current data has no actual gaze score, so only the behavior channel is used; no default gaze value is inserted. The method version is `overall_behavior_engagement_v1`.
+沿用原项目班级离散修正公式。先把行为分归一化到 0–1，求有效对象的均值 μ 和总体标准差 σ，再计算 `100 × μ × exp(-0.6 × σ)`。当前数据没有真实视线评分，使用行为单通道，不补入默认视线值。这是参考原设计的行为版评分，方法版本为 `overall_behavior_engagement_v1`。
 
-Within a continuous shot, consecutive observations at most 1.2 seconds apart use `0.3 × previous displayed score + 0.7 × current score`. A shot change, observation gap, or missing previous score resets smoothing. The lesson mean weights displayed scores by the duration of valid sample intervals.
+同一镜头中，前后观测连续且间隔不超过 1.2 秒时，显示分采用 `0.3 × 上一显示分 + 0.7 × 当前分`。切换镜头、存在观测空缺或上一帧没有评分时重新开始。本课均值按有效采样区间的时长，对显示分加权。
 
-## Coverage and missing data
+## 覆盖与空缺
 
-Only the seven behavior labels with consistent model-classification provenance are scored. Geometric poses, unknown labels, and unrecognized objects are not zero-filled. Score coverage is scored-object count divided by currently detected-object count.
+只接受模型分类来源一致、标签一致的七类行为。几何姿态、未知标签和未识别对象不补成零分。评分覆盖率是计分对象数除以当前检测对象数。
 
-At least one valid behavior object produces an estimate. Fewer than three scored objects or coverage below 60% is labeled a low-support estimate. A frame with no people has no observation; a frame with people but no valid behavior has no score. Missing footage neither lowers the mean to zero nor inherits the preceding shot's score.
+至少有一个有效行为对象就给出估计分。少于 3 个计分对象或覆盖率不足 60% 时，显示“低支持估计”。当前没有人物时显示“暂无观测”，有人物但完全没有有效行为时显示“暂无评分”。缺失画面不会按零分拉低均值，也不会被前一镜头的分数填满。
 
-The score describes detected objects' visible behavior. Identities may remain unverified, and lesson-specific model accuracy requires human annotation. It supports review and is not an individual student grade.
+评分描述检测对象的整体行为估计。对象身份仍可能未确认，模型在本课的准确率仍需人工标注评测。这个分数用于辅助复盘，不作为学生个人成绩。
 
-## Provenance and export
+## 来源与导出
 
-Original `activity_analysis`, legacy `visual_reference`, object predictions, and manual reviews are retained. The legacy rules produced no scores when support was insufficient. The current interface derives a separate score from raw observations without changing detection evidence or invalidating reviews.
+原始 `activity_analysis`、旧 `visual_reference`、逐对象预测和人工复核记录保持原样。旧规则曾因有效支持不足而全部不出分，现行界面从原始观测派生新评分，避免修改检测证据或使人工复核失效。
 
-JSON exports add `derived_engagement`: source digests, method version, weights, smoothing parameters, frame scores, and lesson mean. Markdown adds the current scoring section while preserving original generation-time evidence. Legacy values and current derived scores remain separately traceable.
+JSON 导出增加独立的 `derived_engagement`，包括来源摘要、方法版本、权重、平滑参数、逐帧评分和本课均值。Markdown 增加当前评分章节，并保留生成时的原始证据。旧规则值与当前派生评分可分别追溯。
 
-## Historical lesson validation — 2026-10-29
+## 当前课堂验证
 
-The source-language lesson title is “认识氨基酸” (“Introduction to amino acids”). Of 181 sampled frames, 172 had valid behavior scores and nine had no people. The smoothed score at 00:21 was 51.9/100; the duration-weighted mean was 47.8/100.
+“认识氨基酸”共 181 个采样帧，其中 172 个有有效行为评分，9 个没有人物。00:21 的平滑显示分为 51.9 / 100，本课按有效画面时长加权的均值为 47.8 / 100。
 
-Browser acceptance independently reproduced the calculation in Python and compared the frame score, trend length, mean, Markdown, and JSON. It also verified that original vision data was unchanged and checked 42 combinations of timestamps, viewport sizes, and zoom. These checks establish agreement with the rules, not independently validated recognition accuracy.
+浏览器验收使用独立的 Python 计算逐项核对当前帧、趋势点数、均值、Markdown 和 JSON 导出；同时验证原始视觉数据未变化。另完成 42 组时间点、窗口尺寸和缩放下的排版检查。以上验证证明实现与规则一致，不代表识别准确率已通过独立验收。

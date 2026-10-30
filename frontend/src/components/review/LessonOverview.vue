@@ -12,22 +12,22 @@ function openEvidence() { store.evidenceView = 'content'; store.setView('evidenc
 </script>
 
 <template>
-  <section class="lesson-overview" aria-label="Student behavior and synchronized audio" data-testid="lesson-overview">
-    <div class="overview-heading"><div><p class="eyebrow">Same lesson · Same time</p><h2>Focus on student behavior</h2></div><span class="mono">{{ store.timeText }}</span></div>
+  <section class="lesson-overview" aria-label="学生课堂情况与同刻语音" data-testid="lesson-overview">
+    <div class="overview-heading"><div><p class="eyebrow">同一课堂 · 同一时刻</p><h2>聚焦学生课堂情况</h2></div><span class="mono">{{ store.timeText }}</span></div>
     <article class="moment-card behavior-card" data-testid="overview-behavior">
-      <div class="moment-title"><span><AppIcon name="chart" :size="15" />Current student behavior<small class="student-count">{{ frame ? `${frame.detected_people} detected people` : 'Awaiting observation' }}</small></span><button @click="store.setView('behavior')">Analysis details <span aria-hidden="true">↗</span></button></div>
+      <div class="moment-title"><span><AppIcon name="chart" :size="15" />当前学生情况<small class="student-count">{{ frame ? `${frame.detected_people} 个检测对象` : '待观测' }}</small></span><button @click="store.setView('behavior')">分析详情 <span aria-hidden="true">↗</span></button></div>
       <div class="overview-students"><LessonStudentState :frame="frame" compact /></div>
     </article>
     <article class="moment-card speech-card" data-testid="overview-speech">
-      <div class="moment-title"><span><AppIcon name="book" :size="15" />{{ store.data?.transcript_proofreading ? 'Corrected transcript' : 'Audio transcript' }}</span><button @click="openEvidence">View segments <span aria-hidden="true">↗</span></button></div>
+      <div class="moment-title"><span><AppIcon name="book" :size="15" />{{ store.data?.transcript_proofreading ? '校对转写' : '原声转写' }}</span><button @click="openEvidence">查阅段落 <span aria-hidden="true">↗</span></button></div>
       <p v-if="store.currentDisplayTranscripts.length" class="moment-speech">{{ store.currentDisplayTranscripts.map(row => row.text).join(' ') }}</p>
-      <p v-else class="moment-empty">No transcript is recorded at this time. Check against the original audio.</p>
-      <button v-if="!store.transcripts.length && store.data?.transcript[0]" class="moment-jump" @click="store.seek(store.data.transcript[0].start_sec)">Go to a transcript segment in this lesson <span aria-hidden="true">→</span></button>
-      <div v-if="store.data?.teacher_transcript && store.transcripts.length" class="overview-proofread" data-testid="transcript-teacher-default"><span><small v-for="row in store.currentDisplayTranscripts" :key="row.id">{{ row.id }} · {{ row.teacher?.human_verified ? 'Teacher verified' : 'Machine context · Unverified' }}</small></span><button data-testid="transcript-raw-toggle" :aria-pressed="compareRaw" @click="compareRaw = !compareRaw">{{ compareRaw ? 'Hide original text' : 'Compare original text' }}</button><p v-if="compareRaw" data-testid="transcript-raw-comparison">{{ store.transcripts.map(row => row.text).join(' ') }}</p></div>
-      <div v-else-if="store.data?.transcript_proofreading && store.transcripts.length" class="overview-proofread" data-testid="transcript-proofread-default"><span>Machine correction · Unverified<small data-testid="active-correction-model">{{ proofreadingModelName(store.data.transcript_proofreading.model, store.data.transcript_proofreading.provenance) }}</small></span><button data-testid="transcript-raw-toggle" :aria-pressed="compareRaw" @click="compareRaw = !compareRaw">{{ compareRaw ? 'Hide original text' : 'Compare original text' }}</button><p v-if="compareRaw" data-testid="transcript-raw-comparison">{{ store.transcripts.map(row => row.text).join(' ') }}</p></div>
+      <p v-else class="moment-empty">当前时刻没有转写记录，回听原声核对。</p>
+      <button v-if="!store.transcripts.length && store.data?.transcript[0]" class="moment-jump" @click="store.seek(store.data.transcript[0].start_sec)">定位本课语音片段 <span aria-hidden="true">→</span></button>
+      <div v-if="store.data?.teacher_transcript && store.transcripts.length" class="overview-proofread" data-testid="transcript-teacher-default"><span><small v-for="row in store.currentDisplayTranscripts" :key="row.id">{{ row.id }} · {{ row.teacher?.human_verified ? '教师已核对' : '机器上下文 · 未核验' }}</small></span><button data-testid="transcript-raw-toggle" :aria-pressed="compareRaw" @click="compareRaw = !compareRaw">{{ compareRaw ? '收起原文' : '对照原文' }}</button><p v-if="compareRaw" data-testid="transcript-raw-comparison">{{ store.transcripts.map(row => row.text).join(' ') }}</p></div>
+      <div v-else-if="store.data?.transcript_proofreading && store.transcripts.length" class="overview-proofread" data-testid="transcript-proofread-default"><span>机器校对 · 待核验<small data-testid="active-correction-model">{{ proofreadingModelName(store.data.transcript_proofreading.model, store.data.transcript_proofreading.provenance) }}</small></span><button data-testid="transcript-raw-toggle" :aria-pressed="compareRaw" @click="compareRaw = !compareRaw">{{ compareRaw ? '收起原文' : '对照原文' }}</button><p v-if="compareRaw" data-testid="transcript-raw-comparison">{{ store.transcripts.map(row => row.text).join(' ') }}</p></div>
       <small v-else-if="store.transcripts.length">{{ store.transcripts.map(row => `${row.id} · ${transcriptSourceLabel(row)}`).join(' / ') }}</small>
     </article>
-    <p class="overview-origin"><i></i>All records align to the source video clock; Gaps remain unknown.</p>
+    <p class="overview-origin"><i></i>均按原录像秒数对齐；空白区间保留未知。</p>
   </section>
 </template>
 

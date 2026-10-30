@@ -21,28 +21,28 @@ def run(db_path, registry_path, job_id, token):
         store = LessonStore(registry_path)
         directory = Path(store.entry(row['lesson_id'])['directory']).resolve()
         if directory != Path(payload['directory']).resolve():
-            raise ReviewError('stale_lesson', 'The lesson artifact directory changed.', 409)
+            raise ReviewError('stale_lesson', '课堂产物目录已变化。', 409)
         if payload.get('source_video') and Path(store.entry(row['lesson_id'])['source_video']).resolve()!=Path(payload['source_video']).resolve():
-            raise ReviewError('stale_lesson_media','The registered original lesson media changed. Import again.',409)
+            raise ReviewError('stale_lesson_media','课堂登记的原始媒体已变化，请重新导入。',409)
         lease = LessonMutationLock(directory).acquire()
         path = Path(payload['path']).resolve()
         if not path.is_relative_to(directory / 'courseware' / '_uploads'):
-            raise ReviewError('source_upload_changed', 'The saved courseware source file changed.', 409)
+            raise ReviewError('source_upload_changed', '已保存的课件源文件已变化。', 409)
 
         def check_inputs():
             queue._check(job_id, token)
             if payload.get('source_video') and Path(store.entry(row['lesson_id'])['source_video']).resolve()!=Path(payload['source_video']).resolve():
-                raise ReviewError('stale_lesson_media','The registered original lesson media changed. Import again.',409)
+                raise ReviewError('stale_lesson_media','课堂登记的原始媒体已变化，请重新导入。',409)
             if sha256(path) != payload['upload_sha256']:
-                raise ReviewError('source_upload_changed', 'The saved courseware source file changed.', 409)
+                raise ReviewError('source_upload_changed', '已保存的课件源文件已变化。', 409)
             if sha256(directory / 'bundle.json') != payload['expected_version']:
-                raise ReviewError('stale_lesson', 'Lesson evidence changed while queued or importing. Import again.', 409)
+                raise ReviewError('stale_lesson', '排队或导入期间课堂证据已变化，请重新导入。', 409)
             if image_fingerprint(directory, payload['base']['slides']) != payload['source_images']:
-                raise ReviewError('stale_lesson_images', 'Lesson images changed while queued or importing. Import again.', 409)
+                raise ReviewError('stale_lesson_images', '排队或导入期间课堂图像已变化，请重新导入。', 409)
             for media,expected in payload.get('source_media',{}).items():
                 file=Path(media)
                 if (sha256(file) if file.is_file() else None)!=expected:
-                    raise ReviewError('stale_lesson_media','The original media changed while queued or importing. Import again.',409)
+                    raise ReviewError('stale_lesson_media','排队或导入期间原始媒体已变化，请重新导入。',409)
 
         run_courseware_import(path, directory, payload['base'], payload['expected_version'],
                               check=check_inputs,

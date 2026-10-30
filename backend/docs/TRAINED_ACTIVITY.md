@@ -1,104 +1,103 @@
-# Jingxi Insight: linking lesson content and visible behavior
+# 智启教学：内容与课堂行为联动
 
-Historical execution record dated 2026-10-26, with additions through 2026-10-27. The workbench retains speech, recorded slides, graph, independent courseware, and evidence Q&A, adding same-source behavior analysis. Vision runs offline in separate scripts and is verified before publication; the API does not load vision models. See [current scoring](CLASS_ENGAGEMENT_20261029.md) and [vision changes](VISION_IMPROVEMENT_20261029.md) for subsequent updates.
+2026-10-26 实际运行版。主工作台保留语音、屏幕课件、知识图谱、独立课件导入和证据问答，新增同源行为分析。Python API 不加载视觉模型；视觉推理通过独立脚本离线生成，再经校验发布。
 
-## Open a prepared demo
+## 打开已经准备好的演示
 
-From `backend/`:
+在 `4C/课堂复盘` 执行：
 
 ```powershell
 .\start_trained_demo.ps1
 ```
 
-The prepared default is the [synchronized Chinese chemistry demo](http://127.0.0.1:5175/?lesson=unified-chemistry-001-9&view=review): one 90-second recording supplies speech, real projection footage, and visible behavior. Earlier Chinese math/language/chemistry lessons remain selectable; English lessons are archived. Source releases exclude prepared lesson data and media.
+当前默认入口为同课三模态中文演示：<http://127.0.0.1:5175/?lesson=unified-chemistry-001-9&view=review>。同一段 90 秒中文录像提供转写、真实投影和可见行为；原中文数学、语文及化学示例仍可切换，英文课留在归档中。
 
-The [chemistry behavior demo](http://127.0.0.1:5175/?lesson=ts-chemistry-001-9) has reading/writing and valid historical rule scores around 40 s; slide-only shots remain unknown. The [52-second math demo](http://127.0.0.1:5175/?lesson=ts-math-006-32) lacked sufficient temporal evidence, so its curve stayed empty while real hand-raising predictions and source frames remained available.
+行为演示：<http://127.0.0.1:5175/?lesson=ts-chemistry-001-9>。化学课堂全长90秒，约40秒处有读写行为及有效规则分数；课件镜头保留未知。数学课堂 <http://127.0.0.1:5175/?lesson=ts-math-006-32> 全长52秒，未取得足够时序证据，曲线保持空白，仍展示真实举手标签及原图。
 
-The launcher reuses running services and starts/checks the local model, API, frontend, and demo data. Use `-LlmBackend cpu` for CPU or `-RestartApi` after API changes. New machines need dependencies/models first; it does not download data. Source video remains in the local dataset; update `configs/lessons.json` when moving machines.
+启动脚本复用已运行的服务；启动本地模型、API、前端并核验演示数据。CPU大模型可用 `-LlmBackend cpu`；代码更新后用 `-RestartApi`。未下载模型或安装依赖的新机器需先按现有README准备环境，脚本不自动下载数据。原始视频仍从本地数据集读取，迁移机器时需更新 `configs/lessons.json`。
 
-The historical five views were overview, speech/courseware, behavior, graph, and report, sharing one player/time with an on-demand assistant. Teaching improvement was added later. Behavior sections separate overview, heatmap, source frames, and model limits. Full exports retain original records.
+工作台已拆为“课堂总览、语音与课件、学生行为、知识图谱、复盘报告”五个独立视图。共用一个播放器，切换保留播放时间；助手按需展开。行为页另分概览、热图、原帧、模型与边界，避免全部铺成长页面。完整数据导出保留原始记录。
 
-## Three distinct outputs
+## 三种模型输出的含义
 
-| Output | Input/task | Relationship to the recording |
-| --- | --- | --- |
-| Visible behavior | Pretrained YOLO person/pose and reading/writing/hand-raising detection plus temporal rules | Actual source-video inference; these detectors were not retrained in this experiment |
-| TS teaching context | Frozen ImageNet MobileNetV3 Small, 16 frames/clip, mean/std features, eight-label linear head | RGB inference produces a coarse whole-clip prediction, not per-second labels |
-| ARIC research record | Global CLIP `(1,401,768)` mean pooling/L2 plus multilabel head | Offline image-level behavior presence; not per-person online video inference |
+| 输出 | 当前输入和任务 | 与当前录像的关系 |
+|---|---|---|
+| 可见行为 | 现有预训练YOLO人体/姿态与阅读、书写、举手检测，外加时序规则 | 对当前原始录像实际推理；本次没有重新训练这套检测器 |
+| TS教学情境 | 冻结ImageNet MobileNetV3 Small，每段16帧，特征均值和标准差，训练8类多标签线性头 | RGB可直接推理；只给整段粗粒度预测，不能当逐秒标签 |
+| ARIC训练记录 | 全景CLIP特征 `(1,401,768)` 均值池化+L2归一化，训练多标签头 | 离线图像级“某类行为是否存在”；当前不接入逐人视频预测 |
 
-Teacher/student roles were unverified. Historical participation was an uncalibrated 0–100 rule quantity, not psychological engagement/mastery. No people, insufficient evidence, and waiting after a shot cut stayed unknown. Score coverage counted object observations with non-null rule scores, not immediately recognized states. Cross-frame totals are observations, not unique people; tracks reset across cuts.
+检测对象没有确认师生身份。规则参与指数为0–100的未校准规则量，不是心理积极度或知识掌握；没有对象、证据不足、切镜头后的等待期保持未知。规则分数覆盖率的分子为**规则分数非空**的对象观测数，并非即时标签已识别数量。跨帧累计是人次，不是独立人数。轨迹只在同镜头内关联。
 
-## Recorded training/evaluation
+## 本次真实训练和评测
 
-| Item | TS | ARIC |
-| --- | --- | --- |
-| Locally available | 70 public clips, eight source-video groups, about 1.365 h | Global features/box annotations; original RGB and individual features missing |
-| Used | 70 clips; 44 train, 10 validation, 16 test | Deterministic 2,048-image sample; 1,228 train, 410 validation, 410 test |
-| Split unit | Original video; math006/art001 test, Chinese001 validation | Original image ID; old indexes overlapped and were resplit |
-| Head | Eight multilabel classes | 25 training-supported labels; seven excluded |
-| Test Macro-F1 | 0.227814 | 0.450011 |
-| Test Micro-F1 | Not computed in recorded report | 0.686210 |
-| Test mAP | 0.460947 | 0.472439 |
-| Baseline | Training-prior Macro-F1 0.119048 | All-positive Macro-F1 0.284397; training-prior 0.122266 |
-| Measured time | Local CPU: 1,120 frames, about 151.56 s; A6000 head: about 1.97 s | Preparation about 369.49 s, feature cache 350.87 s; CPU head 1.55 s; server CPU rerun 0.64 s |
+| 项目 | TS | ARIC |
+|---|---|---|
+| 本地可用范围 | 70个公开视频片段，8个原录像组，共约1.365小时 | 现有全景特征及框标注，原始RGB/个体特征缺失 |
+| 使用规模 | 70段均提取特征；44训练、10验证、16测试 | 确定性抽样2048张；1228训练、410验证、410测试 |
+| 划分单位 | 原录像组；数学006+美术001测试，语文001验证 | 原始图像ID；原提供索引跨划分重叠，故重新分组 |
+| 分类头 | 8类多标签线性头 | 25个训练支持充足的标签，其余7类排除 |
+| 测试Macro-F1 | 0.227814 | 0.450011 |
+| 测试Micro-F1 | 当前报告未计算 | 0.686210 |
+| 测试mAP | 0.460947 | 0.472439 |
+| 对照 | 训练先验Macro-F1 0.119048 | 全阳性Macro-F1 0.284397；训练先验Macro-F1 0.122266 |
+| 实测耗时 | 本地CPU提取1120帧约151.56秒；A6000分类头约1.97秒 | 本地准备约369.49秒，其中真实特征缓存约350.87秒；CPU头约1.55秒；服务器CPU重跑约0.64秒 |
 
-Seconds-long fitting excludes environment setup, archive I/O, video processing, and detector fine-tuning. TS used one RTX A6000: physical GPU3 mapped to process `cuda:0`. ARIC used NumPy CPU, without a GPU-speed claim. Local reports: `artifacts/learning/ts-context/metrics.json`, `artifacts/learning/aric/metrics.json`, and ARIC `remote_metrics.json`.
+分类头规模很小，秒级拟合不包括准备环境、读取压缩包、视频处理或检测器微调。TS实际使用服务器的单张RTX A6000，物理GPU3映射为进程内`cuda:0`；ARIC现有头为NumPy CPU计算，没有声称使用GPU加速。评测文件分别位于 `artifacts/learning/ts-context/metrics.json`、`artifacts/learning/aric/metrics.json`；远端ARIC复跑为 `remote_metrics.json`。
 
-Only 70 public TS examples were available, not the full 973 clips. Small test groups/low TS Macro-F1 make this a runnable baseline, not mature accuracy. Chemistry is in the TS **training set**, labeled as such in UI/Q&A. Math is test data, but clip prediction still does not validate per-person behavior. Weak ARIC labels such as `taking_bottle` remain visible in reports.
+TS只是公开70段样例，未取得973段全集。小测试组及TS低Macro-F1说明它是可运行基线；不能宣传成熟准确率。化学演示来源属于TS**训练组**，不是独立测试；页面和问答证据注明此点。数学来源为测试组，整段预测的表现也不能替代逐人行为验证。ARIC的taking_bottle等弱类保留在报告中，没有隐藏失败类别。
 
-Normalization uses training data only and thresholds validation only. TS does not receive reference transcripts, behavior descriptions, or target text; ARIC does not receive captions. `model.npz` loading disables pickle; TS verifies metadata SHA-256. Data/personal media are excluded from source releases. Model publication needs applicable dataset/pretraining permission checks.
+所有训练归一化仅使用训练集，阈值仅用验证集；TS不输入参考转写、行为描述或目标标签文本。ARIC不输入描述文本。`model.npz`禁用pickle读取；TS读取校验训练元数据中的SHA-256。训练数据与个人课堂媒体不随开源源码分发，发布模型前仍需按相应数据和预训练权重的授权范围确认。
 
-## Replay
+## 可复跑入口
 
-From `backend/`, use NumPy, PyTorch, TorchVision, and OpenCV in the vision environment; ASR/OCR/bundling use the media environment:
+以下命令在 `4C/课堂复盘` 执行。训练环境需要NumPy、PyTorch、TorchVision、OpenCV；当前本地视觉环境已具备。已有媒体环境负责ASR/OCR与生成课程包。
 
 ```powershell
-# Frozen-encoder RGB features; use a new output directory to preserve prior results.
-..\vision\.venv-inference\Scripts\python.exe scripts/train_ts.py --dataset './local-datasets/TS-Interact' --output artifacts/learning/ts-retrain --device cpu --extract-only
-# Copy the cache/manifest to the A6000 host; the operator chooses a free CUDA device.
+# TS原始RGB特征，冻结编码器；使用新的output目录保留既有结果
+..\vision\.venv-inference\Scripts\python.exe scripts/train_ts.py --dataset 'E:\Research\Class Detection Dataset\TS-Interact' --output artifacts/learning/ts-retrain --device cpu --extract-only
+# 同一缓存及manifest可拷至A6000，再运行下行；CUDA_VISIBLE_DEVICES由服务器使用者选空闲卡
 python scripts/train_ts.py --features artifacts/learning/ts-retrain/features.npz --output artifacts/learning/ts-retrain --device cuda:0 --epochs 300 --seed 42
 
-# Portable ARIC bundle replay without reading the large source archive.
+# ARIC入口和合同详见docs/ARIC_TRAINING.md；已有portable bundle可不访问大归档复跑
 python scripts/train_aric.py --from-bundle artifacts/learning/aric/training_bundle.npz --output artifacts/learning/aric-rerun
 
-# Actual video processing, lesson build, behavior inference, and overlay publication.
-.venv-media\Scripts\python.exe scripts/prepare_media.py --video '<source-video.mp4>' --output artifacts/my-lesson --mode all --roi 0 0 1 1 --sample-interval 5
-.venv-media\Scripts\python.exe scripts/build_review.py --lesson-id my-lesson --video '<source-video.mp4>' --media-dir artifacts/my-lesson --title 'Lesson content and behavior'
-..\vision\.venv-inference\Scripts\python.exe scripts/analyze_activity.py --video '<source-video.mp4>' --lesson-id my-lesson --media-dir artifacts/my-lesson --interval .5 --imgsz 960 --device cpu --context-model artifacts/learning/ts-context --aric-report artifacts/learning/aric/metrics.json
+# 原视频全流程：先准备真实ASR/OCR，再构建课程，再分析行为并发布完整叠加包
+.venv-media\Scripts\python.exe scripts/prepare_media.py --video '<原始录像.mp4>' --output artifacts/my-lesson --mode all --roi 0 0 1 1 --sample-interval 5
+.venv-media\Scripts\python.exe scripts/build_review.py --lesson-id my-lesson --video '<原始录像.mp4>' --media-dir artifacts/my-lesson --title '课堂行为与内容联动'
+..\vision\.venv-inference\Scripts\python.exe scripts/analyze_activity.py --video '<原始录像.mp4>' --lesson-id my-lesson --media-dir artifacts/my-lesson --interval .5 --imgsz 960 --device cpu --context-model artifacts/learning/ts-context --aric-report artifacts/learning/aric/metrics.json
 ```
 
-`--enrich-only` adds/updates TS and ARIC records in an existing complete `activity.json` without rerunning person detection, while still checking video/frame/time provenance. Rebuild/import/removal retains valid same-source overlays and original media/ASR. See [ARIC contract](ARIC_TRAINING.md).
+`--enrich-only`可对既有完整`activity.json`追加/更新TS模型及ARIC研究记录，不重新运行人体检测；仍验证原视频哈希、帧图像和时间。课程重建、课件导入/移除保留有效同源活动叠加。原媒体与原始ASR保留。
 
-## Acceptance
+## 验收
 
 ```powershell
-# From backend/:
+# 课堂复盘目录
 .venv-media\Scripts\python.exe -m pytest tests -q
 ..\vision\.venv-inference\Scripts\python.exe -m pytest tests/test_ts_learning.py -q
-# Then from frontend/:
-cd ../frontend
+# frontend目录
 npm run test:review
 npm run test:activity
 npm run build
 python scripts/verify-proofread-students.py
 ```
 
-Browser checks require Playwright/Chromium and real API, media, and local models, without mocked routes. Frontend local `output/playwright/trained-activity-real` retains source-image clicks, unknowns, heatmaps, exports, behavior citations, mobile checks, and screenshots. This is functionality acceptance, not model-accuracy evaluation.
+浏览器脚本需要Playwright及Chromium，直接访问真实API、媒体和本地大模型，不设模拟路由。输出在前端 `output/playwright/trained-activity-real`，包括原图点击、未知状态、热图、导出、行为引用回跳、手机布局的验收记录和截图。
 
-## Chinese lesson addition — 2026-10-27
+## 中文示例补充（2026-10-27）
 
-`ts-chinese-001-2` is the complete 82-second source segment. It produced 165 behavior samples, six shot segments, 3,110 person detections across frames, and 46 scored observations. Chinese OCR at source resolution/full frame produced six page intervals and nine locatable concepts. Obvious OCR noise is filtered for display; raw recognition/provenance/metadata remain in full data.
+语文示例为同一原视频的82秒完整片段，编号 `ts-chinese-001-2`。已运行165帧行为抽样、6个检测镜头段；累计3110人次检测、46人次具有规则分数。课件使用中文识别、原分辨率和完整画面，得到6个页段、9个可定位概念。界面过滤明显的文字识别乱码行；原始识别、来源与模型元数据保留在完整数据中。
 
-Default VAD retained only about 4.352 s and produced no reliable transcript. A first-25-second diagnostic without filtering still failed, so no dialogue was invented. `--allow-no-speech` explicitly built a visual-evidence lesson with unrecognized speech; Q&A used actual slides/behavior. The main example retained the complete Chinese speech lesson titled “正弦定理” (“Sine rule”).
+该片段默认语音检测只保留约4.352秒，未得到可靠转写。关闭语音过滤的前25秒诊断仍未输出可靠文字，因此没有补写台词。以 `--allow-no-speech` 显式生成画面证据课堂，语音状态为“未识别”，问答依据实际课件和行为。主示例继续使用有完整中文语音的《正弦定理》。
 
-Select `-LessonId ts-chinese-001-2` or `-LessonId ts-chemistry-001-9`. Port 5175 replaced 5173 because another project used it at that time. Frontend `scripts/verify-chinese-demo.py` checked Chinese lessons, real speech Q&A, visual evidence, citations, and exports without rewriting source evidence.
+启动可指定 `-LessonId ts-chinese-001-2` 或 `-LessonId ts-chemistry-001-9`。默认前端端口改为5175，因为5173目前属于另一个项目。`scripts/verify-chinese-demo.py` 核验默认中文课、真实语音问答、语文画面证据、中文引用和导出；所有原始证据不因中文化被改写。
 
-## Synchronized-demo workflow
+## 同课三模态演示操作
 
-1. In overview, inspect three sources at the same time. Around 40 s there are reading/writing predictions and rule scores. At 43.5–47.5 s the Chinese projection is visible but people are not, so behavior stays unknown. Do not combine different shots as simultaneous events.
-2. In speech/courseware, inspect 28 machine-ASR segments guided by observed slide vocabulary. The original 36 unguided segments remain in full data. Neither is human-verified, and chemistry terms still contain errors.
-3. Independent courseware uses a companion file compiled from the original 45 s projection. Real matching covers only 43.5–47.5 s. Page two documents provenance and has no lesson time. Local `artifacts/unified-demo-courseware` PPTX/PDF are observation compilations, not the author's original slides.
-4. Inspect behavior trends, heatmaps, and frames. The graph shows five model candidates with literal observed-slide support, retaining 12 originals separately. Rule scores are not psychological engagement.
-5. The assistant can cite speech, courseware, and visible behavior; citations seek the shared player. Full report export retains original records/provenance.
+1. 打开默认“课堂总览”，沿同一时间查看三种线索。约40秒可看实际阅读、书写及规则分数；43.5～47.5秒可看中文投影，此时人物不可见，行为保持未知。不能把不同镜头的状态拼成同时发生。
+2. 切换“语音与课件”，查看28段课件词汇提示的机器转写。原36段无提示转写保存在完整数据中；两者均未人工逐字核准。部分化学术语仍会误识。
+3. 该页“独立课件”已导入由原45秒投影整理的配套文件；真实匹配仅覆盖43.5～47.5秒。第二页为来源说明，没有课堂时间。配套PPTX和PDF在 `artifacts/unified-demo-courseware`，它们是观测整理件，不是原作者原始课件。
+4. “学生行为”查看曲线、热图和原帧；“知识图谱”只显示原模型候选中有实际课件字面支持的5个词，原12候选另存。规则指数不是心理积极度。
+5. 打开“复盘助手”，可分别引用本课语音、课件和可见行为；点击引用回到共用播放器。“复盘报告”可导出完整数据，保留所有原始记录与来源。
 
-Frontend `scripts/verify-unified-workbench.py` used real API/video/models and reimported the PDF through the browser. Historical acceptance checked shared video hashes, navigation while playing, back/forward, search/chat retention, reimport, citations, full exports, and mobile layout. Later English prompt translations require separate model-output evaluation.
+当前浏览器验收脚本为前端 `scripts/verify-unified-workbench.py`，它直接使用真实API、原视频、本地模型，并通过浏览器重新导入配套PDF。已验证三类来源同一视频哈希、播放中导航、前进后退、保留搜索/对话、重导入、引用回跳、完整导出和手机布局。

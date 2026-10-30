@@ -77,10 +77,12 @@ def test_overlay_is_copy_and_behavior_is_retrievable_with_original_source(tmp_pa
     assert not [r for r in evidence_catalog(result) if r['kind'] == 'behavior']
 
 
-def test_overlay_replaces_legacy_language_sections_without_mutating_the_source(tmp_path):
+@pytest.mark.parametrize('legacy_title,legacy_limit', [
+    ('可见行为与课堂情境', '未提供与本课确认同步的学生行为录像，未计算投入度、知识掌握或教学效果。'),
+    ('Visible behavior and lesson context', 'No student behavior video has been confirmed as synchronized with this lesson; engagement, knowledge mastery, and teaching effectiveness were not calculated.'),
+])
+def test_overlay_replaces_legacy_language_sections_without_mutating_the_source(tmp_path,legacy_title,legacy_limit):
     bundle,activity=fixture(tmp_path)
-    legacy_title='可见行为与课堂情境'
-    legacy_limit='未提供与本课确认同步的学生行为录像，未计算投入度、知识掌握或教学效果。'
     bundle['report']['sections']=[{'title':legacy_title,'text':'Old generated behavior summary'},
         {'title':'Original source notes','text':'Keep this section'}]
     bundle['report']['limitations']=[legacy_limit,'Keep this independent limitation']
@@ -175,7 +177,7 @@ def test_model_metadata_handles_actual_integer_class_keys_without_private_paths(
 def test_context_abstention_is_valid_but_missing_behavior_evidence_is_not(tmp_path):
     bundle, activity = fixture(tmp_path)
     activity['context_segments'] = [{'id': 'X0001', 'start_sec': 0, 'end_sec': 2, 'labels': [],
-        'text': 'No class exceeds the validation threshold', 'model_id': 'trained', 'method': 'trained_context'}]
+        'text': '没有类别超过验证阈值', 'model_id': 'trained', 'method': 'trained_context'}]
     assert api().validate_activity(activity, bundle, tmp_path)
     activity['evidence'] = []
     with pytest.raises(ValueError): api().validate_activity(activity, bundle, tmp_path)
@@ -291,7 +293,7 @@ def test_guided_voice_answer_exposes_source_verification_warning(tmp_path):
         def complete(self,*args,**kwargs):
             return {'points':[{'text':'转写中的原句仍需核对。','evidence_ids':['T0001']}]},{'source':'test_only','model':'fixture'}
     result=answer_question(bundle,'语音内容',0,'lesson',Provider())
-    assert any('Term transcription requires verification' in warning for warning in result['warnings'])
+    assert any('转写待核验' in warning for warning in result['warnings'])
     bundle['transcript'][0].pop('quality')
     assert answer_question(bundle,'语音内容',0,'lesson',Provider())['warnings']==[]
 
@@ -338,8 +340,8 @@ def test_no_detected_people_citation_has_unknown_coverage(tmp_path):
     frame = activity['frames'][0]
     frame.update(detected_people=0, known_people=0, coverage=0, behaviors={}, participants=[], status='no_people')
     text = api().frame_evidence(frame, 1)['text']
-    assert 'coverage unknown (no usable detections)' in text
-    assert 'coverage 0.0%' not in text
+    assert '覆盖率未知（无可用检测）' in text
+    assert '覆盖率0.0%' not in text
 
 
 @pytest.mark.parametrize('query',['请综合语音、课件和学生行为说明这段课堂。',
@@ -352,7 +354,7 @@ def test_combined_question_keeps_voice_slide_and_observation_when_behavior_is_de
     bundle['slides'] = [{'id':'S0001','start_sec':0,'end_sec':2,'text':'认识氨基酸，观察其结构通式'}]
     bundle['transcript'][0]['text'] = '请写出通式，再独立思考。'
     activity['evidence'] = [{**activity['evidence'][0], 'id':f'E{i:04d}',
-        'text':'Speech, courseware and student behavior. 语音课件学生行为，综合对照观察说明，规则参与指数未知。'} for i in range(1,31)]
+        'text':'语音课件学生行为，综合对照观察说明，规则参与指数未知。'} for i in range(1,31)]
     bundle['activity_analysis'] = activity
     rows = select_evidence(bundle, query, limit=3)
     assert {row['kind'] for row in rows} == {'transcript','slide','behavior'}

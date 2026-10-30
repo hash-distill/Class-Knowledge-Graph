@@ -1,64 +1,64 @@
-# Vision change record: Introduction to amino acids
+# 认识氨基酸课堂视觉改造记录
 
-> This historical record describes the scoring state when the localization changes were completed. [Overall behavior engagement](CLASS_ENGAGEMENT_20261029.md) and [manual review](VISUAL_REVIEW_20261029.md) were added afterward. The current interface no longer displays all scores as unknown because of the old threshold. Historical values below remain for traceability; localization and evaluation limitations still apply. The original lesson title is “认识氨基酸”.
+> 本文记录视觉定位改造完成时的旧评分状态。后续已增加 [整体积极度评分](CLASS_ENGAGEMENT_20261029.md) 与 [人工复核](VISUAL_REVIEW_20261029.md)，现行界面不再因旧规则门槛而全部显示未知。以下旧规则结果保留用于追溯；人物定位和模型评测的边界仍然适用。
 
-## Delivery state at the recorded revision
+## 当前交付状态
 
-Person localization, state display, and review views were updated to inspect seven-class model candidates. The model had not passed human-annotated acceptance for this lesson. Engagement results did not meet the effect described in the project proposal slides.
+人物定位、状态展示和复核界面已更新。当前版本用于核对七类模型候选，尚未通过本课人工标注验收。积极度未达到立项 PPT 的效果。
 
-Undetected actions were not interpreted as low engagement. Under the then-current rules, all 181 sampled frames had an unknown visible-behavior reference score. State composition, original frames, and earlier temporal-action scores remained available for inspection.
+本轮不把未检出动作解释为不积极。最终 181 个采样帧的可见行为规则参考均为未知。页面另行展示状态构成和原始帧，保留原来的时序动作分数供核对。
 
-## Cause and changes
+## 原因与修改
 
-The original pipeline used pose tracks as person boxes. Small, occluded, and unconfirmed tracks could be missed. Later pose enrichment only processed existing boxes and could not recover missed people.
+原流程依赖姿态模型产生轨迹框。小目标、遮挡对象和未确认轨迹容易遗漏。后续姿态补充只处理已有框，无法补回漏掉的人物。
 
-The replacement combines YOLO26n person detection and YOLO26n-pose. Both process full frames and overlapping tiles; results are fused and deduplicated in source-image coordinates. Behavior classification no longer determines whether a person gets a box. Regression cases use real coordinates for tile-edge partial bodies and duplicate boxes around the same head.
+新流程采用 YOLO26n 人物定位和 YOLO26n-pose。两者均使用整图和重叠切片，再在原图坐标中融合、去重。人物不再依赖行为分类结果出框。切片残留的半身框、同一头部的重复框已加入真实坐标回归。
 
-A MobileNetV3 Small classifier uses per-person crops and 3.15 MB weights. Its seven classes are writing, reading, looking up, turning the head, raising a hand, standing, and discussion. Low-confidence results remain unknown; geometric poses are separate. A hand-raising candidate also becomes unknown when reliable pose evidence explicitly contradicts it.
+逐人裁剪分类器采用 MobileNetV3 Small，权重为 3.15 MB。七类为书写、阅读、抬头、转头、举手、站立和讨论。置信度不足的分类保留未知，几何姿态单独展示。可靠姿态明确反驳举手时，举手候选也保留未知。
 
-The rear-wall mirror exclusion is bound to this video segment's SHA-256. Only candidates meeting its region rules are excluded; the configuration is not transferable to every lesson. Boxes may still include teachers, occlusion fragments, and false detections. Their count is not class attendance.
+后墙镜面排除配置绑定本段录像的 SHA-256。只有符合区域规则的候选才排除；配置不能直接迁移到其他课堂。人物框仍可能包含教师、遮挡残片和误检，数量不能解释为全班人数。
 
-## Recorded output for this lesson
+## 本课实际结果
 
-| Source time | Previous candidate boxes | New candidate boxes |
+| 原录像时间 | 原结果候选框 | 新结果候选框 |
 | --- | ---: | ---: |
-| 0 s | 21 | 39 |
-| 40 s | 21 | 43 |
-| 75 s | 23 | 43 |
-| 89.9 s, projected screen | 0 | 0 |
+| 0 秒 | 21 | 39 |
+| 40 秒 | 21 | 43 |
+| 75 秒 | 23 | 43 |
+| 89.9 秒投影画面 | 0 | 0 |
 
-The video contains 181 sampled frames, four shot segments, and 7,201 person observations across frames. Of these, 3,817 classifications passed the current confidence and pose-conflict checks. These are program-output counts, not detection recall, classification accuracy, or unique student counts.
+全片共 181 个采样帧、4 个镜头段、7201 次跨帧人物观测。其中 3817 次分类通过当前置信度与姿态冲突检查。上述数字描述程序输出，不能作为检测召回率、分类正确率或独立学生人数。
 
-A rerun on an RTX 4060 Laptop GPU took about 169 seconds for a 90-second recording. Peak PyTorch allocated memory was about 143 MiB, excluding drivers, the desktop, and other processes. This offline-review mode had not reached real-time speed.
+本机 RTX 4060 Laptop GPU 重跑用时约 169 秒，处理 90 秒录像。PyTorch 峰值已分配显存约 143 MiB，不含驱动、桌面和其他进程。当前模式面向离线复盘，尚未达到实时处理速度。
 
-## Evaluation limitations
+## 模型评测边界
 
-The local SCBehavior subset had 400 images: 313 training, 47 validation, and 40 test images. Given annotated boxes, the classifier scored Macro-F1 0.81694 and accuracy 0.82473 on 833 test crops.
+本地 SCBehavior 子集共 400 张图，分为 313 张训练图、47 张验证图和 40 张测试图。分类器在给定标注框的 833 个测试裁剪对象上，Macro-F1 为 0.81694，准确率为 0.82473。
 
-Training and test sets include adjacent frames from the same classroom. A hash audit found 120 near-neighbor training/test pairs and two validation/test pairs. Metrics may be optimistic and do not represent independent classrooms, this recording, or end-to-end detection accuracy. Only eight standing objects were in the test set, insufficient to establish stable performance for that class.
+训练和测试存在相同课堂的相邻画面。哈希审计发现 120 对训练与测试近邻图，以及 2 对验证与测试近邻图。该测试成绩可能偏乐观，不能代表独立课堂、本课录像或检测端到端准确率。站立类测试对象仅 8 个，不能据此宣布该类稳定。
 
-A separate seven-class YOLO26n candidate produced projected-text false detections and hand-raising errors in this lesson. It remains an experimental artifact and was not published as the active per-person classifier.
+另一套七类 YOLO26n 候选在本课出现投影文字误检和举手误判，已保留为实验产物，未作为当前逐人分类器发布。
 
-## Historical scoring and interface
+## 评分与页面
 
-The earlier visible-behavior reference retained weights for reading, writing, looking up, raising a hand, and discussion. Turning, standing, unknown, and geometric head-up states were unscored. A numeric result required at least three objects and scored support covering 60% of detected objects.
+可见行为规则参考沿用旧项目读、写、抬头、举手和讨论的规则权重。转头、站立、未知以及几何抬头不赋分。至少需要 3 个对象，且可计分支持达到检测对象的 60%，才返回数值。
 
-The proposal's `0.3 × previous + 0.7 × current` smoothing applied only to valid, continuous observations in one shot. Missing, cut, and low-support intervals reset it; unknowns were not zero-filled. No frame in this lesson met those historical conditions, so engagement acceptance was still incomplete at that revision.
+PPT 中的 0.3 旧值加 0.7 当前值，只用于连续同镜头的有效观测。缺失、切镜头和低支持区间重新开始，未知值不填零。当前本课没有满足出分条件的帧，积极度验收仍未通过。
 
-The interface added compact IDs, state text, border-only overlays, and fullscreen inspection. Clicking an object showed provenance and evidence. State heatmaps and temporal-action scores were separate. Overview and behavior views marked candidates as unvalidated; the blue theme, responsive layout, and source-video timeline were retained.
+页面增加简洁编号、状态文字、仅边框和全屏核对。点击对象可查看来源和依据。状态热图与时序动作分数分开显示，总览和行为页均提示模型候选尚未验收。蓝色色调、响应布局和原录像时间轴继续保留。
 
-## Historical validation and files
+## 验证与文件
 
-Backend tests reported 320 passed and six skipped; vision tests 82 passed; frozen-backend lifecycle tests 13 passed and one skipped. Frontend contract tests and the production build passed. Browser checks of the actual candidate package covered box counts, provenance, display modes, fullscreen, time navigation, no-person shots, model boundaries, and mobile layouts.
+后端测试 320 项通过、6 项跳过；视觉测试 82 项通过；冻结后端生命周期测试 13 项通过、1 项跳过。前端合同测试和生产构建通过。实际候选包的浏览器核对覆盖出框数量、来源、显示方式、全屏、时间定位、无人物镜头、模型边界和手机布局。
 
-Previous activity files, bundles, and reports were backed up. Hashes of 358 original evidence files, the registry, and source video remained unchanged. A new backend and installer were built; the installation wizard was not run locally.
+本次发布前保留了旧活动、证据包和报告。358 个原始证据文件、课程登记表和原录像哈希保持一致。新后端已经构建；安装包已生成，本机未运行安装向导。
 
-Local records are in `artifacts/verification/vision-improvement-20261028`: `activity-dense-final.json`, `source-preservation.json`, `split-overlap-audit.json`, `crop-training-report.json`, and `browser-preview/acceptance.json`. Previous outputs are in `publish-backup`; training scripts and rejected candidates were retained. These local artifacts are excluded from source distributions.
+证据目录为 `artifacts/verification/vision-improvement-20261028`。主要文件为 `activity-dense-final.json`、`source-preservation.json`、`split-overlap-audit.json`、`crop-training-report.json` 和 `browser-preview/acceptance.json`。旧产物在该目录的 `publish-backup` 中，训练脚本和被拒绝的候选也已保留。
 
-## Further acceptance
+## 后续验收条件
 
-Annotate independent samples from this and other classrooms, including misses, duplicates, mirrors, roles, and visible behavior. Split by classroom or recording, report localization and state-classification metrics separately, then evaluate the rule estimate. Current candidates do not measure psychological engagement, mastery, or teaching effectiveness.
+需要标注本课及其他课堂的独立样本，记录漏检、重复、镜面、角色和可见行为。按课堂或录像分组划分训练与测试，分别报告人物定位和状态分类指标，再验收规则参考。当前候选不能作为心理投入、知识掌握或教学效果的测量结果。
 
-## Implementation references
+## 实现参考
 
-Overlapping tiles refer to [Ultralytics documentation](https://docs.ultralytics.com/guides/sahi-tiled-inference/); class/data provenance refers to the [SCBehavior repository](https://github.com/20191864136/SCBehavior-Dataset). Actual parameters, weight hashes, and results are recorded in the local evidence files.
+重叠切片的实现参考 [Ultralytics 官方说明](https://docs.ultralytics.com/guides/sahi-tiled-inference/)。类别和数据来源参考 [SCBehavior 官方仓库](https://github.com/20191864136/SCBehavior-Dataset)。实际参数、权重哈希和测试成绩以本地证据文件为准。

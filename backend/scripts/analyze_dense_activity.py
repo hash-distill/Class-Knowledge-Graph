@@ -72,12 +72,12 @@ def analyze(args):
                         'track_method':detection['track_method']}
                 pose=visible_state(points,'unknown',0.,'pose_geometry_rule')
                 if trained:
-                    names={'write':'Writing cue','read':'Reading cue','lookup':'Head-up cue','turn_head':'Head-turning cue',
-                           'raise_hand':'Hand-raising cue','stand':'Standing cue','discuss':'Discussion cue'}
+                    names={'write':'书写线索','read':'阅读线索','lookup':'抬头线索','turn_head':'转头线索',
+                           'raise_hand':'举手线索','stand':'站立线索','discuss':'讨论线索'}
                     pose['student_state']={'label':label,'name':names[label],'source':'trained_classifier',
                         'method':'scbehavior_seven_mobilenetv3_small','confidence':round(confidence,6),
                         'keypoint_indices':[],'metrics':{},
-                        'evidence':[f'Seven-class MobileNetV3 Small prediction for the current detected-object crop: {label}; class confidence is not accuracy or a probability of psychological engagement']}
+                        'evidence':[f'当前检测对象裁剪图的七类MobileNetV3 Small分类：{label}；类别置信度不是正确率或心理积极度概率']}
                 person.update(pose)
                 people.append(person)
             temporal.prune(row['timestamp_sec'])
@@ -108,11 +108,11 @@ def analyze(args):
         known_observations=sum(r['known_people'] for r in result['frames']),
         visible_state_observations=sum(r['participation']['observed_people'] for r in result['frames']),
         current_action_observations=sum(r['participation']['active_people'] for r in result['frames']))
-    result['limitations']=[text for text in result['limitations'] if 'Person boxes come from existing detections' not in text and 'No trained context model is configured' not in text and 'Pretrained reading/writing/hand-raising detection' not in text]
-    result['limitations']+=['The added seven-class classifier was trained on a local SCBehavior subset and evaluated on annotated crops from fixed test images. Training and test sets include nearby frames from the same lessons. This result is not independent lesson validation, end-to-end detection accuracy, current-lesson accuracy, or role-recognition validation.',
-        'Person localization uses independent COCO person and pose models on full images and overlapping tiles, with global deduplication and one-to-one fusion. The behavior classifier generates no new person boxes. The reflection exclusion region is a reviewed rear-wall reflection area for this segment and does not automatically transfer to other videos.',
-        'The visible-behavior rule reference reuses the original project weights for reading, writing, head-up, hand raising, and discussion. Head turning, standing, unknown states, and geometric head-up cues receive no score. No score is produced with support below 60% or fewer than 3 objects. It is not a probability of psychological engagement.',
-        'Smoothing uses 0.3 previous + 0.7 current only between consecutive valid observations in the same shot; missing observations and shot changes reset it. Detected-object counts do not represent class size, and state support is not detection recall.']
+    result['limitations']=[text for text in result['limitations'] if '人物框来自原有检测' not in text and '本轮未配置训练情境模型' not in text and '预训练阅读/书写/举手检测' not in text]
+    result['limitations']+=['新增七类分类器在本地SCBehavior子集训练，并在固定测试图的标注裁剪框上评测；训练与测试存在相同课堂的近邻画面，该成绩不是独立课堂验证，也不等于检测端到端准确率、本课准确率或角色识别验证。',
+        '人物定位采用独立COCO人物与姿态模型的整图加重叠切片、全局去重和一对一融合；行为分类器不生成新增人物框。镜面排除区域为本片段已核对的后墙反射区域，不自动迁移到其他录像。',
+        '可见行为规则参考复用原项目读写、抬头、举手、讨论权重；转头、站立、未知与几何抬头不赋分。支持不足60%或少于3个对象不出分；不是心理积极度概率。',
+        '0.3旧值+0.7当前值仅在连续同镜头有效观测间平滑；缺失和切镜头重新开始。检测对象数不是全班人数，状态支持率不是检测召回率。']
     old_evidence={e['source_refs'][0]:e['id'] for e in result['evidence'] if e.get('method')=='visible_behavior_observation' and e.get('source_refs')}
     other=[e for e in result['evidence'] if e.get('method')!='visible_behavior_observation']
     evidence=[]

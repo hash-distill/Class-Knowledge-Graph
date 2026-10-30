@@ -225,7 +225,7 @@ class PretrainedClassroomPipeline:
             self.evidence.push(tid, timestamp, label, observation_quality, score, task)
             cas, assessment = self.evidence.assess(tid, timestamp, task)
             if source == ActionSource.RULE and label != 'unknown':
-                assessment.reasons.append('The hand-raising cue comes from wrist/shoulder geometry, not a classroom behavior model.')
+                assessment.reasons.append('举手来自可见腕部/肩部几何规则，非课堂行为模型')
             students.append(StudentState(
                 track_id=tid, bbox=box, cas=cas, assessment=assessment, keypoint_quality=round(quality,4),
                 action=ActionRecord(label=label, confidence=round(confidence,4), engagement_score=score,

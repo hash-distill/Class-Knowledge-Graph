@@ -2,7 +2,7 @@ import type { ActivityFrame } from '../types/lessonReview'
 import type { VisualAnnotation, VisualDraft, VisualLabel } from '../types/visionReview'
 
 export const visualLabels: Record<VisualLabel, string> = {
-  write: 'Writing', read: 'Reading', lookup: 'Head up', turn_head: 'Head turn', raise_hand: 'Hand raising', stand: 'Standing', discuss: 'Discussion', unknown: 'Unknown state',
+  write: '书写', read: '阅读', lookup: '抬头', turn_head: '转头', raise_hand: '举手', stand: '站立', discuss: '讨论', unknown: '状态未知',
 }
 export function reviewRows(frame: ActivityFrame, annotations: VisualAnnotation[]): VisualDraft[] {
   const changes = new Map(annotations.map(row => [row.id, row]))

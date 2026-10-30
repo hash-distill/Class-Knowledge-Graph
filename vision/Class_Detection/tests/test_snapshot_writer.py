@@ -8,7 +8,7 @@ from src.snapshot_writer import SnapshotWriter
 
 def test_segments_bound_utf8_bytes_and_keep_complete_order(tmp_path):
     writer=SnapshotWriter(tmp_path/'snapshots.json',max_bytes=210)
-    values=[{'timestamp_sec':i,'student_states':[{'label':'Writing'}]} for i in range(8)]
+    values=[{'timestamp_sec':i,'student_states':[{'label':'书写'}]} for i in range(8)]
     for value in values: writer.append(value)
     writer.finish()
     restored=[]

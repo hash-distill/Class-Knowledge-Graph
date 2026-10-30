@@ -1,73 +1,73 @@
-# Local teaching workbench architecture
+# 本地教学工作台架构
 
-This describes the 2026-10-28 refactor for a single personal computer. Independent services/scripts perform model computation; the API process does not load model weights.
+2026-10-28 重构版。运行目标为单台个人电脑，模型计算由独立服务或脚本完成。API 主进程不加载模型权重。
 
-## Modules and storage
+## 模块与数据
 
-`review/server.py` preserves `create_app`, `serve`, `LessonStore`, and `byte_range`. HTTP implementations in `review/api/` handle lessons, media, Q&A, courseware, jobs, and teacher records. `review/lesson_store.py` reads the registry and original lesson bundles.
+`review/server.py` 保留 `create_app`、`serve`、`LessonStore` 和 `byte_range` 入口。HTTP 实现放在 `review/api/`，分别负责课堂目录、媒体、问答、课件、任务和教师记录。`review/lesson_store.py` 只读登记表和原始课堂包。
 
-State defaults to `artifacts/runtime/`; override it with `REVIEW_DATA_DIR`.
+默认状态目录为 `artifacts/runtime/`，可以通过 `REVIEW_DATA_DIR` 更改。
 
-| Location | Contents |
-| --- | --- |
-| `workspace.sqlite3` | Teaching goals, teacher revisions/undo history, improvement tasks, exercises, actual answers, and old-source archives |
-| `evidence.sqlite3` | Lesson-isolated Chinese full-text evidence indexes and fingerprints |
-| `jobs.sqlite3` | Jobs, progress, attempts, retry relationships, and publication recovery journal |
-| Original lesson directories | Real media, raw ASR, machine proofreading, courseware alignment, and historical model outputs |
+| 文件 | 保存内容 |
+|---|---|
+| `workspace.sqlite3` | 教学目标、教师修订与撤销历史、改进任务、练习、实际作答和旧来源归档 |
+| `evidence.sqlite3` | 按课程隔离的中文全文证据索引及内容指纹 |
+| `jobs.sqlite3` | 后台任务、进度、尝试次数、重试关系和发布恢复日志 |
+| 原课堂目录 | 真实媒体、原始转写、机器校对、课件对齐和历史模型结果 |
 
-Connections close after each operation; writes use transactions. Teacher records use `expected_version` to prevent overwriting newer edits from another user/window. Old-source records remain viewable and are archived when a new source is confirmed.
+数据库连接按操作关闭。修改使用事务；教师记录通过 `expected_version` 防止覆盖别人或另一个窗口的新记录。旧来源记录可以查看，确认新来源时归档旧版本。
 
-Chinese retrieval uses SQLite FTS5 and character fragments, returning only real evidence from the current lesson. BGE/ONNX remains optional in the runtime manifest; semantic-vector inference was not enabled in this refactor. File presence, executable presence, and completed inference are separate states.
+中文检索采用 SQLite FTS5 和字符片段索引，查询只返回本课的真实证据。BGE/ONNX 为运行时清单中的可选项，本次没有启用语义向量推理。文件存在、执行程序存在和推理完成分别记录，不互相替代。
 
-## Teacher revisions and records
+## 教师核对与教学记录
 
-Teaching improvement shares the player with other views. Teachers can save goals, replay and revise text, create plans, enter actual results, and save confirmed exercises and answers.
+工作台新增“教学改进”视图，仍与其他视图共用一个播放器。教师可以记录目标，回听后保存核对稿，再制定改进计划、填写实际结果，保存教师确认的练习和实际作答。
 
-Revisions create separate `teacher_transcript` and `teacher_evidence_blocks`. Original `transcript`, timestamps, and machine proofreading remain unchanged. Unedited machine context remains unconfirmed, with uncertain terms and proofreading provenance. Q&A prioritizes the current revision view; undone revisions cease to be current evidence.
+教师修订生成单独的 `teacher_transcript` 和 `teacher_evidence_blocks`。原始 `transcript`、时间戳和机器校对稿保持原样。未被教师修改的机器上下文仍标为未核准，并保留疑词与机器校对来源。问答优先使用当前修订视图；撤销后，旧修订不会继续作为当前证据。
 
-Completing a task requires an actual result. Answer scores can be absent; `0` is an explicitly recorded zero, distinct from unscored. Exercises and plans retain citation-time evidence snapshots. Exercises are teacher-entered or teacher-confirmed; the system does not fabricate student answers or infer mastery.
+完成改进任务必须填写实际结果。作答得分可以留空；`0` 表示已记录的零分，与未评分不同。练习与改进记录保存引用时的证据快照，便于后续核对。本次练习由教师录入或确认，没有自动生成学生答案，也没有新增知识掌握推断。
 
-Changed original text/media identity suspends old overlays. Explicitly confirming the new source archives previous goals, revisions, and follow-up records rather than applying them to new evidence.
+课堂原始文本或媒体身份变化时，旧修订暂不叠加。教师明确确认新版本后，旧目标、修订和后续记录进入来源归档，不直接套用到新证据。
 
-## Jobs and recovery
+## 后台任务与恢复
 
-Production courseware imports use `JobQueue` with separate Python subprocesses. Frozen desktop workers use the same executable's `--run-worker` mode. Jobs retain queued, running, complete, failed, or cancelled states. A retry creates a new job while retaining the original ID and attempt relationship.
+生产课件导入由 `JobQueue` 启动独立 Python 子进程。冻结后的桌面后台使用同一个可执行文件的 `--run-worker` 模式。任务保存排队、运行、完成、失败或取消状态。重试创建新任务，保留原任务编号和尝试关系。
 
-Enqueueing freezes digests of uploads, bundles, actual courseware images, and original audio/video. Workers recheck before processing and publication. Switching the registry to another source video also prevents old jobs from publishing.
+入队时冻结上传文件、课堂包、实际课件图像和原始音视频的摘要。子进程在处理与发布前重新核对。登记表切换到其他原始视频时，旧任务也会拒绝发布。
 
-Cancellation is checkpoint-based. Native rendering/matching displays a cancelling state until a safe checkpoint. SQLite write transactions prevent cancellation/publication races. Published results cannot be cancelled; a recovery write lock may require retrying later.
+取消采用检查点机制：原生渲染或匹配执行期间，界面显示“正在取消”，到安全检查点后停止。发布阶段通过 SQLite 写事务阻止取消与提交竞争。结果已发布时拒绝取消；发布恢复被其他写入锁占用时，要求稍后重试。
 
-Before publication, a recovery journal stores the target bundle digest and old reports. If a worker exits after file publication, the controller verifies hashes and recovers completion. If it exits before commit, recovery acquires the lesson write lock, restores prior reports, and retains retryability. It never overwrites a different bundle published by another operation. The app only stops subprocesses whose handles it owns, never external processes by name.
+发布前先保存恢复日志，记录目标课堂包摘要和旧报告。子进程在文件发布后退出时，控制器核对摘要后恢复为完成；提交前退出时，在取得课堂写入锁后恢复旧报告，并保留可重试状态。恢复不会覆盖其他操作已经发布的不同课堂包。应用只停止自己持有句柄的子进程，不按名称清理外部进程。
 
-Legacy direct `CoursewareService(store)` embedding retains thread execution. The main app explicitly injects the persistent queue and subprocess computation. The compatibility entry point is not production job recovery.
+直接嵌入 `CoursewareService(store)` 的旧调用继续支持原有线程执行。主应用显式注入持久任务队列，使用子进程计算。该兼容入口不应被当作生产任务恢复机制。
 
-## API and startup
+## 接口与启动
 
-Existing `/api/review` routes remain. Additional relative routes include:
+原 `/api/review` 接口继续可用，新增接口包括：
 
-- `/lessons/{id}/workspace`: teacher records.
-- `/lessons/{id}/workspace/history`: old-source archive.
-- `/lessons/{id}/workspace/goals`, `corrections`, `actions`, `assessments`: teacher-record writes.
-- `/lessons/{id}/evidence/search`: lesson evidence retrieval.
-- `/tasks`, `/tasks/{id}/cancel`, `/tasks/{id}/retry`: persistent jobs.
-- `/runtime`: read-only model-file and runtime inspection.
+- `/lessons/{id}/workspace`：教师记录。
+- `/lessons/{id}/workspace/history`：旧来源归档。
+- `/lessons/{id}/workspace/goals`、`corrections`、`actions`、`assessments`：保存教师记录。
+- `/lessons/{id}/evidence/search`：本课证据搜索。
+- `/tasks`、`/tasks/{id}/cancel`、`/tasks/{id}/retry`：持久任务管理。
+- `/runtime`：只读模型文件与运行时清单。
 
-See `/docs` after API startup for request schemas. Writes validate origins, sizes, and field types. Errors retain `error.code` and `error.message`. The API serves the built frontend from one origin.
+启动 API 后可在 `/docs` 查看请求格式。写入接口限制来源、请求体积与字段类型，错误继续返回 `error.code` 和 `error.message`。API 使用已构建的前端目录提供单一网页入口。
 
-From the repository root:
+从 `4C` 目录运行：
 
 ```powershell
 & .\desktop\start_desktop.ps1
 ```
 
-The browser entry is `desktop/start_source.ps1`. The entries default to separate workspaces. To share records, explicitly select the same `DataDir` and reuse one backend. Desktop distributions exclude private lessons, model weights, and GPU environments.
+浏览器入口使用 `desktop/start_source.ps1`。两个入口默认使用各自的工作区；需要共享记录时，显式指定相同的 `DataDir`，并复用同一个后台服务。桌面分发包不包含私有课堂、模型权重和 GPU 推理环境。
 
-## Historical verification and rollback
+## 验证与回退
 
-The pre-change snapshot is local `artifacts/verification/architecture-refactor-20261028-154904/source-before.zip`. Original lesson inputs were not overwritten or migrated; new teacher/job state is in SQLite.
+源码修改前的快照保存为 `artifacts/verification/architecture-refactor-20261028-154904/source-before.zip`。原始课堂输入没有迁移覆盖，新增教师记录和任务状态保存在 SQLite。
 
-Acceptance separately checked HTTP compatibility, real subprocess PDF imports, crash recovery, cancellation/retries, record persistence, frontend races, and desktop execution. Browser tests used an independent copy of a real lesson and a separate database. Test entries were labeled acceptance examples and did not modify production teacher records. These checks do not establish ASR, OCR, or behavior-accuracy gains.
+验收分别检查 HTTP 兼容、真实子进程 PDF 导入、崩溃恢复、取消与重试、教师记录跨重启保存、前端竞态和桌面运行。浏览器验收使用真实课堂的独立副本及单独数据库，录入内容明确标记为验收样例，不写入教师生产记录。验收不构成 ASR、OCR 或行为识别准确率提升证据。
 
-Detailed results, operation scope, and model boundaries are in local `artifacts/verification/architecture-refactor-20261028-154904/ACCEPTANCE.md`, excluded from the source release.
+本次验收的测试结果、操作范围和模型边界见[重构验收记录](../artifacts/verification/architecture-refactor-20261028-154904/ACCEPTANCE.md)。
 
-For rollback, stop services started by the app, back up databases, then restore changed files from the source snapshot. Retaining the new SQLite files preserves teacher records; older code does not read those new records.
+如需回退，先关闭本应用启动的服务，保存当前数据库，再从源码快照恢复改动文件。保留新的 SQLite 文件可避免丢失教师记录；旧程序不会读取这些新增记录。

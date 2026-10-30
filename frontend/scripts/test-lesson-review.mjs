@@ -49,11 +49,11 @@ assert.equal(activeAt(parsed.transcript, 8.96).length, 0, 'Use half-open evidenc
 assert.equal(activeAt(parsed.slides, 10).length, 0, 'Do not smear a slide into a gap')
 assert.deepEqual(conceptIntervals(parsed, 'C1').map(e => [e.start_sec, e.end_sec]), [[3.21, 8.96], [400.35, 408.72]])
 assert.equal(activeAt(conceptIntervals(parsed, 'C1'), 200).length, 0, 'Repeated concept must not cover the unobserved middle')
-assert.throws(() => parseLessonPackage({ ...fixture, data_source: 'synthetic_demo' }), /v3/i)
-assert.throws(() => parseLessonPackage({ ...fixture, transcript: [...fixture.transcript, fixture.transcript[0]] }), /Duplicate/i)
-assert.throws(() => parseLessonPackage({ ...fixture, transcript: [{ ...fixture.transcript[0], end_sec: 9999 }] }), /outside/i)
-assert.throws(() => reviewMediaUrl('https://other.test/video.mp4'), /same-origin/i)
-assert.throws(() => reviewMediaUrl('/api/review/media/../secrets'), /same-origin/i)
+assert.throws(() => parseLessonPackage({ ...fixture, data_source: 'synthetic_demo' }), /v3/)
+assert.throws(() => parseLessonPackage({ ...fixture, transcript: [...fixture.transcript, fixture.transcript[0]] }), /重复/)
+assert.throws(() => parseLessonPackage({ ...fixture, transcript: [{ ...fixture.transcript[0], end_sec: 9999 }] }), /超出/)
+assert.throws(() => reviewMediaUrl('https://other.test/video.mp4'), /同源/)
+assert.throws(() => reviewMediaUrl('/api/review/media/../secrets'), /同源/)
 const markdown = buildReviewMarkdown(parsed)
 assert.match(markdown, /fixture-hash-not-real/)
 assert.match(markdown, /夹具不是实际课堂结果/)
@@ -63,9 +63,9 @@ assert.match(markdown, /contract test only/)
 
 const goodAnswer = { answer: '合同响应，仅用于测试。', source: 'local_llm', model: 'test-fixture-model', citations: [{ ...fixture.transcript[0], kind: 'transcript' }], evidence_ids: ['T0001'], request_id: 'fixture-request' }
 assert.equal(parseChatResponse(goodAnswer, parsed).source, 'local_llm')
-assert.throws(() => parseChatResponse({ ...goodAnswer, source: 'local_template' }, parsed), /actual model source/i)
-assert.throws(() => parseChatResponse({ ...goodAnswer, evidence_ids: ['OTHER_LESSON'] }, parsed), /another lesson/i)
-assert.throws(() => parseChatResponse({ ...goodAnswer, citations: [{ ...goodAnswer.citations[0], start_sec: 200 }] }, parsed), /outside|does not match/i)
+assert.throws(() => parseChatResponse({ ...goodAnswer, source: 'local_template' }, parsed), /真实模型/)
+assert.throws(() => parseChatResponse({ ...goodAnswer, evidence_ids: ['OTHER_LESSON'] }, parsed), /非本课/)
+assert.throws(() => parseChatResponse({ ...goodAnswer, citations: [{ ...goodAnswer.citations[0], start_sec: 200 }] }, parsed), /范围|不符/)
 
 const blockTail = { id: 'T0003', start_sec: 9.5, end_sec: 12.9, text: '该概念的连续解释', source: 'test_fixture' }
 const block = { id: 'B0001', kind: 'transcript', start_sec: 3.21, end_sec: 12.9, text: '第一段概念A 该概念的连续解释', source_refs: ['T0001', 'T0003'] }
@@ -78,22 +78,22 @@ const teacherBlock = { id: 'HB1', kind: 'transcript_teacher', text: teacherFixtu
 teacherFixture.teacher_evidence_blocks = [teacherBlock]
 assert.equal(evidenceIndex(parseLessonPackage(teacherFixture)).get('HB1')?.text, teacherBlock.text, 'QA resolves real teacher evidence')
 assert.equal(parseChatResponse({ ...goodAnswer, citations: [teacherBlock], evidence_ids: ['HB1'] }, teacherFixture).citations[0].id, 'HB1')
-assert.throws(() => parseChatResponse({ ...goodAnswer, citations: [{ ...teacherBlock, text: '无来源改写' }], evidence_ids: ['HB1'] }, teacherFixture), /text or kind/i)
-assert.throws(() => parseLessonPackage({ ...teacherFixture, teacher_transcript: [{ ...teacherFixture.teacher_transcript[0], start_sec: 100 }] }), /Teacher/i)
+assert.throws(() => parseChatResponse({ ...goodAnswer, citations: [{ ...teacherBlock, text: '无来源改写' }], evidence_ids: ['HB1'] }, teacherFixture), /文本或类型/)
+assert.throws(() => parseLessonPackage({ ...teacherFixture, teacher_transcript: [{ ...teacherFixture.teacher_transcript[0], start_sec: 100 }] }), /教师/)
 assert.equal(JSON.stringify(parsedBlocks), blockSource, 'Optional retrieval blocks preserve the original transcript and provenance')
 assert.equal(parsedBlocks.transcript.length, 3, 'Retrieval blocks never replace original transcript rows')
 assert.equal(evidenceIndex(parsedBlocks).get('B0001').text, block.text)
 assert.equal(parseLessonPackage(fixture).evidence_blocks, undefined, 'Old v3 packages without retrieval blocks remain valid')
-assert.throws(() => parseLessonPackage({ ...blockFixture, evidence_blocks: [{ ...block, source_refs: ['S0001'] }] }), /not in the original transcript/i)
-assert.throws(() => parseLessonPackage({ ...blockFixture, evidence_blocks: [{ ...block, source_refs: ['UNKNOWN'] }] }), /not in the original transcript/i)
-assert.throws(() => parseLessonPackage({ ...blockFixture, evidence_blocks: [{ ...block, source_refs: [] }] }), /missing original transcript sources/i)
-assert.throws(() => parseLessonPackage({ ...blockFixture, evidence_blocks: [{ ...block, id: 'T0001' }] }), /Duplicate/i)
-assert.throws(() => parseLessonPackage({ ...blockFixture, evidence_blocks: [{ ...block, start_sec: 2 }] }), /times do not match the original transcript/i)
+assert.throws(() => parseLessonPackage({ ...blockFixture, evidence_blocks: [{ ...block, source_refs: ['S0001'] }] }), /不属于原始转写/)
+assert.throws(() => parseLessonPackage({ ...blockFixture, evidence_blocks: [{ ...block, source_refs: ['UNKNOWN'] }] }), /不属于原始转写/)
+assert.throws(() => parseLessonPackage({ ...blockFixture, evidence_blocks: [{ ...block, source_refs: [] }] }), /缺少原始转写/)
+assert.throws(() => parseLessonPackage({ ...blockFixture, evidence_blocks: [{ ...block, id: 'T0001' }] }), /重复/)
+assert.throws(() => parseLessonPackage({ ...blockFixture, evidence_blocks: [{ ...block, start_sec: 2 }] }), /时间与原始转写不符/)
 const blockAnswer = { ...goodAnswer, citations: [block], evidence_ids: ['B0001'] }
 assert.equal(parseChatResponse(blockAnswer, parsedBlocks).citations[0].text, block.text)
-assert.throws(() => parseChatResponse({ ...blockAnswer, citations: [{ ...block, text: '模型自行改写的证据' }] }, parsedBlocks), /text or kind/i)
-assert.throws(() => parseChatResponse({ ...blockAnswer, citations: [{ ...block, start_sec: 3.71 }] }, parsedBlocks), /times do not match the original evidence/i)
-assert.throws(() => parseChatResponse({ ...blockAnswer, citations: [{ ...block, kind: 'slide' }] }, parsedBlocks), /text or kind/i)
+assert.throws(() => parseChatResponse({ ...blockAnswer, citations: [{ ...block, text: '模型自行改写的证据' }] }, parsedBlocks), /文本或类型/)
+assert.throws(() => parseChatResponse({ ...blockAnswer, citations: [{ ...block, start_sec: 3.71 }] }, parsedBlocks), /时间与原始证据不符/)
+assert.throws(() => parseChatResponse({ ...blockAnswer, citations: [{ ...block, kind: 'slide' }] }, parsedBlocks), /文本或类型/)
 
 const originalFetch = globalThis.fetch
 // Machine proofreading is an additive, source-constrained default view of immutable ASR.
@@ -107,7 +107,7 @@ assert.equal(JSON.stringify(parsedProof), proofOriginal, 'Proofreading preserves
 for (const id of ['P0001', 'PB0001', 'U1_0001']) assert.ok(evidenceIndex(parsedProof).has(id))
 assert.equal(parsedProof.transcript[0].text, fixture.transcript[0].text)
 assert.match(buildReviewMarkdown(parsedProof), /第一段概念甲/)
-assert.match(buildReviewMarkdown(parsedProof), /Original transcript/)
+assert.match(buildReviewMarkdown(parsedProof), /原始转写/)
 const proofAnswer = { ...goodAnswer, evidence_ids: ['PB0001'], citations: [proofFixture.proofread_evidence_blocks[0]] }
 assert.equal(parseChatResponse(proofAnswer, parsedProof).citations[0].kind, 'transcript_proofread')
 for (const mutation of [
@@ -120,10 +120,10 @@ for (const mutation of [
   f => { f.transcript_proofreading.segments[0].edits[0].evidence_ids = ['OTHER'] },
   f => { f.proofread_evidence_blocks[0].proofreading_ids = ['OTHER'] },
   f => { f.proofread_evidence_blocks[0].text = '未记录的检索段改写' },
-]) { const bad = structuredClone(proofFixture); mutation(bad); assert.throws(() => parseLessonPackage(bad), /correct(?:ion|ed)/i) }
-assert.throws(() => parseChatResponse({ ...proofAnswer, citations: [{ ...proofAnswer.citations[0], text: '自行改写' }] }, parsedProof), /text or kind/i)
-assert.throws(() => parseChatResponse({ ...proofAnswer, citations: [{ ...proofAnswer.citations[0], kind: 'transcript' }] }, parsedProof), /text or kind/i)
-assert.throws(() => parseChatResponse({ ...proofAnswer, citations: [{ ...proofAnswer.citations[0], end_sec: 9 }] }, parsedProof), /times/i)
+]) { const bad = structuredClone(proofFixture); mutation(bad); assert.throws(() => parseLessonPackage(bad), /校对/) }
+assert.throws(() => parseChatResponse({ ...proofAnswer, citations: [{ ...proofAnswer.citations[0], text: '自行改写' }] }, parsedProof), /文本或类型/)
+assert.throws(() => parseChatResponse({ ...proofAnswer, citations: [{ ...proofAnswer.citations[0], kind: 'transcript' }] }, parsedProof), /文本或类型/)
+assert.throws(() => parseChatResponse({ ...proofAnswer, citations: [{ ...proofAnswer.citations[0], end_sec: 9 }] }, parsedProof), /时间/)
 // A new recognizer has its own segmentation. Baseline IDs remain local even on collision.
 const upgradeFixture = structuredClone(proofFixture)
 upgradeFixture.lesson.provenance.asr = { audio_sha256: 'same-audio-hash', source_asr_sha256: 'fixture-asr-hash', config: { model_id: 'Qwen/Qwen3-ASR-1.7B' } }
@@ -146,11 +146,11 @@ assert.equal(JSON.stringify(parsedUpgrade), upgradeBefore, 'All opaque experimen
 assert.equal(evidenceIndex(parsedUpgrade).get('T0001').text, fixture.transcript[0].text, 'Run-local collision cannot replace current raw evidence')
 assert.equal(evidenceIndex(parsedUpgrade).has('OLD2'), false, 'Baseline-only IDs never become graph or QA evidence')
 assert.equal(evidenceIndex(parsedUpgrade).size, evidenceIndex(parsedProof).size)
-assert.throws(() => parseChatResponse({ ...goodAnswer, evidence_ids: ['OLD2'], citations: [] }, parsedUpgrade), /another lesson/i)
+assert.throws(() => parseChatResponse({ ...goodAnswer, evidence_ids: ['OLD2'], citations: [] }, parsedUpgrade), /非本课/)
 assert.deepEqual(modelUpgradeLanes(parsedUpgrade.model_upgrade_experiment, 4).map(lane => lane.segments.map(row => row.id)), [['OLD2'], ['T0001'], ['T0001']], 'Each lane independently uses its own half-open native clock')
 assert.deepEqual(modelUpgradeLanes(parsedUpgrade.model_upgrade_experiment, 9).map(lane => lane.segments.length), [1, 0, 0], 'A baseline interval cannot fill a new recognition gap')
 assert.deepEqual(modelUpgradeLanes(parsedUpgrade.model_upgrade_experiment, 9, true).map(lane => lane.segments.length), [2, 2, 1])
-assert.equal(modelUpgradeTime(3.215), '3.215 s', 'Native boundary precision must not be floored to whole seconds')
+assert.equal(modelUpgradeTime(3.215), '3.215 秒', 'Native boundary precision must not be floored to whole seconds')
 for (const mutate of [
   f => { f.model_upgrade_experiment.source_video_sha256 = 'other' },
   f => { f.model_upgrade_experiment.source_audio_sha256 = 'other' },
@@ -179,10 +179,10 @@ for (const mutate of [
   f => { f.model_upgrade_experiment.correction.segments[0].uncertainties = ['未记录'] },
   f => { f.model_upgrade_experiment.correction.segments.push(f.model_upgrade_experiment.correction.segments[0]) },
   f => { f.model_upgrade_experiment.correction.segments.pop() },
-]) { const bad = structuredClone(upgradeFixture); mutate(bad); assert.throws(() => parseLessonPackage(bad), /Model upgrade experiment/i) }
+]) { const bad = structuredClone(upgradeFixture); mutate(bad); assert.throws(() => parseLessonPackage(bad), /新模型试验/) }
 for (const label of ['', ' ', {}, 'invalid\nlabel', 'x'.repeat(161)]) {
   const bad = structuredClone(proofFixture); bad.transcript_proofreading.provenance.model_label = label
-  assert.throws(() => parseLessonPackage(bad), /correction model display label/i)
+  assert.throws(() => parseLessonPackage(bad), /校对模型显示标签/)
 }
 // Comparison records share immutable TIDs, but never replace them in evidence lookup.
 const comparisonFixture = structuredClone(fixture)
@@ -211,8 +211,8 @@ for (const mutate of [
   f => { f.correction_comparison.runs[0].native_segments[0].start_sec = 0 },
   f => { f.correction_comparison.runs[0].native_segments[0].transcript_id = 'OTHER' },
   f => { f.correction_comparison.runs[0].native_segments.push(f.correction_comparison.runs[0].native_segments[0]) },
-]) { const bad = structuredClone(nativeComparison); mutate(bad); assert.throws(() => parseLessonPackage(bad), /Correction model comparison/i) }
-assert.throws(() => parseChatResponse({ ...goodAnswer, evidence_ids: ['cec4'], citations: [] }, parsedComparison), /another lesson/i)
+]) { const bad = structuredClone(nativeComparison); mutate(bad); assert.throws(() => parseLessonPackage(bad), /校对模型对比/) }
+assert.throws(() => parseChatResponse({ ...goodAnswer, evidence_ids: ['cec4'], citations: [] }, parsedComparison), /非本课/)
 for (const mutate of [
   f => { f.correction_comparison.source_video_sha256 = 'other-video' },
   f => { f.correction_comparison.evaluated_at = 'missing-time' },
@@ -226,7 +226,7 @@ for (const mutate of [
   f => { f.correction_comparison.runs[0].accepted_edit_count = -1 },
   f => { f.correction_comparison.runs[0].memory.scope = 'file_weight_proxy' },
   f => { f.correction_comparison.runs[0].memory.peak_mib = -1 },
-]) { const bad = structuredClone(comparisonFixture); mutate(bad); assert.throws(() => parseLessonPackage(bad), /Correction model comparison/i) }
+]) { const bad = structuredClone(comparisonFixture); mutate(bad); assert.throws(() => parseLessonPackage(bad), /校对模型对比/) }
 // Independent courseware is an observed overlay, never a replacement timeline.
 const courseFixture = structuredClone(fixture)
 courseFixture.transcript[0].text = '鄭賢定理'
@@ -240,7 +240,7 @@ assert.match(buildReviewMarkdown(courseFixture), /鄭賢定理/)
 assert.match(buildReviewMarkdown(courseFixture), /synthetic.pdf/)
 const courseAnswer = { ...goodAnswer, citations: [courseFixture.revised_evidence_blocks[0]], evidence_ids: ['BRtest1'] }
 assert.equal(parseChatResponse(courseAnswer, courseFixture).citations[0].text, '正弦定理')
-assert.throws(() => parseChatResponse({ ...courseAnswer, citations: [{ ...courseAnswer.citations[0], text: '伪造修订内容' }] }, courseFixture), /text or kind/i)
+assert.throws(() => parseChatResponse({ ...courseAnswer, citations: [{ ...courseAnswer.citations[0], text: '伪造修订内容' }] }, courseFixture), /文本或类型/)
 for (const mutate of [
   f => { f.courseware.matches[0].start_sec = 2 },
   f => { f.courseware.matches[0].page_id = 'OTHER' },
@@ -249,7 +249,7 @@ for (const mutate of [
   f => { f.transcript_revisions[0].edits[0].replacement = '不存在的术语' },
   f => { f.revised_evidence_blocks[0].text = '未经记录的改写' },
   f => { f.revised_evidence_blocks[0].source_refs = ['S0001'] },
-]) { const bad = structuredClone(courseFixture); mutate(bad); assert.throws(() => parseLessonPackage(bad), /Invalid courseware evidence/i) }
+]) { const bad = structuredClone(courseFixture); mutate(bad); assert.throws(() => parseLessonPackage(bad), /课件证据无效/) }
 writeFileSync(join(cache, 'courseware-fixture.json'), JSON.stringify(courseFixture))
 globalThis.window = { location: { search: '' } }
 let requests = [], response = fixture, status = 200
@@ -263,7 +263,7 @@ try {
     assert.deepEqual(JSON.parse(requests.at(-1).init.body), draftInput)
   }
   response = { error: { code: 'MODEL_UNAVAILABLE', message: '测试模型服务不可用' } }; status = 503
-  await assert.rejects(() => reviewService.chat({ lesson_id: fixture.lesson.id, query: '测试问题', at_sec: 3.21, scope: 'current' }, parsed), /测试模型服务不可用/i)
+  await assert.rejects(() => reviewService.chat({ lesson_id: fixture.lesson.id, query: '测试问题', at_sec: 3.21, scope: 'current' }, parsed), /测试模型服务不可用/)
   setActivePinia(createPinia())
   const store = useLessonReviewStore()
   response = { lessons: [] }; status = 200

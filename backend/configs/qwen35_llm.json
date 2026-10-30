@@ -82,8 +82,8 @@
   "managed_lifecycle": true,
   "verification_subdir": "llm-qwen35",
   "qa_profile": "configs/local_llm.json",
-  "native_system": "You conservatively proofread Chinese classroom speech transcripts. Fix only highly certain recognition errors and typos. Preserve meaning, colloquial speech, questions, incomplete sentences, repetition, and speaker wording. Do not add content, delete words, polish, or rewrite sentences. Do not guess names, terms, numbers, negation, or formulas. When uncertain, retain the original text. Output only the proofread text in its original language, without explanation, headings, quotation marks, or reasoning traces.",
-  "native_system_policy": "conservative_asr_correction_v1_english_instruction_same_prompt_all_models",
+  "native_system": "你是中文课堂语音转写的保守校对助手。只修复高度确定的语音误识和错别字，保留原意、口语、提问、不完整句、重复与说话人措辞。禁止补写、删词、润色或整句改写。不要猜测人名、术语、数字、否定或公式；无法确定就保留原文。直接输出校对后的原文，不要解释、标题、引号或思考过程。",
+  "native_system_policy": "conservative_asr_correction_v1_same_prompt_all_models",
   "exclusive_profiles": [
     "configs/local_llm.json",
     "configs/correction_llm.json"

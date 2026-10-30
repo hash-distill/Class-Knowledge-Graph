@@ -27,7 +27,7 @@ def sample():
         "report": {"summary": "旧3概念", "limitations": [],
             "statistics": {"concepts": 3, "relations": 2, "activity_sampled_frames": 181},
             "sections": [{"title": n["label"], "evidence_ids": n["properties"]["source_refs"]} for n in nodes] +
-                        [{"title": "Visible behavior and lesson context", "text": "行为原文", "evidence_ids": ["V1"]}]}}
+                        [{"title": "可见行为与课堂情境", "text": "行为原文", "evidence_ids": ["V1"]}]}}
 
 
 def test_filter_is_pure_and_keeps_only_source_supported_existing_candidates():
@@ -41,10 +41,10 @@ def test_filter_is_pure_and_keeps_only_source_supported_existing_candidates():
     assert filtered["alignment"][0]["concept_ids"] == ["K1", "K3"]
     assert filtered["transcript"] == untouched["transcript"]
     assert filtered["transcript_unguided"] == untouched["transcript_unguided"]
-    assert [r["title"] for r in filtered["report"]["sections"]] == ["氨基酸", "谷氨酸", "Visible behavior and lesson context"]
+    assert [r["title"] for r in filtered["report"]["sections"]] == ["氨基酸", "谷氨酸", "可见行为与课堂情境"]
     assert filtered["report"]["statistics"] == {"concepts": 2, "relations": 1,
         "activity_sampled_frames": 181, "graph_candidates_original": 3, "graph_candidates_hidden": 1}
-    assert "showing 2 model concept candidates" in filtered["report"]["summary"]
+    assert "展示 2 个" in filtered["report"]["summary"]
     assert filtered["graph"]["provenance"]["display_policy"]["teacher_or_chemical_accuracy_validated"] is False
 
 

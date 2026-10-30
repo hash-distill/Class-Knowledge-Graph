@@ -8,33 +8,33 @@ const store = useLessonReviewStore()
 const showAll = ref(false)
 const experiment = computed(() => store.data?.model_upgrade_experiment)
 const lanes = computed(() => experiment.value ? modelUpgradeLanes(experiment.value, store.currentTime, showAll.value) : [])
-const count = (value: number) => value.toLocaleString('en-US')
+const count = (value: number) => value.toLocaleString('zh-CN')
 const correctionStatus = computed(() => {
   const value = experiment.value?.correction.status
-  return value ? ({ complete: 'Completed', partial: 'Partially completed', running: 'Processing', failed: 'Failed', pending: 'Not completed' }[value] || value) : 'Unknown'
+  return value ? ({ complete: '已完成', partial: '未完整完成', running: '处理中', failed: '失败', pending: '尚未完成' }[value] || value) : '未知'
 })
 </script>
 
 <template>
   <details v-if="experiment" class="model-upgrade" data-testid="model-upgrade-experiment">
-    <summary data-testid="model-upgrade-toggle"><span>Model upgrade experiment<small>Same video · Baseline ASR, New ASR and conservative correction</small></span><span class="expand-label">Expand review <i aria-hidden="true">⌄</i></span></summary>
+    <summary data-testid="model-upgrade-toggle"><span>新模型试验<small>同一录像 · 原识别、新识别与保守校对</small></span><span class="expand-label">展开核对 <i aria-hidden="true">⌄</i></span></summary>
     <div class="upgrade-body">
-      <p class="upgrade-boundary">This lesson has no human verbatim transcript. Character error rate has not been evaluated. Recognized text, Time boundaries and corrections are machine-generated. Check against the original audio.</p>
-      <p class="upgrade-note">Conservative correction run: {{ correctionStatus }} · Edit counts describe run results only.</p>
-      <dl class="upgrade-metrics"><div><dt>Lesson character error rate</dt><dd>Not evaluated</dd></div><div><dt>Accepted model candidates</dt><dd>{{ count(experiment.correction.model_accepted_edit_count) }}<small>edits</small></dd></div><div><dt>Source-rule revisions</dt><dd>{{ count(experiment.correction.source_rule_accepted_count) }}<small>edits</small></dd></div><div><dt>Total accepted edits</dt><dd>{{ count(experiment.correction.accepted_edit_count) }}<small>edits</small></dd></div></dl>
-      <div class="upgrade-tools"><span>Video time {{ modelUpgradeTime(store.currentTime) }}</span><button data-testid="model-upgrade-all-toggle" :aria-pressed="showAll" @click="showAll = !showAll">{{ showAll ? 'Show current time only' : 'View all segments' }}</button></div>
-      <p class="upgrade-note">Each ASR run uses its own time boundaries; Segment counts and boundaries may differ between the three columns.</p>
+      <p class="upgrade-boundary">本课没有人工逐字稿，字错率未评估。识别文本、时间边界和校对均为机器结果，请回听原声核验。</p>
+      <p class="upgrade-note">保守校对运行：{{ correctionStatus }} · 改动数量只描述运行结果。</p>
+      <dl class="upgrade-metrics"><div><dt>本课字错率</dt><dd>未评估</dd></div><div><dt>接受模型候选</dt><dd>{{ count(experiment.correction.model_accepted_edit_count) }}<small>处</small></dd></div><div><dt>来源规则修订</dt><dd>{{ count(experiment.correction.source_rule_accepted_count) }}<small>处</small></dd></div><div><dt>最终接受合计</dt><dd>{{ count(experiment.correction.accepted_edit_count) }}<small>处</small></dd></div></dl>
+      <div class="upgrade-tools"><span>录像时刻 {{ modelUpgradeTime(store.currentTime) }}</span><button data-testid="model-upgrade-all-toggle" :aria-pressed="showAll" @click="showAll = !showAll">{{ showAll ? '只看当前时刻' : '查看全部片段' }}</button></div>
+      <p class="upgrade-note">按各次识别自身的时间区间显示；三列段落数量和边界可以不同。</p>
       <div class="upgrade-lanes">
         <section v-for="lane in lanes" :key="lane.id" class="upgrade-lane" :data-testid="`model-upgrade-lane-${lane.id}`">
           <h3>{{ headingText(lane.title) }}<small>{{ lane.model }}</small></h3>
           <div class="upgrade-segments">
-            <button v-for="segment in lane.segments" :key="segment.id" class="upgrade-segment" :data-testid="`model-upgrade-${lane.id}-${segment.id}`" :aria-label="`${lane.title} ${modelUpgradeTime(segment.start_sec)} Replay original audio`" @click="store.seek(segment.start_sec)"><span>{{ modelUpgradeTime(segment.start_sec) }}–{{ modelUpgradeTime(segment.end_sec) }} ↗</span><p>{{ segment.text }}</p><small>{{ segment.id }} · {{ lane.id === 'correction' ? 'Machine correction · Unverified' : 'Automatic recognition · Unverified' }}</small></button>
-            <p v-if="!lane.segments.length" class="upgrade-empty">No {{ lane.title }} segment at the current time. Replay the audio or view all segments.</p>
+            <button v-for="segment in lane.segments" :key="segment.id" class="upgrade-segment" :data-testid="`model-upgrade-${lane.id}-${segment.id}`" :aria-label="`${lane.title} ${modelUpgradeTime(segment.start_sec)} 回听原声`" @click="store.seek(segment.start_sec)"><span>{{ modelUpgradeTime(segment.start_sec) }}–{{ modelUpgradeTime(segment.end_sec) }} ↗</span><p>{{ segment.text }}</p><small>{{ segment.id }} · {{ lane.id === 'correction' ? '机器校对 · 待核验' : '自动识别 · 待核验' }}</small></button>
+            <p v-if="!lane.segments.length" class="upgrade-empty">当前时刻没有{{ lane.title }}片段。可回听原声或查看全部片段。</p>
           </div>
         </section>
       </div>
-      <p class="upgrade-note">Comparison copies are for audio verification only. It adds no knowledge graph entries or Q&A citations; The current lesson retains separate sources for the raw transcript and correction evidence.</p>
-      <details class="upgrade-provenance"><summary>View experiment provenance and notes</summary><p>Run time: {{ experiment.evaluated_at }}</p><p>Video SHA-256: {{ experiment.source_video_sha256 }}</p><p>Audio SHA-256: {{ experiment.source_audio_sha256 }}</p><p v-for="run in experiment.asr_runs" :key="run.id">{{ run.model_label }} · ASR file SHA-256: {{ run.source_asr_sha256 }}</p><p>Correction model SHA-256: {{ experiment.correction.model_sha256 }}</p><p v-for="limit in experiment.limitations" :key="limit">{{ limit }}</p><p v-if="experiment.external_summary !== undefined">External-sample evaluation records are preserved in the exported data; It does not represent the character error rate for this lesson.</p></details>
+      <p class="upgrade-note">对比副本仅供回听核对，不新增知识图谱或问答引用；当前课堂的原始转写和校对证据仍保留各自来源。</p>
+      <details class="upgrade-provenance"><summary>查看试验来源与说明</summary><p>运行时间：{{ experiment.evaluated_at }}</p><p>录像 SHA-256：{{ experiment.source_video_sha256 }}</p><p>音频 SHA-256：{{ experiment.source_audio_sha256 }}</p><p v-for="run in experiment.asr_runs" :key="run.id">{{ run.model_label }} · 识别文件 SHA-256：{{ run.source_asr_sha256 }}</p><p>校对模型 SHA-256：{{ experiment.correction.model_sha256 }}</p><p v-for="limit in experiment.limitations" :key="limit">{{ limit }}</p><p v-if="experiment.external_summary !== undefined">外部样本评测记录保存在导出数据中；它不代表本课堂的字错率。</p></details>
     </div>
   </details>
 </template>

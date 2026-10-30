@@ -31,7 +31,7 @@ def model_session():
         try:
             lease.acquire()
         except ReviewError as exc:
-            raise ReviewError('model_busy', 'The local model is processing another task. Please try again shortly.', 409) from exc
+            raise ReviewError('model_busy', '本机模型正在处理另一项任务，请稍后重试。', 409) from exc
     _session.depth = depth + 1
     try:
         yield
@@ -45,10 +45,10 @@ def _profile(path):
     path = Path(path)
     path = path.resolve() if path.is_absolute() else (ROOT/path).resolve()
     if not path.is_relative_to(ROOT):
-        raise ReviewError('invalid_model_profile', 'The model configuration must be inside this project.', 409)
+        raise ReviewError('invalid_model_profile', '模型配置必须位于本项目内。', 409)
     config = read_json(path)
     if config['server']['host'] not in ('127.0.0.1', 'localhost'):
-        raise ReviewError('remote_model_management', 'Automatic switching manages only explicitly configured local models.', 409)
+        raise ReviewError('remote_model_management', '自动切换仅管理本机明确配置的模型。', 409)
     return path, config
 
 
@@ -60,18 +60,18 @@ def _ready(config):
     try:
         models = requests.get(config['base_url']+'/models', timeout=2)
         if not models.ok or config['model_alias'] not in [r['id'] for r in models.json().get('data', [])]:
-            raise ReviewError('model_port_conflict', 'Another service is using the model port. That service was left running.', 409)
+            raise ReviewError('model_port_conflict', '模型端口由其它服务占用，未停止该服务。', 409)
         return health.ok and health.json().get('status') == 'ok'
     except (requests.RequestException, ValueError, KeyError, TypeError, AttributeError):
-        raise ReviewError('model_port_conflict', 'The model using this port could not be verified. The service was left running.', 409)
+        raise ReviewError('model_port_conflict', '模型端口未能确认所属模型，未停止该服务。', 409)
 
 
 def _invoke(path, stop=False):
     if os.name != 'nt':
-        raise ReviewError('unsupported_model_lifecycle', 'Automatic switching for this configuration requires the Windows runtime. Configure a separate model service.', 503)
+        raise ReviewError('unsupported_model_lifecycle', '此配置的自动切换使用Windows运行时，请配置独立模型服务。', 503)
     shell = shutil.which('pwsh') or shutil.which('powershell')
     if not shell:
-        raise ReviewError('model_shell_unavailable', 'Local PowerShell is unavailable. The model was not started.', 503)
+        raise ReviewError('model_shell_unavailable', '本机PowerShell不可用，模型未启动。', 503)
     command = [shell, '-NoLogo', '-NoProfile', '-File', str(ROOT/'scripts/start_local_llm.ps1'),
                '-ConfigPath', str(path)]
     if stop:
@@ -84,9 +84,9 @@ def _invoke(path, stop=False):
             out.seek(0)
             output = out.read().strip()
     except subprocess.TimeoutExpired as exc:
-        raise ReviewError('model_lifecycle_timeout', 'Local model switching timed out. Check the model runtime logs.', 504) from exc
+        raise ReviewError('model_lifecycle_timeout', '本机模型切换超时，请查看对应模型运行日志。', 504) from exc
     if result.returncode:
-        raise ReviewError('model_lifecycle_failed', 'Local model switching failed. Check the model runtime logs.', 503)
+        raise ReviewError('model_lifecycle_failed', '本机模型切换失败，请查看对应模型运行日志。', 503)
     return output
 
 
@@ -118,10 +118,10 @@ def ensure_role(role, profile_path=None):
         for other_path,other in others:
             _invoke(other_path, stop=True)
             if _ready(other):
-                raise ReviewError('model_ownership_unknown', 'The other model service was not stopped by this project. Concurrent model loading is deferred.', 409)
+                raise ReviewError('model_ownership_unknown', '另一模型服务未由本项目停止，暂不同时加载模型。', 409)
         if not _ready(target):
             _invoke(target_path)
         if not _ready(target):
-            raise ReviewError('model_not_ready', 'The target model is not ready.', 503)
+            raise ReviewError('model_not_ready', '目标模型尚未就绪。', 503)
     return {'role': role, 'model': target['model_alias'], 'base_url': target['base_url'],
             'profile': str(target_path.relative_to(ROOT)), 'sequential': True}

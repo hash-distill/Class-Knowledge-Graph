@@ -36,7 +36,7 @@ def image_fingerprint(directory, records):
             continue
         path = (root / relative).resolve()
         if not path.is_relative_to(root):
-            raise ReviewError('invalid_image_path', 'The matched image must be inside the lesson artifact directory.', 409)
+            raise ReviewError('invalid_image_path', '匹配图像必须位于该课堂的产物目录。', 409)
         result[relative] = sha256(path) if path.is_file() else None
     return result
 
@@ -46,7 +46,7 @@ def overlay_bundle(base, document):
     from .courseware_terms import revise_transcript
     bundle = deepcopy(base)
     if document.get('lesson_fingerprint') != source_fingerprint(base):
-        raise ReviewError('stale_courseware', 'The original lesson evidence changed. Import the courseware again to realign it.', 409)
+        raise ReviewError('stale_courseware', '原始课堂证据已变化，请重新导入课件以重新对齐。', 409)
     bundle['courseware'] = deepcopy(document)
     derived = revise_transcript(base, document)
     for key in OVERLAY_KEYS[1:]:
@@ -79,10 +79,10 @@ def overlay_bundle(base, document):
         'sha256': document['sha256'], 'alignment': 'observed_screen_evidence',
         'transcript_policy': 'raw_preserved_with_separate_suggestions'}
     bundle['report']['sections'].append({
-        'title': 'Independent courseware and speech terminology suggestions',
-        'text': f"Imported {document['filename']} ({len(document['pages'])} pages); {matched}/{len(document['matches'])} observed screen segments were matched or manually confirmed. Generated {len(bundle['transcript_revisions'])} courseware-assisted transcript suggestions; the original ASR is unchanged.",
+        'title': '独立课件与语音术语修订',
+        'text': f"导入 {document['filename']}，{len(document['pages'])} 页；{matched}/{len(document['matches'])} 个实测屏幕段已匹配或人工确认。产生 {len(bundle['transcript_revisions'])} 条课件辅助转写建议，原始 ASR 不变。",
         'evidence_ids': [r['id'] for r in timed]})
-    bundle['report']['limitations'].append('Automatic independent-courseware matching and homophone terminology suggestions have not been manually approved. Unmatched or ambiguous pages receive no lesson timestamps. Suggestions do not replace the original transcript.')
+    bundle['report']['limitations'].append('独立课件自动匹配与同音术语修订尚未人工核准；未匹配或有歧义的页面不生成课堂时间。修订建议不替代原始转写。')
     bundle['report'].setdefault('statistics', {}).update({
         'courseware_pages': len(document['pages']), 'courseware_matches': matched,
         'transcript_revisions': len(bundle['transcript_revisions']), 'concepts': len(nodes)})
@@ -95,8 +95,8 @@ def persist_bundle(directory, bundle):
     report = bundle['report']
     markdown = [f"# {report['title']}", report['summary']]
     for section in report['sections']:
-        markdown.extend([f"## {section['title']}", section['text'], 'Evidence: ' + ', '.join(section['evidence_ids'])])
-    markdown.extend(['## Evidence limitations', *['- ' + s for s in report['limitations']]])
+        markdown.extend([f"## {section['title']}", section['text'], '证据：' + ', '.join(section['evidence_ids'])])
+    markdown.extend(['## 数据边界', *['- ' + s for s in report['limitations']]])
     previous = {directory / name: (directory / name).read_bytes() if (directory / name).exists() else None
                 for name in ('report.json', 'report.md', 'bundle.json')}
     try:
@@ -146,9 +146,9 @@ def run_courseware_import(path, directory, base, expected_version, *, check=lamb
 
     def commit():
         if sha256(directory / 'bundle.json') != expected_version:
-            raise ReviewError('stale_lesson', 'Lesson evidence changed during import. The stale task result was discarded. Refresh and import again.', 409)
+            raise ReviewError('stale_lesson', '导入期间课堂证据已变化，已放弃旧任务结果。请刷新后重新导入。', 409)
         if image_fingerprint(directory, [*base['slides'], *document['pages']]) != cache_key['images']:
-            raise ReviewError('stale_lesson_images', 'Lesson or courseware images changed during import. Stale matches were discarded. Import again.', 409)
+            raise ReviewError('stale_lesson_images', '导入期间课堂或课件图像已变化，已放弃旧匹配结果。请重新导入。', 409)
         if not reused:
             atomic_json(cache_path, {'fingerprint': cache_key, 'matches': document['matches']})
         atomic_json(directory / 'bundle.base.json', base)
@@ -173,9 +173,9 @@ class CoursewareService:
 
     def acquire(self, lesson_id=None):
         if lesson_id and self.job_queue is not None and self.job_queue.is_busy(lesson_id):
-            raise ReviewError('courseware_busy', 'This lesson already has pending courseware. Please try again shortly.', 409)
+            raise ReviewError('courseware_busy', '这节课已有待处理课件，请稍后重试。', 409)
         if not self.lock.acquire(blocking=False):
-            raise ReviewError('courseware_busy', 'Another courseware operation is in progress. Please try again shortly.', 409)
+            raise ReviewError('courseware_busy', '另一个课件操作正在处理，请稍后重试。', 409)
         try:
             return LessonMutationLock(self.store.entry(lesson_id)['directory']).acquire() if lesson_id else None
         except Exception:
@@ -188,7 +188,7 @@ class CoursewareService:
         if bundle.get('courseware'):
             path = directory / 'bundle.base.json'
             if not path.is_file():
-                raise ReviewError('missing_original_bundle', 'The original evidence bundle is missing. Safe realignment is unavailable.', 409)
+                raise ReviewError('missing_original_bundle', '缺少原始证据包，无法安全重新对齐。', 409)
             base=read_json(path)
             if bundle.get('activity_analysis'):
                 from .activity import overlay_activity
@@ -202,16 +202,16 @@ class CoursewareService:
         with self.jobs_lock:
             result = self.jobs.get(job_id)
             if result is None:
-                raise ReviewError('job_not_found', 'The task does not exist or the service restarted. Refresh the lesson to confirm the result.', 404)
+                raise ReviewError('job_not_found', '任务不存在或服务已重启，请刷新课堂确认结果。', 404)
             return deepcopy(result)
 
     def submit(self, lesson_id, filename, body):
         """Called with bounded bytes already read; only one import may run at once."""
         if (not isinstance(filename, str) or not filename or len(filename) > 180 or
                 any(c in filename for c in '/\\:\x00') or Path(filename).suffix.lower() not in EXTENSIONS):
-            raise ReviewError('invalid_courseware', 'Choose a PDF, PPTX, or PPT courseware file with a valid filename.', 400)
+            raise ReviewError('invalid_courseware', '请选择文件名有效的 PDF、PPTX 或 PPT 课件。', 400)
         if not body or len(body) > MAX_UPLOAD:
-            raise ReviewError('courseware_too_large', 'The courseware file must be nonempty and no larger than 64 MiB.', 413)
+            raise ReviewError('courseware_too_large', '课件文件需大于零且不超过 64 MiB。', 413)
         lease = self.acquire(lesson_id)
         try:
             directory, base = self.base(lesson_id)
@@ -255,7 +255,7 @@ class CoursewareService:
         except Exception as exc:
             completion = dict(status='failed', completed_at=now(), error={
                 'code': getattr(exc, 'code', 'courseware_import_failed'),
-                'message': str(exc)[:700] or 'Courseware import failed. The original lesson data is unchanged.'})
+                'message': str(exc)[:700] or '课件导入失败，原课堂数据保持不变。'})
         finally:
             # A completed status authorizes the next action. Release both mutation
             # locks before publishing it; status readers observe this atomically.
@@ -270,13 +270,13 @@ class CoursewareService:
             current = self.store.load(lesson_id)
             document = deepcopy(current.get('courseware'))
             if not document or payload.get('document_id') != document['document_id']:
-                raise ReviewError('stale_courseware', 'The courseware changed. Refresh before confirming.', 409)
+                raise ReviewError('stale_courseware', '课件已变化，请刷新后再确认。', 409)
             match = next((m for m in document['matches'] if m['id'] == payload.get('match_id')), None)
             if not match:
-                raise ReviewError('invalid_match', 'This observed time segment does not exist.', 400)
+                raise ReviewError('invalid_match', '没有该观测时间段。', 400)
             page_id = payload.get('page_id')
             if page_id is not None and page_id not in {p['id'] for p in document['pages']}:
-                raise ReviewError('invalid_page', 'The page does not belong to the current courseware.', 400)
+                raise ReviewError('invalid_page', '页面不属于当前课件。', 400)
             match.update(page_id=page_id, status='confirmed' if page_id else 'rejected',
                          method='manual_observed_interval', confirmed_at=now())
             directory, base = self.base(lesson_id)

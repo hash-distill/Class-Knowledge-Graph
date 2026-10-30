@@ -37,7 +37,7 @@ def build_visual_reference(row,previous=None):
             'smoothing':{'previous':.3,'current':.7,'maximum_gap_sec':MAXIMUM_GAP},
             'calibrated_engagement_probability':False,
             'population_scope':'directly_detected_people_roles_unverified',
-            'definition':'Original project rule weights apply only to model-classified reading, writing, head-up, hand-raising, and discussion. No score is produced below 60% coverage or with fewer than 3 objects. Head turning, standing, unknown states, and geometric head-up cues receive no score. Smoothing uses 0.3 previous + 0.7 current only between consecutive valid observations in the same shot. This is not a probability of psychological engagement or knowledge mastery.'}
+            'definition':'仅对模型识别的读、写、抬头、举手、讨论类别应用原项目规则权重。覆盖不足60%或少于3个对象时不出分；转头、站立、未知与几何抬头均不赋分。0.3旧值+0.7当前值仅在连续同镜头有效观测间平滑；不是心理积极度或知识掌握概率。'}
 
 
 def validate_visual_reference(row,previous=None):

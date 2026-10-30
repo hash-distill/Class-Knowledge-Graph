@@ -22,39 +22,39 @@ class ReviewRequest(Request):
     async def body(self):
         if not hasattr(self,'_body'):
             try:length=int(self.headers.get('Content-Length','0'))
-            except ValueError:raise ReviewError('invalid_length','Invalid request length.',400)
+            except ValueError:raise ReviewError('invalid_length','请求长度无效。',400)
             maximum=MAX_UPLOAD if self.url.path.endswith('/courseware') else 65536
             if not 0<length<=maximum:
-                raise ReviewError('body_too_large',f'Request length must be 1–{maximum} bytes.',413)
+                raise ReviewError('body_too_large',f'请求长度需为 1–{maximum} 字节。',413)
 
             async def read():
                 chunks=[];total=0
                 async for chunk in self.stream():
                     total+=len(chunk)
-                    if total>maximum:raise ReviewError('body_too_large','The request exceeds the size limit.',413)
-                    if total>length:raise ReviewError('incomplete_upload','The uploaded file length does not match the request length.',400)
+                    if total>maximum:raise ReviewError('body_too_large','请求超过允许大小。',413)
+                    if total>length:raise ReviewError('incomplete_upload','请求文件长度不一致。',400)
                     chunks.append(chunk)
-                if total!=length:raise ReviewError('incomplete_upload','The file upload is incomplete.',400)
+                if total!=length:raise ReviewError('incomplete_upload','请求文件未完整上传。',400)
                 return b''.join(chunks)
 
             try:self._body=await asyncio.wait_for(read(),timeout=60)
             except ClientDisconnect as exc:
-                raise ReviewError('incomplete_upload','The file upload is incomplete.',400) from exc
+                raise ReviewError('incomplete_upload','请求文件未完整上传。',400) from exc
             except TimeoutError as exc:
-                raise ReviewError('upload_timeout','Reading the request timed out. Please try again.',408) from exc
+                raise ReviewError('upload_timeout','读取请求超时，请重试。',408) from exc
         return self._body
 
 def validation_error(exc):
     errors=exc.errors()
     if any(e['type']=='json_invalid' or e['loc']==('body',) for e in errors):
-        return ReviewError('invalid_json','The request must be a valid JSON object.',400)
+        return ReviewError('invalid_json','请求必须是有效的JSON对象。',400)
     fields={e['loc'][1] for e in errors if len(e['loc'])>1}
-    for field,code,message in [('lesson_id','invalid_lesson','Invalid lesson ID.'),
-                               ('query','invalid_query','The question must contain 1–1200 characters.'),
-                               ('at_sec','invalid_time','The playback time is outside this lesson.'),
-                               ('scope','invalid_scope','Select the whole lesson or the current segment.')]:
+    for field,code,message in [('lesson_id','invalid_lesson','课堂编号无效。'),
+                               ('query','invalid_query','问题需为 1–1200 字。'),
+                               ('at_sec','invalid_time','播放时间超出本节课范围。'),
+                               ('scope','invalid_scope','请选择整课或当前片段。')]:
         if field in fields:return ReviewError(code,message,400)
-    return ReviewError('invalid_json','Invalid request JSON.',400)
+    return ReviewError('invalid_json','请求JSON格式无效。',400)
 
 class ReviewRoute(APIRoute):
     def get_route_handler(self):
@@ -66,18 +66,18 @@ class ReviewRoute(APIRoute):
                 if request.method in ('POST','PATCH','DELETE'):
                     origin=request.headers.get('Origin')
                     if origin and urlsplit(origin).hostname not in ('127.0.0.1','localhost','::1'):
-                        raise ReviewError('origin_rejected','Only requests from the local workspace are allowed.',403)
+                        raise ReviewError('origin_rejected','仅允许本地工作台请求。',403)
                 if request.method in ('POST','PATCH'):await request.body()
                 response=await route_handler(request)
             except RequestValidationError as exc:response=error_response(validation_error(exc))
             except ReviewError as exc:response=error_response(exc)
             except HTTPException as exc:
-                response=error_response(ReviewError('invalid_json','Invalid request JSON.',exc.status_code))
+                response=error_response(ReviewError('invalid_json','请求JSON格式无效。',exc.status_code))
             except Exception:
-                message={'GET':'Could not read lesson data. Check the server artifacts.',
-                         'HEAD':'Could not read lesson data. Check the server artifacts.',
-                         'DELETE':'Could not detach the courseware. Refresh to confirm its status.'}.get(request.method,
-                            'The review request failed. No substitute answer was generated.')
+                message={'GET':'课堂数据读取失败，请检查服务端产物。',
+                         'HEAD':'课堂数据读取失败，请检查服务端产物。',
+                         'DELETE':'课件解绑失败，请刷新确认状态。'}.get(request.method,
+                            '复盘请求处理失败，未生成替代回答。')
                 response=error_response(ReviewError('internal_error',message,500))
             response.headers.update(RESPONSE_HEADERS)
             return response

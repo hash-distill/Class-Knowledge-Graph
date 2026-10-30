@@ -25,7 +25,7 @@ class LessonMutationLock:
                 fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
         except OSError as exc:
             handle.close()
-            raise ReviewError('lesson_busy', 'This lesson is being imported or rebuilt. Please try again shortly.', 409) from exc
+            raise ReviewError('lesson_busy', '这节课正在导入或重新构建，请稍后重试。', 409) from exc
         self.handle = handle
         return self
 

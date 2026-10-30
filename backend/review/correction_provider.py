@@ -11,7 +11,7 @@ from .common import ROOT, read_json
 from .provider import LLMProvider, ReviewError
 
 
-NATIVE_SYSTEM = 'You correct Chinese text. Fix errors in the input while preserving its original meaning and language. Output only the corrected text.'
+NATIVE_SYSTEM = '你是一个中文纠错助手。请纠正输入文本中的错误，保持原意，直接输出纠正后的文本。'
 
 
 class CorrectionProvider(LLMProvider):
@@ -96,7 +96,7 @@ class CorrectionProvider(LLMProvider):
             thoughts.insert(0,metadata['reasoning_content'])
         corrected = re.sub(r'<think>.*?</think>','',response,flags=re.DOTALL).strip()
         if not corrected or '<think>' in corrected:
-            raise ReviewError('invalid_correction_response','The correction model did not return separable revised text.',502,diagnostic=metadata)
+            raise ReviewError('invalid_correction_response','纠错模型未返回可分离的修订文本。',502,diagnostic=metadata)
         metadata.update(track='native_plain_text',reasoning_text='\n'.join(thoughts),
             system_digest=hashlib.sha256(system.encode()).hexdigest(),
             prompt_digest=hashlib.sha256(prompt.encode()).hexdigest(),

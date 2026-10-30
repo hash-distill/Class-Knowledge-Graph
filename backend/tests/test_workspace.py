@@ -101,7 +101,7 @@ def test_derived_evidence_can_support_exercises_and_retains_uncertainty(tmp_path
     block=derived['teacher_evidence_blocks'][0]
     assert '术语待回听' in block['uncertainties']
     prompt,_=evidence_prompt([block])
-    assert 'machine context' in prompt and '术语待回听' in prompt
+    assert '机器上下文' in prompt and '术语待回听' in prompt
     result=db.add_assessment(derived,'核对了什么？','教师核对内容',[block['id']],1)
     assert result['assessments'][0]['evidence_snapshot'][0]['quality']['human_verified'] is False
 

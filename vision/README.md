@@ -1,29 +1,29 @@
-# Jingxi Insight vision module
+# 精析智评视觉模块
 
-Offline analysis extracts people, poses, and visible behavior from classroom recordings, producing timed observations with provenance for the workbench. Start the full application from [Jingxi Insight](../README.md). Historical root-level vision code now lives under `vision/`.
+本模块离线分析课堂录像中的人物、姿态和可见行为，生成带时间与来源的观测供工作台读取。完整应用入口已迁移至 [精析智评](../README.md)。旧仓库根目录的视觉代码在统一发布布局中位于 `vision/`。
 
-## Current path
+## 当前路径
 
-Person localization fuses full-frame and overlapping-tile YOLO26n/YOLO26n-pose outputs in source-image coordinates. A per-person MobileNetV3 Small crop classifier provides seven states: writing, reading, looking up, turning the head, raising a hand, standing, and discussion. Low-confidence/pose-conflicting results stay unknown; geometric clues are labeled separately.
+人物定位使用 YOLO26n 与 YOLO26n-pose 的整图和重叠切片结果，回到原图坐标融合去重。七类状态由 MobileNetV3 Small 逐人裁剪分类器提供：书写、阅读、抬头、转头、举手、站立和讨论。低置信或姿态冲突保留未知，几何线索单独标示。
 
-The experimental weights are about 3.15 MB. Source distributions exclude weights, classroom images, and training data. Implementation is in `Class_Detection/src/dense_detection.py`, `dense_inference.py`, and classifier modules. Script arguments/model files must match their provenance configuration.
+当前权重实验约 3.15 MB，源码不附带权重、课堂截图和训练数据。具体实现位于 `Class_Detection/src/dense_detection.py`、`dense_inference.py` 及分类器模块；脚本参数和模型文件须与来源配置配套。
 
-Historical ST-GCN, gaze, dual-detector, VSAM, and CAS/CTES pipelines remain for comparison. Their presence does not establish a validated current end-to-end workbench pipeline. [Training and inference](TRAINING_AND_INFERENCE.md) is a historical manual, not application setup.
+原来的 ST-GCN、视线、双检测器、VSAM 和 CAS/CTES 管线仍保留用于历史实验，不等同于当前工作台已经验证的完整推理链路。[TRAINING_AND_INFERENCE.md](TRAINING_AND_INFERENCE.md) 是历史视觉训练手册，不能代替应用安装步骤。
 
-## Environment and execution
+## 环境与运行
 
-Use a separate Python environment, device-appropriate PyTorch/torchvision, and `requirements-inference.txt`. Keep model imports out of the API process and vision dependencies separate from lightweight application dependencies. Training, data configuration, and GPU inspection are optional development workflows.
+视觉推理使用独立 Python 环境，按设备选择对应的 PyTorch/torchvision，再安装 `requirements-inference.txt`。不要在应用 API 进程中导入模型，或将视觉依赖强行合并到应用轻量依赖中。训练入口、数据配置和 GPU 检查属于可选开发流程。
 
-See [Vision change record](../backend/docs/VISION_IMPROVEMENT_20261029.md) for localization, parameters, and recorded outputs. Workbench data binds to video digests, times, and image provenance; do not splice unrelated lessons. Inspect each script's `--help`, then provide real weights/media before execution.
+当前人物定位改造、参数来源与录像结果见 [视觉改造记录](../backend/docs/VISION_IMPROVEMENT_20261029.md)。工作台绑定原录像摘要、时间轴与图片来源；跨课堂数据不能直接拼接。具体脚本可先使用 `--help` 查看参数，准备真实权重与素材后再运行。
 
-## Correction and scoring
+## 纠错与评分
 
-[Manual review/sample export](../backend/docs/VISUAL_REVIEW_20261029.md) produces classification crops only for explicitly confirmed students with known behavior. Partially labeled frames are not complete detection labels. Group training/test splits by recording or classroom.
+工作台提供 [人工复核与样本导出](../backend/docs/VISUAL_REVIEW_20261029.md)。只有人工明确确认、角色为学生且行为已知的对象生成分类裁剪样本。部分标注帧不自动成为完整检测数据；训练与测试应按录像或课堂分组。
 
-The interface uses [overall behavior engagement rules](../backend/docs/CLASS_ENGAGEMENT_20261029.md), retaining original observations and legacy values. Historical fallback-person-as-listening assumptions, default high gaze values, or baseline scores for all unknown objects are not valid current observations.
+现行界面使用 [整体积极度规则](../backend/docs/CLASS_ENGAGEMENT_20261029.md)，保留原模型观测与旧规则值。原方案中“兜底 person 自动等于听课”、默认视线高分或把所有未知对象填成基线分，不作为当前界面的有效观测依据。
 
-## Limitations
+## 已知边界
 
-Existing given-box crop Macro-F1 is 0.81694, with adjacent frames from the same classroom across training/test. It may be optimistic and is not target-classroom, detection, or end-to-end accuracy. Misses, duplicate boxes, occlusion, mirrors, and role errors require independent annotation.
+给定标注框裁剪的现有测试 Macro-F1 为 0.81694，但训练和测试包含相同课堂相邻画面；该值可能偏乐观，不能解释为目标课堂、人物检测或端到端准确率。漏检、重复框、遮挡、镜面和角色误判仍需独立标注评测。
 
-Box counts are not class attendance; tracks are not identity recognition; visible behavior is not psychological engagement/mastery. Images, datasets, and weights retain separate provenance/terms and are excluded from source exports.
+人物框数量不是全班人数，跨帧轨迹不是身份识别，可见行为不等于心理投入或知识掌握。课堂图像、数据集和模型权重分别保留其来源与许可，不随应用源码导出。

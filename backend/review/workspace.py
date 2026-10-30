@@ -25,7 +25,7 @@ def source_revision(bundle):
 
 def text(value,label,maximum=4000,*,required=True):
     if not isinstance(value,str) or len(value)>maximum or required and not value.strip():
-        raise ReviewError('invalid_workspace',f'{label} must be valid text with at most {maximum} characters.',400)
+        raise ReviewError('invalid_workspace',f'{label}需为有效文字，最多 {maximum} 字。',400)
     return value.strip()
 
 
@@ -82,9 +82,9 @@ class WorkspaceStore:
             db.execute('BEGIN IMMEDIATE')
             row=self._row(db,bundle)
             if row['source_revision']!=source_revision(bundle):
-                raise ReviewError('workspace_source_changed','The original lesson evidence changed. Confirm the new version first.',409)
+                raise ReviewError('workspace_source_changed','课堂原始证据已变化，请先确认新版本。',409)
             if type(expected_version) is not int or row['version']!=expected_version:
-                raise ReviewError('workspace_changed','The teaching record was updated. Reload before saving.',409)
+                raise ReviewError('workspace_changed','教学记录已更新，请重新加载后保存。',409)
             document=json.loads(row['document'])
             edit(document)
             db.execute('UPDATE workspaces SET version=version+1,document=?,updated_at=? WHERE lesson_id=?',
@@ -92,13 +92,13 @@ class WorkspaceStore:
             return self._view(self._row(db,bundle),bundle,db)
 
     def set_goals(self,bundle,value,expected_version):
-        value=text(value,'Teaching goals',required=False)
+        value=text(value,'教学目标',required=False)
         return self._update(bundle,expected_version,lambda d:d.update(goals=value))
 
     def correct(self,bundle,transcript_id,replacement,reason,expected_version):
         original=next((r for r in bundle.get('transcript',[]) if r['id']==transcript_id),None)
-        if original is None:raise ReviewError('invalid_transcript','The transcript segment does not exist.',400)
-        replacement=text(replacement,'Reviewed transcript');reason=text(reason,'Review notes',1000,required=False)
+        if original is None:raise ReviewError('invalid_transcript','转写片段不存在。',400)
+        replacement=text(replacement,'核对稿');reason=text(reason,'核对说明',1000,required=False)
         def edit(document):
             for row in document['correction_history']:
                 if row['transcript_id']==transcript_id and not row.get('revoked_at'):row['revoked_at']=now()
@@ -110,43 +110,43 @@ class WorkspaceStore:
     def revert(self,bundle,transcript_id,expected_version):
         def edit(document):
             active=[r for r in document['correction_history'] if r['transcript_id']==transcript_id and not r.get('revoked_at')]
-            if not active:raise ReviewError('correction_not_found','This segment has no active teacher-reviewed transcript.',404)
+            if not active:raise ReviewError('correction_not_found','该片段没有生效的教师核对稿。',404)
             for row in active:row['revoked_at']=now()
         return self._update(bundle,expected_version,edit)
 
     def _references(self,bundle,identifiers,*,required=False):
         if (not isinstance(identifiers,list) or len(identifiers)>20 or
                 any(not isinstance(i,str) for i in identifiers) or required and not identifiers):
-            raise ReviewError('invalid_evidence','Select valid lesson evidence.',400)
+            raise ReviewError('invalid_evidence','请选择有效的课堂证据。',400)
         effective=self.overlay(bundle)
         lookup={r['id']:r for key in ('transcript','slides','evidence_blocks','proofread_evidence_blocks',
                 'revised_evidence_blocks','courseware_evidence','teacher_transcript','teacher_evidence_blocks')
                 for r in effective.get(key,[])}
         lookup.update({r['id']:r for r in bundle.get('activity_analysis',{}).get('evidence',[])})
         if any(i not in lookup for i in identifiers):
-            raise ReviewError('invalid_evidence','The reference does not belong to the current lesson evidence.',400)
+            raise ReviewError('invalid_evidence','引用不属于当前课堂证据。',400)
         return [{key:deepcopy(row[key]) for key in ('id','text','start_sec','end_sec','kind','source_refs',
                  'quality','uncertainties','method','workspace_version','proofreading_ids') if key in row}
                 for i in dict.fromkeys(identifiers) for row in [lookup[i]]]
 
     def add_action(self,bundle,title,evidence_ids,expected_version):
-        title=text(title,'Improvement task',500);refs=self._references(bundle,evidence_ids)
+        title=text(title,'改进任务',500);refs=self._references(bundle,evidence_ids)
         def edit(document):
             document['actions'].append({'id':uuid.uuid4().hex,'title':title,'status':'planned','outcome':'',
                 'evidence_ids':list(dict.fromkeys(evidence_ids)),'evidence_snapshot':refs,'created_at':now(),'updated_at':now()})
         return self._update(bundle,expected_version,edit)
 
     def update_action(self,bundle,action_id,status,outcome,expected_version):
-        if status not in ('planned','done'):raise ReviewError('invalid_workspace','Invalid task status.',400)
-        outcome=text(outcome,'Observed outcome',required=status=='done')
+        if status not in ('planned','done'):raise ReviewError('invalid_workspace','任务状态无效。',400)
+        outcome=text(outcome,'实际执行结果',required=status=='done')
         def edit(document):
             row=next((r for r in document['actions'] if r['id']==action_id),None)
-            if row is None:raise ReviewError('action_not_found','The improvement task does not exist.',404)
+            if row is None:raise ReviewError('action_not_found','改进任务不存在。',404)
             row.update(status=status,outcome=outcome,updated_at=now())
         return self._update(bundle,expected_version,edit)
 
     def add_assessment(self,bundle,question,reference_answer,evidence_ids,expected_version):
-        question=text(question,'Assessment question');reference_answer=text(reference_answer,'Reference answer')
+        question=text(question,'练习题');reference_answer=text(reference_answer,'参考答案')
         refs=self._references(bundle,evidence_ids,required=True)
         def edit(document):
             document['assessments'].append({'id':uuid.uuid4().hex,'question':question,
@@ -155,13 +155,13 @@ class WorkspaceStore:
         return self._update(bundle,expected_version,edit)
 
     def add_attempt(self,bundle,assessment_id,answer,feedback,score,expected_version):
-        answer=text(answer,'Submitted answer');feedback=text(feedback,'Teacher feedback',required=False)
+        answer=text(answer,'实际作答');feedback=text(feedback,'教师反馈',required=False)
         if score is not None and (isinstance(score,bool) or not isinstance(score,(int,float)) or
                                   not math.isfinite(score) or not 0<=score<=1):
-            raise ReviewError('invalid_workspace','The score must be a number from 0 to 1. Leave it empty if ungraded.',400)
+            raise ReviewError('invalid_workspace','得分需为 0–1 的数字，未评分时留空。',400)
         def edit(document):
             if not any(r['id']==assessment_id for r in document['assessments']):
-                raise ReviewError('assessment_not_found','The assessment does not exist.',404)
+                raise ReviewError('assessment_not_found','练习题不存在。',404)
             document['attempts'].append({'id':uuid.uuid4().hex,'assessment_id':assessment_id,
                 'answer':answer,'feedback':feedback,'score':score,'created_at':now(),'source':'teacher_recorded'})
         return self._update(bundle,expected_version,edit)
@@ -175,7 +175,7 @@ class WorkspaceStore:
         with self.connect() as db:
             db.execute('BEGIN IMMEDIATE');row=self._row(db,bundle)
             if type(expected_version) is not int or row['version']!=expected_version:
-                raise ReviewError('workspace_changed','The teaching record was updated. Reload before saving.',409)
+                raise ReviewError('workspace_changed','教学记录已更新，请重新加载后保存。',409)
             if row['source_revision']==source_revision(bundle):return self._view(row,bundle,db)
             snapshot=self._view(row,bundle,db)
             db.execute('INSERT INTO workspace_history(lesson_id,source_revision,archived_at,snapshot) VALUES(?,?,?,?)',

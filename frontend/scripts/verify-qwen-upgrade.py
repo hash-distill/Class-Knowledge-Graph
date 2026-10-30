@@ -44,7 +44,7 @@ with sync_playwright() as pw:
     panel = page.get_by_test_id('model-upgrade-experiment')
     assert panel.evaluate('el=>!el.open')
     page.get_by_test_id('model-upgrade-toggle').click()
-    expect(panel).to_contain_text('Character error rate has not been evaluated')
+    expect(panel).to_contain_text('字错率未评估')
     for key in ('baseline', 'qwen3_asr', 'correction'):
         expect(page.get_by_test_id('model-upgrade-lane-'+key)).to_be_visible()
     page.get_by_test_id('model-upgrade-all-toggle').click()
@@ -68,7 +68,7 @@ with sync_playwright() as pw:
     panel.screenshot(path=str(args.output/'model-upgrade-mobile.png'))
     page.locator('nav [data-view="report"]').click()
     with page.expect_download() as download:
-        page.get_by_role('button', name='Full data', exact=True).click()
+        page.get_by_role('button', name='完整数据', exact=True).click()
     destination = args.output/'lesson-export.json'
     download.value.save_as(destination)
     assert json.loads(destination.read_text(encoding='utf-8')) == fetch()

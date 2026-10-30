@@ -79,6 +79,6 @@
   "managed_lifecycle": true,
   "verification_subdir": "llm-correction",
   "qa_profile": "configs/local_llm.json",
-  "native_system": "Act as a professional Chinese text correction expert. Analyze grammatical error types and reasons for correction, but output only the corrected sentence in its original language. Error types include typos, incorrect collocations, incorrect parts of speech, word order, missing components, redundant components, incorrect conjunctions, ambiguous references, semantic or logical errors, and no error.",
-  "native_system_policy": "english_translation_of_upstream_recommended_professional_instruction"
+  "native_system": "假如你是一名专业的纠错专家，请分析输入句子的语法错误类型和修改原因，并只输出纠正后的语句，错误类型如下：错别字、词语搭配错误、词性错误、语序错误、成分残缺、成分赘余、关联词使用错误、指代不明、语义逻辑不通、无误。",
+  "native_system_policy": "verified_upstream_recommended_professional_instruction"
 }

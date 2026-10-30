@@ -57,7 +57,7 @@ def test_overlay_keeps_raw_and_rejects_different_source(tmp_path, monkeypatch):
     assert base == snapshot and overlay['transcript'] == base['transcript']
     assert overlay['courseware_evidence'][0]['start_sec'] == 0
     changed = copy.deepcopy(base); changed['transcript'][0]['text'] = 'Changed ASR'
-    with pytest.raises(ReviewError, match='The original lesson evidence changed'): overlay_bundle(changed, document)
+    with pytest.raises(ReviewError, match='原始课堂证据已变化'): overlay_bundle(changed, document)
 
 
 def test_completed_import_status_is_published_after_mutation_lease_release(tmp_path, monkeypatch):

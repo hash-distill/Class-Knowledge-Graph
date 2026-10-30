@@ -10,7 +10,7 @@ sys.path.insert(0, str(ROOT))
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--video", type=Path, default=ROOT.parent / "speech-models" / "lesson1.mp4")
+    parser.add_argument("--video", type=Path, default=ROOT.parent / "语音模型" / "lesson1.mp4")
     parser.add_argument("--output", type=Path, default=ROOT / "artifacts" / "lesson1-real")
     parser.add_argument("--mode", choices=["asr", "ocr", "all"], default="all")
     parser.add_argument("--cpu-threads", type=int, default=6)

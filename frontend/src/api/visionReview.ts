@@ -8,7 +8,7 @@ function document(value: unknown, lesson: string, frame: string): VisualReviewDo
   const row = value as VisualReviewDocument
   if (!row || row.lesson_id !== lesson || row.frame_id !== frame || !Number.isInteger(row.version) || row.version < 0 ||
     !/^[a-f0-9]{64}$/.test(row.basis_fingerprint) || !Array.isArray(row.annotations) || !(row.width > 0 && row.height > 0)) {
-    throw new Error('Invalid review record source or format. Please reload')
+    throw new Error('复核记录来源或格式无效，请重新加载')
   }
   return row
 }
@@ -31,7 +31,7 @@ export const visionReview = {
       const response = await fetch(`/api/review${base(lesson)}/export`, { signal: controller.signal })
       if (!response.ok) {
         const data = await response.json()
-        throw new ReviewServiceError(data?.error?.message || 'Sample export failed', response.status, data?.error?.code || '')
+        throw new ReviewServiceError(data?.error?.message || '样本导出失败', response.status, data?.error?.code || '')
       }
       const url = URL.createObjectURL(await response.blob()), link = documentElement('a')
       link.href = url; link.download = `vision-review-${lesson}.zip`; link.click()

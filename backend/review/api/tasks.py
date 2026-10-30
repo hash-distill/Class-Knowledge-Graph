@@ -10,7 +10,7 @@ def router(services):
 
     @routes.get('/api/review/jobs/{job_id}')
     def status(job_id:str):
-        if not re.fullmatch(r'[a-f0-9]{32}',job_id):raise ReviewError('not_found','Endpoint not found.',404)
+        if not re.fullmatch(r'[a-f0-9]{32}',job_id):raise ReviewError('not_found','接口不存在。',404)
         return services.courseware.status(job_id)
 
     @routes.get('/api/review/tasks')

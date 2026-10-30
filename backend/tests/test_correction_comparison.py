@@ -62,7 +62,7 @@ def test_historical_final_output_is_not_claimed_as_model_candidate_or_accuracy(t
     assert run['runtime'] == {}
     write_report(report, tmp_path/'report')
     assert all((tmp_path/'report'/name).is_file() for name in ('comparison.json', 'comparison.md', 'segments.csv', 'proposals.csv'))
-    assert 'not provided' in (tmp_path/'report/comparison.md').read_text(encoding='utf-8')
+    assert '未提供' in (tmp_path/'report/comparison.md').read_text(encoding='utf-8')
     with pytest.raises(ValueError, match='outside'):
         write_report(report, media/'report')
 

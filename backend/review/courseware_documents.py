@@ -41,39 +41,39 @@ def _hash(path):
 
 def _validate_source(path):
     if not path.is_file() or not 0 < path.stat().st_size <= MAX_DOCUMENT_BYTES:
-        raise CoursewareError('The courseware file is empty, missing, or larger than 64 MiB.')
+        raise CoursewareError('课件文件为空、不存在或超过 64 MiB。')
     extension = path.suffix.lower()
     if extension not in {'.pdf', '.pptx', '.ppt'}:
-        raise CoursewareError('Only PDF, PPTX, and PPT courseware files are supported.')
+        raise CoursewareError('只支持 PDF、PPTX、PPT 课件。')
     with path.open('rb') as handle:
         signature = handle.read(1024)
     if extension == '.pdf' and b'%PDF-' not in signature:
-        raise CoursewareError('The file content is not PDF.')
+        raise CoursewareError('文件内容不是 PDF。')
     if extension == '.ppt' and not signature.startswith(bytes.fromhex('D0CF11E0A1B11AE1')):
-        raise CoursewareError('The file content is not legacy PPT.')
+        raise CoursewareError('文件内容不是传统 PPT。')
     if extension == '.pptx':
         try:
             with zipfile.ZipFile(path) as archive:
                 members = archive.infolist()
                 if len(members) > 20000 or sum(x.file_size for x in members) > 512 * 1024 * 1024:
-                    raise CoursewareError('The expanded PPTX size exceeds the processing limit.')
+                    raise CoursewareError('PPTX 解压大小超过处理上限。')
                 names = set(archive.namelist())
                 if 'ppt/presentation.xml' not in names or '[Content_Types].xml' not in names:
-                    raise CoursewareError('The file content is not PPTX.')
+                    raise CoursewareError('文件内容不是 PPTX。')
                 if any('vbaproject' in name.lower() for name in names):
-                    raise CoursewareError('PPTX files containing macros are not supported. Save the file as PDF.')
+                    raise CoursewareError('不支持包含宏的 PPTX。请另存为 PDF。')
         except zipfile.BadZipFile as exc:
-            raise CoursewareError('The PPTX archive is corrupt.') from exc
+            raise CoursewareError('PPTX 压缩结构损坏。') from exc
     return extension[1:]
 
 
 def _convert_powerpoint(source, destination, work_dir):
     if os.name != 'nt':
-        raise CoursewareError('Rendering PPT/PPTX requires local Windows PowerPoint. You can also upload a PDF.')
+        raise CoursewareError('PPT/PPTX 渲染需要本机 Windows PowerPoint；也可上传 PDF。')
     executable = shutil.which('powershell') or shutil.which('pwsh')
     script = Path(__file__).resolve().parents[1] / 'scripts' / 'convert_courseware.ps1'
     if not executable or not script.is_file():
-        raise CoursewareError('The PowerPoint converter is unavailable. Upload a PDF.')
+        raise CoursewareError('PowerPoint 转换器不可用。请上传 PDF。')
     owner_path = work_dir / 'converter-owner.json'
     args = [executable, '-NoLogo', '-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass',
             '-File', str(script), '-InputPath', str(source), '-OutputPath', str(destination),
@@ -89,13 +89,13 @@ def _convert_powerpoint(source, destination, work_dir):
                            timeout=15, creationflags=subprocess.CREATE_NO_WINDOW)
         except (subprocess.SubprocessError, OSError):
             pass # An uninspectable desktop instance must remain untouched.
-        raise CoursewareError('PowerPoint conversion timed out. No substitute courseware was generated. Save as PDF and try again.') from exc
+        raise CoursewareError('PowerPoint 转换超时，未生成替代课件。请另存为 PDF 后重试。') from exc
     finally:
         # Internal process identifiers must not become public artifact metadata.
         owner_path.unlink(missing_ok=True)
     if result.returncode or not destination.is_file():
         detail = (result.stderr or result.stdout).strip()[-1800:]
-        raise CoursewareError('PowerPoint conversion failed: ' + detail)
+        raise CoursewareError('PowerPoint 转换失败：' + detail)
     return 'microsoft_powerpoint_readonly_pdf_export'
 
 
@@ -103,7 +103,7 @@ def _pptx_text(path):
     from pptx import Presentation
     deck = Presentation(str(path))
     if not 0 < len(deck.slides) <= MAX_PAGES:
-        raise CoursewareError('Courseware must contain 1–200 pages.')
+        raise CoursewareError('课件页数必须为 1 至 200 页。')
     def texts(shapes):
         rows = []
         for shape in shapes:
@@ -159,17 +159,17 @@ def import_document(path, lesson_dir, lesson_id):
     if metadata_path.is_file():
         cached = json.loads(metadata_path.read_text(encoding='utf-8'))
         if cached.get('sha256') != digest:
-            raise CoursewareError('Courseware storage ID conflict.')
+            raise CoursewareError('课件存储标识冲突。')
         paths = [root / ('original.' + kind), *[lesson_dir / row['image_path'] for row in cached['pages']]]
         if all(item.is_file() for item in paths) and _hash(paths[0]) == digest:
             return cached
-        raise CoursewareError('The existing courseware cache is incomplete. Rebuild the courseware artifact directory.')
+        raise CoursewareError('已有课件缓存不完整，请重新建立课件产物目录。')
     stage = Path(tempfile.mkdtemp(prefix='.' + digest[:16] + '-', dir=parent))
     try:
         original = stage / ('original.' + kind)
         shutil.copyfile(source, original)
         if _hash(original) != digest:
-            raise CoursewareError('The file hash changed after copying.')
+            raise CoursewareError('复制后文件哈希不一致。')
         pdf_path = original if kind == 'pdf' else stage / 'rendered.pdf'
         converter = 'direct_pdf'
         pptx_text = []
@@ -181,22 +181,22 @@ def import_document(path, lesson_dir, lesson_id):
         pages, warnings = [], []
         with fitz.open(pdf_path) as pdf:
             if pdf.needs_pass:
-                raise CoursewareError('Encrypted courseware is not supported.')
+                raise CoursewareError('暂不支持加密课件。')
             if not 0 < len(pdf) <= MAX_PAGES:
-                raise CoursewareError('Courseware must contain 1–200 pages.')
+                raise CoursewareError('课件页数必须为 1 至 200 页。')
             if pptx_text and len(pptx_text) != len(pdf):
-                raise CoursewareError('The PPTX text page count does not match the rendered page count.')
+                raise CoursewareError('PPTX 文本页数与渲染页数不一致。')
             budget = min(MAX_PAGE_PIXELS, MAX_TOTAL_PIXELS // len(pdf))
             for number, page in enumerate(pdf, 1):
                 width, height = page.rect.width, page.rect.height
                 if not math.isfinite(width * height) or width <= 0 or height <= 0:
-                    raise CoursewareError('Invalid courseware page dimensions.')
+                    raise CoursewareError('课件页面尺寸无效。')
                 scale = min(RENDER_LONG_EDGE / max(width, height), math.sqrt(budget / (width * height)))
                 # A small guard keeps rounded raster dimensions below the pixel limit.
                 scale *= 0.998
                 picture = page.get_pixmap(matrix=fitz.Matrix(scale, scale), alpha=False)
                 if picture.width * picture.height > budget:
-                    raise CoursewareError('Courseware rendering exceeds the pixel limit.')
+                    raise CoursewareError('课件渲染像素超过上限。')
                 name = f'page-{number:03d}.png'
                 picture.save(stage / name)
                 # Keep raw extraction for font-map diagnostics: geometric sorting
@@ -213,9 +213,9 @@ def import_document(path, lesson_dir, lesson_id):
                             text, text_source = recognized, 'tesseract_chi_sim_eng'
                         elif native_quality == 'broken_font_map':
                             text, text_source = '', 'unreadable_font_map'
-                            warnings.append(f'Page {number} has a damaged native font map and OCR returned no text. The page image was retained.')
+                            warnings.append(f'第 {number} 页原生字体映射损坏，OCR 未得到文本，保留页面图像。')
                     except Exception as exc:
-                        warnings.append(f'OCR did not complete for page {number} ({type(exc).__name__}). Native text was retained.')
+                        warnings.append(f'第 {number} 页 OCR 未完成（{type(exc).__name__}），保留原生文本。')
                         if native_quality == 'broken_font_map':
                             text, text_source = '', 'unreadable_font_map'
                 relative_image = (relative_root / name).as_posix()
@@ -236,7 +236,7 @@ def import_document(path, lesson_dir, lesson_id):
                                    'ocr': 'tesseract chi_sim+eng for image-only pages',
                                    'limits': {'bytes': MAX_DOCUMENT_BYTES, 'pages': MAX_PAGES,
                                               'page_pixels': MAX_PAGE_PIXELS, 'total_pixels': MAX_TOTAL_PIXELS},
-                                   'notice': 'The courseware source file and page content were saved; text recognition and lesson matching still require review.'}}
+                                   'notice': '课件源文件与页面内容已保存；文本识别及课堂匹配仍需核对。'}}
         (stage / 'document.json').write_text(json.dumps(document, ensure_ascii=False, indent=2), encoding='utf-8')
         stage.rename(root)
         return document
@@ -244,5 +244,5 @@ def import_document(path, lesson_dir, lesson_id):
         if stage.exists():
             resolved_stage, resolved_parent = stage.resolve(), parent.resolve()
             if resolved_stage == resolved_parent or not resolved_stage.is_relative_to(resolved_parent):
-                raise CoursewareError('Refusing to clean a path outside the courseware working directory.')
+                raise CoursewareError('拒绝清理课件工作目录以外的路径。')
             shutil.rmtree(stage)

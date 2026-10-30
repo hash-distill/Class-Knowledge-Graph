@@ -557,77 +557,77 @@ def build_report(media_dir, runs, deterministic_path=None, terms_path=DEFAULT_TE
             'runs': evaluated, 'deterministic_baseline': deterministic,
             'conditions_comparison': compare_conditions(evaluated),
             'limitations': [
-                'Original ASR, unprompted ASR, the secondary recognizer, and projection OCR are not manual transcripts. Agreement among them is not independent evidence of accuracy.',
-                'Term groups come from actual observations and machine hypotheses for this lesson. They check only occurrence and retention of standard forms and cannot be converted into terminology recall or accuracy.',
-                'Unreviewed changes, potential protected-item changes, and guard rejections are counts, not actual erroneous correction rates. Numeric and negation character flags also cover homophones such as er fa and wei jing.',
-                'Model candidates, guarded results, and source-rule results are reported separately. Shared source-rule revisions cannot all be attributed to model gains.',
-                'When native correction and structured candidates use different prompts and task formats, comparisons describe system behavior only. Prompt and sampling conditions are unknown for historical results without request records.',
-                'GPU memory and duration are copied only from observed runtime records. Distinguish idle usage, model loading, sampled peaks, and whole-workflow scope.',
-                'Only one chemistry segment of about 90 seconds is used. The vocabulary fixed after observing this lesson has selection bias and cannot generalize to other lessons.']}
+                '原 ASR、无提示 ASR、第二识别器和投影 OCR 都不是人工逐字稿；相互一致不等于独立准确率证据。',
+                '术语组来自本课实际观测和机器假设，仅检查规范写法出现与保留；不能换算为术语召回率或正确率。',
+                '未复核改动、潜在保护项变化和守卫拒绝均为计数，不能当作真实误改率。数字和否定字符标记也会覆盖二发、未经等同音词。',
+                '模型候选、守卫后结果和来源规则结果分开报告；共享的来源规则修订不能全部记为模型收益。',
+                '原生纠错与结构化候选使用不同提示和任务格式时，只能做系统行为比较。历史结果缺少请求记录时，提示和采样条件为未知。',
+                '显存和耗时只复制 runtime 实测记录；需区分空闲占用、模型加载、峰值采样及全流程范围。',
+                '仅使用一段约 90 秒化学课；本课观察后固定的词表存在选择偏差，不能外推到其他课程。']}
 
 
 def markdown_report(report):
     def cell(value):
         return str(value).replace('|', '\\|').replace('\n', ' / ')
     def value(value):
-        return 'not recorded' if value is None else str(value)
-    lines = ['# Same-lesson correction model comparison', '',
-             f"Frozen input: {report['source']['segment_count']} segments; ASR SHA-256: `{report['source']['source_asr_sha256']}`.", '',
-             'Independent verbatim reference: ' + ('provided and passed source and clock declaration checks; see JSON for CER.' if report['accuracy_evaluated'] else 'not provided. Correction rate, actual erroneous correction rate, and CER were not evaluated.'), '',
-             '| Run | Output layer | Changed segments | Unreviewed change spans | Character edit distance | Term groups present | Existing standard forms lost | Segments with protected-item changes |',
+        return '未记录' if value is None else str(value)
+    lines = ['# 同课纠错模型对比', '',
+             f"冻结输入：{report['source']['segment_count']} 段；ASR SHA-256：`{report['source']['source_asr_sha256']}`。", '',
+             '独立逐字参考：' + ('已提供并通过来源与时钟声明检查；CER 见 JSON。' if report['accuracy_evaluated'] else '未提供。纠正率、真实误改率和 CER 均未评估。'), '',
+             '| 运行 | 输出层 | 改动段 | 未复核改动跨度 | 字符编辑距离 | 术语组出现 | 原有规范词形消失 | 保护项变化段 |',
              '| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |']
-    all_runs = [{'label': 'Original ASR', 'accepted': report['source_asr'], 'raw_model': None},
+    all_runs = [{'label': '原始 ASR', 'accepted': report['source_asr'], 'raw_model': None},
                 *([report['deterministic_baseline']] if report['deterministic_baseline'] else []), *report['runs']]
     for run in all_runs:
-        for lane_name, lane in (('Native text / locatable candidate reconstruction', run['raw_model']), ('Guarded / rule results', run['accepted'])):
+        for lane_name, lane in (('原生文本／可定位候选重建', run['raw_model']), ('守卫后／规则结果', run['accepted'])):
             if lane is None:
                 continue
             summary = lane['summary']
-            if run['label'] == 'Original ASR':
-                lane_name = 'Original input'
+            if run['label'] == '原始 ASR':
+                lane_name = '原始输入'
             lines.append('| ' + ' | '.join(cell(x) for x in (run['label'], lane_name,
                 summary['changed_segment_count'], summary['unreviewed_changed_span_count'], summary['distance'],
                 f"{summary['terminology_group_presence_count']}/{summary['terminology_group_count']}",
                 summary['preexisting_normative_form_occurrences_no_longer_normative'],
                 summary['protected_pattern_flagged_segment_count'])) + ' |')
     if report['accuracy_evaluated']:
-        lines += ['', '## Independent reference scoring', '',
-                  'Repairs and damage are counted at reference-character positions; insertion errors are counted separately. The repair and damage counts below remove whitespace and punctuation and depend on optimal character alignment.', '',
-                  '| Run | Output layer | Strict CER | CER without whitespace/punctuation | Repaired reference characters | Previously correct characters damaged | Repair rate | Damage rate | Insertion errors: before → after |',
+        lines += ['', '## 独立参考评分', '',
+                  '修复和损伤以参考字符位置计数，插入错误单独统计。下表的修复与损伤去除空白和标点，并依赖最优字符对齐。', '',
+                  '| 运行 | 输出层 | 严格 CER | 去空白标点 CER | 修复参考字符 | 损伤原正确字符 | 修复率 | 损伤率 | 插入错误：前→后 |',
                   '| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |']
         def percentage(number):
-            return 'no denominator' if number is None else f'{number:.2%}'
+            return '无分母' if number is None else f'{number:.2%}'
         for run in all_runs:
-            for lane_name, lane in (('Raw model', run['raw_model']), ('Guarded / rules', run['accepted'])):
+            for lane_name, lane in (('原始模型', run['raw_model']), ('守卫后／规则', run['accepted'])):
                 if lane is None:
                     continue
                 metrics = lane['reference_metrics']
                 transitions = lane['normalized_reference_character_transitions']
-                if run['label'] == 'Original ASR':
-                    lane_name = 'Original input'
+                if run['label'] == '原始 ASR':
+                    lane_name = '原始输入'
                 lines.append('| ' + ' | '.join(cell(x) for x in (run['label'], lane_name,
                     percentage(metrics['strict']['cer']), percentage(metrics['no_whitespace_or_punctuation']['cer']),
                     transitions['repaired_reference_characters'], transitions['damaged_previously_correct_reference_characters'],
                     percentage(transitions['repair_rate']), percentage(transitions['damage_rate']),
                     f"{transitions['insertion_errors_before']}→{transitions['insertion_errors_after']}")) + ' |')
-    lines += ['', '## Candidates, attribution, and runtime records', '']
+    lines += ['', '## 候选、归因与运行记录', '']
     for run in report['runs']:
         lines += [f"### {run['label']}", '',
-                  f"Model: `{run['model']}`; status: `{run['status']}`; task: `{run['conditions']['track']}`.", '',
-                  f"Segments retaining the original text after a failed native request: {run['native_failure_count']}.", '',
-                  f"Model proposals: {value(run['raw_model_proposal_count'])}; proposals with potential protected-item changes: {value(run['potentially_unsafe_model_proposal_count'])}; guard rejections (including source-rule candidates): {value(run['guard_rejected_proposal_count'])}.", '',
-                  f"Model candidates that cannot be applied to the source: {len(run['raw_application_failures'])}; candidate reconstruction status: `{run['raw_model_text_reconstruction_status']}`.", '',
-                  'Accepted edit origins: `' + json.dumps(run['accepted_edit_origins'], ensure_ascii=False) + '`. ', '',
-                  'GPU memory and timing records: `' + json.dumps(run['runtime'], ensure_ascii=False) + '`. ', '']
+                  f"模型：`{run['model']}`；状态：`{run['status']}`；任务：`{run['conditions']['track']}`。", '',
+                  f"原生请求失败并保留原文的段数：{run['native_failure_count']}。", '',
+                  f"模型候选：{value(run['raw_model_proposal_count'])}；潜在保护项变化候选：{value(run['potentially_unsafe_model_proposal_count'])}；守卫拒绝（含来源规则候选）：{value(run['guard_rejected_proposal_count'])}。", '',
+                  f"无法应用到原文的模型候选：{len(run['raw_application_failures'])}；候选重建状态：`{run['raw_model_text_reconstruction_status']}`。", '',
+                  '接受修订来源：`' + json.dumps(run['accepted_edit_origins'], ensure_ascii=False) + '`。', '',
+                  '显存与时间记录：`' + json.dumps(run['runtime'], ensure_ascii=False) + '`。', '']
         if not run['raw_model_proposals_available']:
-            lines += ['Historical records did not retain raw model candidates, so raw model output cannot be recovered. Final changes cannot all be attributed to the model.', '']
+            lines += ['历史记录没有保存原模型候选，原始模型输出不可恢复。最终变化不能全部归因给模型。', '']
         if run.get('deterministic_comparison'):
             comparison = run['deterministic_comparison']
-            lines += [f"Final text identical to source rules alone: {comparison['identical_final_text']}; shared spans: {comparison['aligned_changed_spans_shared_with_deterministic']}; additional spans: {comparison['aligned_changed_spans_additional_to_deterministic']}. Additional spans still require audio verification.", '']
-    lines += ['## Comparison conditions', '', '```json', json.dumps(report['conditions_comparison'], ensure_ascii=False, indent=2), '```', '',
-              '## Changes by segment', '', '| Run | Output layer | Original segment and time | Source | Output | Protected-item flags |', '| --- | --- | --- | --- | --- | --- |']
+            lines += [f"与纯来源规则的最终文本相同：{comparison['identical_final_text']}；共享跨度 {comparison['aligned_changed_spans_shared_with_deterministic']}；额外跨度 {comparison['aligned_changed_spans_additional_to_deterministic']}。额外跨度仍待核听。", '']
+    lines += ['## 比较条件', '', '```json', json.dumps(report['conditions_comparison'], ensure_ascii=False, indent=2), '```', '',
+              '## 逐段变化', '', '| 运行 | 输出层 | 原段与时间 | 原文 | 输出 | 保护项提示 |', '| --- | --- | --- | --- | --- | --- |']
     for run in report['runs']:
-        for lane_name, lane in (('Raw model', run['raw_model']), ('Guarded', run['accepted'])):
+        for lane_name, lane in (('原始模型', run['raw_model']), ('守卫后', run['accepted'])):
             if lane is None:
                 continue
             for row in lane['segments']:
@@ -635,7 +635,7 @@ def markdown_report(report):
                     lines.append('| ' + ' | '.join(cell(x) for x in (run['label'], lane_name,
                         f"{row['transcript_id']} {row['start_sec']}–{row['end_sec']}s", row['original_text'], row['text'],
                         ', '.join(row['protected_pattern_flags']))) + ' |')
-    lines += ['', '## Interpretation limits', ''] + [f'- {item}' for item in report['limitations']]
+    lines += ['', '## 解释范围', ''] + [f'- {item}' for item in report['limitations']]
     return '\n'.join(lines) + '\n'
 
 

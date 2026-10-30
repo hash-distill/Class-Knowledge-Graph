@@ -1,6 +1,4 @@
-# Archived dense classroom vision improvement plan — 2026-10-28
-
-This historical plan records intended experiments, not achieved results or the current scoring method. See [vision changes](../../VISION_IMPROVEMENT_20261029.md) and [current scoring](../../CLASS_ENGAGEMENT_20261029.md).
+# Dense classroom vision improvement
 
 **Objective:** improve real detection/behavior evidence for the 90-second Chemistry_001_part9 recording on an 8 GB GPU. Compare against preserved original observations and the PPT's seven-state goal. Detection, visible state, action evidence and psychological engagement are different quantities.
 

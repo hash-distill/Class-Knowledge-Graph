@@ -41,21 +41,21 @@ with sync_playwright() as p:
         def chat_route(route):
             chat_requests.append(route.request.post_data_json)
             if len(chat_requests) == 1:
-                fulfill(route, {'error': {'code': 'MODEL_UNAVAILABLE', 'message': 'Contract test: Model service unavailable'}}, 503)
+                fulfill(route, {'error': {'code': 'MODEL_UNAVAILABLE', 'message': '合同测试：模型服务不可用'}}, 503)
             else:
                 t = data['transcript'][0]
-                fulfill(route, {'answer': 'Contract response(Not actual lesson analysis).', 'source': 'local_llm', 'model': 'contract-fixture-model', 'citations': [{**t, 'kind': 'transcript'}], 'evidence_ids': [t['id']], 'request_id': 'contract-request'})
+                fulfill(route, {'answer': '合同响应（非真实课堂分析）。', 'source': 'local_llm', 'model': 'contract-fixture-model', 'citations': [{**t, 'kind': 'transcript'}], 'evidence_ids': [t['id']], 'request_id': 'contract-request'})
         page.route('**/api/review/chat', chat_route)
     page.goto(args.url, wait_until='networkidle')
-    expect(page.get_by_text('Recorded lesson', exact=True)).to_be_visible()
+    expect(page.get_by_text('真实课堂', exact=True)).to_be_visible()
     expect(page.locator('.review-lesson-strip h2')).to_have_text(data['lesson']['title'])
-    assert page.get_by_label('Whole-lesson playback progress').get_attribute('max') == str(data['lesson']['duration_sec'])
+    assert page.get_by_label('整堂课回放进度').get_attribute('max') == str(data['lesson']['duration_sec'])
     if not data['snapshots']:
-        expect(page.get_by_text('No confirmed synchronized behavior video is available for this lesson', exact=True)).to_be_visible()
+        expect(page.get_by_text('本课没有已确认同步的行为录像', exact=True)).to_be_visible()
     checks.append('Actual duration and explicit missing behavior state independent of snapshots')
     segment = data['transcript'][len(data['transcript']) // 2]
     page.locator('.transcript-item').filter(has_text=segment['id']).click()
-    expect(page.get_by_label('Whole-lesson playback progress')).to_have_value(str(segment['start_sec']))
+    expect(page.get_by_label('整堂课回放进度')).to_have_value(str(segment['start_sec']))
     expect(page.locator('.current-speech')).to_contain_text(segment['text'])
     active_slides = [s for s in data['slides'] if s['start_sec'] <= segment['start_sec'] < s['end_sec']]
     if active_slides:
@@ -70,14 +70,14 @@ with sync_playwright() as p:
         checks.append('Actual video metadata, media seek and actual slide image')
     checks.append('Transcript click synchronizes exact timestamp and current slide')
     if mock:
-        page.get_by_label('Whole-lesson playback progress').evaluate("el => { el.value = '200'; el.dispatchEvent(new Event('input', {bubbles:true})); }")
-        expect(page.get_by_text('No transcript segment corresponds to the current time. Play the original video to check.')).to_be_visible()
+        page.get_by_label('整堂课回放进度').evaluate("el => { el.value = '200'; el.dispatchEvent(new Event('input', {bubbles:true})); }")
+        expect(page.get_by_text('当前时刻没有对应的转写片段，可播放原录像核对。')).to_be_visible()
         assert page.locator('.graph-node.current').count() == 0
-        page.get_by_role('button', name='Concept node 概念A. 2 sources. Select to seek', exact=True).click()
+        page.get_by_role('button', name='知识节点 概念A，2 条来源，点击定位', exact=True).click()
         expect(page.locator('.concept-intervals button')).to_have_count(2)
-        expect(page.get_by_label('Whole-lesson playback progress')).to_have_value('3.21')
+        expect(page.get_by_label('整堂课回放进度')).to_have_value('3.21')
         page.locator('.concept-intervals button').filter(has_text='T0002').click()
-        expect(page.get_by_label('Whole-lesson playback progress')).to_have_value('400.35')
+        expect(page.get_by_label('整堂课回放进度')).to_have_value('400.35')
         checks.append('Repeated concept preserves two disjoint intervals and no evidence in middle gap')
     else:
         if data['graph']['nodes']:
@@ -87,14 +87,14 @@ with sync_playwright() as p:
                 page.locator('.concept-intervals button').last.click()
                 checks.append('Actual graph node and individual source interval seek')
     if mock or args.ask:
-        page.get_by_role('button', name='Current segment', exact=True).click()
-        page.get_by_label('Ask the review assistant').fill('What is being discussed in this segment?Please cite lesson evidence.')
-        page.get_by_role('button', name='Send lesson question', exact=True).click()
+        page.get_by_role('button', name='当前片段', exact=True).click()
+        page.get_by_label('向课堂复盘助手提问').fill('当前片段在讲什么？请引用课堂证据。')
+        page.get_by_role('button', name='发送课堂问题', exact=True).click()
         if mock:
-            expect(page.get_by_text('No answer was generated', exact=True)).to_be_visible()
+            expect(page.get_by_text('本次回答未生成', exact=True)).to_be_visible()
             assert page.locator('.model-answer').count() == 0
-            expect(page.get_by_text('Contract test: Model service unavailable', exact=True)).to_be_visible()
-            page.get_by_role('button', name='Retry this question', exact=True).click()
+            expect(page.get_by_text('合同测试：模型服务不可用', exact=True)).to_be_visible()
+            page.get_by_role('button', name='重试这条问题', exact=True).click()
             assert chat_requests[0]['scope'] == 'current'
             assert chat_requests[0]['lesson_id'] == data['lesson']['id']
             assert chat_requests[0]['at_sec'] == 400.35
@@ -105,17 +105,17 @@ with sync_playwright() as p:
         expect(citation).to_be_visible()
         citation.click()
         if mock:
-            expect(page.get_by_label('Whole-lesson playback progress')).to_have_value('3.21')
+            expect(page.get_by_label('整堂课回放进度')).to_have_value('3.21')
         else:
-            page.wait_for_function('Math.abs(document.querySelector("video").currentTime - Number(document.querySelector("input[type=range]").value)) < .5')
+            page.wait_for_function('Math.abs(document.querySelector("video").currentTime - Number(document.querySelector("input[aria-label=整堂课回放进度]").value)) < .5')
         checks.append('Model source/model label visible and citation seeks video timeline')
     with page.expect_download() as download:
-        page.get_by_role('button', name='Full data', exact=True).click()
+        page.get_by_role('button', name='完整数据', exact=True).click()
     export_path = args.output / 'lesson-export.json'
     download.value.save_as(export_path)
     assert json.loads(export_path.read_text(encoding='utf-8')) == data
     with page.expect_download() as download:
-        page.get_by_role('button', name='Review document', exact=True).click()
+        page.get_by_role('button', name='复盘文稿', exact=True).click()
     markdown_path = args.output / 'lesson-report.md'
     download.value.save_as(markdown_path)
     markdown = markdown_path.read_text(encoding='utf-8')
@@ -133,7 +133,7 @@ with sync_playwright() as p:
         page.unroute('**/api/review/lessons')
         page.route('**/api/review/lessons', lambda route: fulfill(route, {'lessons': []}))
         page.reload(wait_until='networkidle')
-        expect(page.get_by_text('No recorded lessons are ready for review', exact=True)).to_be_visible()
+        expect(page.get_by_text('还没有可复盘的真实课堂', exact=True)).to_be_visible()
         assert page.locator('video').count() == 0
         assert page.locator('.review-lesson-strip').count() == 0
         checks.append('Empty real lesson catalog never falls back to demo')

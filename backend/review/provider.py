@@ -55,18 +55,18 @@ class LLMProvider:
         try:
             response=requests.post(self.base+'/chat/completions',json=payload,headers=headers,timeout=self.timeout)
         except requests.Timeout as exc:
-            raise ReviewError('model_timeout','Model generation timed out. Please try again shortly; no answer was generated.',504) from exc
+            raise ReviewError('model_timeout','模型生成超时，请稍后重试；当前未生成回答。',504) from exc
         except requests.RequestException as exc:
-            raise ReviewError('model_unavailable','The local or configured model service is not ready. Start it and try again.') from exc
+            raise ReviewError('model_unavailable','本地或已配置模型服务尚未就绪，请启动服务后重试。') from exc
         if not response.ok:
             # Never expose upstream credential-bearing bodies or HTML to the browser.
-            raise ReviewError('model_rejected',f'The model endpoint returned HTTP {response.status_code}; no answer was generated.',502)
+            raise ReviewError('model_rejected',f'模型接口返回 HTTP {response.status_code}；当前未生成回答。',502)
         try:
             data=response.json()
             content=data['choices'][0]['message']['content']
             if not isinstance(content,str) or not content.strip(): raise ValueError('empty')
         except (ValueError,KeyError,IndexError,TypeError) as exc:
-            raise ReviewError('invalid_model_response','The model returned invalid content; no answer was generated.',502) from exc
+            raise ReviewError('invalid_model_response','模型返回内容无效；当前未生成回答。',502) from exc
         metadata={'model':data.get('model',self.model),'source':self.source,
                   'usage':data.get('usage',{}),'completion_id':data.get('id')}
         if self.capture_response:
@@ -76,9 +76,9 @@ class LLMProvider:
                 elapsed_seconds=round(time.perf_counter()-started,6),
                 request_parameters={k:v for k,v in payload.items() if k not in ('messages','model')})
         if data['choices'][0].get('finish_reason')!='stop':
-            raise ReviewError('model_incomplete','The model response was incomplete or reached the length limit. Narrow the question and try again.',502,diagnostic=metadata)
+            raise ReviewError('model_incomplete','模型回答未正常完成或达到长度上限，请缩小问题范围后重试。',502,diagnostic=metadata)
         if json_mode:
             try: content=json.loads(content)
             except ValueError as exc:
-                raise ReviewError('invalid_model_json','The model did not return the required structured result.',502,diagnostic=metadata) from exc
+                raise ReviewError('invalid_model_json','模型未返回要求的结构化结果。',502,diagnostic=metadata) from exc
         return content, metadata

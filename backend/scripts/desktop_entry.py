@@ -24,19 +24,19 @@ if str(SOURCE_ROOT) not in sys.path:
 
 
 def parse_args(argv=None):
-    parser = argparse.ArgumentParser(description='Jingxi Insight local desktop backend; listens only on 127.0.0.1.')
+    parser = argparse.ArgumentParser(description='4C 本地桌面后端；只监听 127.0.0.1。')
     parser.add_argument('--port', type=int, default=0)
     parser.add_argument('--data-dir', type=Path)
     parser.add_argument('--registry', type=Path)
     parser.add_argument('--frontend-dir', type=Path)
     parser.add_argument('--runtime-root', type=Path)
-    parser.add_argument('--reuse', action='store_true', help='Reuse only this project service with a matching private handshake and configuration fingerprint')
-    parser.add_argument('--watch-stdin', action='store_true', help='Stop the service started by this launcher when stdin receives stop or closes')
+    parser.add_argument('--reuse', action='store_true', help='仅复用具有匹配私有握手和配置指纹的本项目服务')
+    parser.add_argument('--watch-stdin', action='store_true', help='标准输入 stop 或关闭时退出自己启动的服务')
     parser.add_argument('--open-browser', action='store_true')
-    parser.add_argument('--api-only', action='store_true', help='Serve the API even when the frontend has not been built')
+    parser.add_argument('--api-only', action='store_true', help='允许前端尚未构建，仅提供 API')
     args = parser.parse_args(argv)
     if not 0 <= args.port <= 65535:
-        parser.error('The port must be between 0 and 65535.')
+        parser.error('端口必须在 0 到 65535 之间。')
     return args
 
 
@@ -140,13 +140,13 @@ def main(argv=None):
             previous = {}
         previous_fingerprint = previous.get('fingerprint') if isinstance(previous,dict) else None
         if isinstance(previous_fingerprint,str) and verified_service(state_path,previous_fingerprint):
-            raise SystemExit('A service is running in this workspace, but the frontend build or startup configuration changed. Stop it with Ctrl+C in its original terminal, then restart. The existing service was left running.')
+            raise SystemExit('当前工作区已有服务运行，但前端构建或启动配置已变化。请先在原服务终端按 Ctrl+C 关闭，再重新启动；已有服务未停止。')
     paths['data'].mkdir(parents=True, exist_ok=True)
     if not paths['registry'].exists():
         paths['registry'].parent.mkdir(parents=True, exist_ok=True)
         paths['registry'].write_text('{}\n', encoding='utf-8')
     if not args.api_only and not (paths['frontend'] / 'index.html').is_file():
-        raise SystemExit('Frontend dist/index.html is missing. Build the frontend or pass --frontend-dir.')
+        raise SystemExit('缺少前端 dist/index.html。请先构建前端或传入 --frontend-dir。')
     _seed_configs(paths)
     os.environ.update({'REVIEW_DATA_DIR': str(paths['data']), 'REVIEW_LESSON_REGISTRY': str(paths['registry']),
                        'REVIEW_FRONTEND_DIR': str(paths['frontend']), 'REVIEW_RUNTIME_ROOT': str(paths['runtime'])})

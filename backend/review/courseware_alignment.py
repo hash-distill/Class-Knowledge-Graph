@@ -177,9 +177,9 @@ def align_document(document, bundle, lesson_dir):
                                 cwd=Path(__file__).resolve().parents[1],
                                 creationflags=subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0)
     except subprocess.TimeoutExpired as exc:
-        raise ValueError('Courseware screen matching timed out. No estimated timestamps were generated. Reduce the page count and try again.') from exc
+        raise ValueError('课件画面匹配超时，未生成推测时间。请减少课件页数后重试。') from exc
     if result.returncode:
-        raise ValueError('Courseware screen matching failed: ' + result.stderr.strip()[-1000:])
+        raise ValueError('课件画面匹配失败：' + result.stderr.strip()[-1000:])
     return json.loads(result.stdout)
 
 

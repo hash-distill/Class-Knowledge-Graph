@@ -33,13 +33,13 @@ const pendingBox = computed(() => dragStart.value && dragEnd.value && doc.value 
 const imageUrl = computed(() => locked.value ? `${locked.value.image_url}?review_image=${doc.value!.image_sha256}` : '')
 const currentDifferent = computed(() => props.frame && props.frame.id !== doc.value?.frame_id)
 const clone = <T,>(value: T): T => JSON.parse(JSON.stringify(value))
-const message = (reason: unknown) => reason instanceof Error ? reason.message : 'Operation failed. Please try again'
+const message = (reason: unknown) => reason instanceof Error ? reason.message : '操作失败，请重试'
 async function enlarge() {
   try {
     if (document.fullscreenElement === reviewRoot.value) await document.exitFullscreen()
     else await reviewRoot.value?.requestFullscreen()
   }
-  catch { error.value = 'Fullscreen is unavailable in this window. Zoom in using the browser to review the frame' }
+  catch { error.value = '当前窗口无法全屏，可在浏览器中放大页面后复核' }
 }
 function updateFullscreen() { enlarged.value = document.fullscreenElement === reviewRoot.value }
 onMounted(() => document.addEventListener('fullscreenchange', updateFullscreen))
@@ -72,10 +72,10 @@ async function loadCurrent() {
     doc.value = loaded; rows.value = reviewRows(loaded.frame, loaded.annotations)
     if (draft && draft.doc.basis_fingerprint === loaded.basis_fingerprint) {
       // Keep its original version: saving a stale draft must yield a conflict, never overwrite a newer review.
-      doc.value = draft.doc; rows.value = draft.rows; notice.value = 'Restored the unsaved draft for this frame'
+      doc.value = draft.doc; rows.value = draft.rows; notice.value = '已恢复此帧未保存的草稿'
     } else if (draft) {
       draftBackups.set(`${lesson}/${frame}`, draft); draftCache.delete(`${lesson}/${frame}`)
-      notice.value = 'Source has changed. The previous draft was not applied. Download the previous draft backup before reviewing again'
+      notice.value = '来源已变化，旧草稿没有应用。可下载旧草稿备份后重新核对'
     }
     selectedId.value = rows.value[0]?.id || ''; original.value = false; imageFailed.value = false
     history.value = []; historyOpen.value = false
@@ -96,7 +96,7 @@ function coordinate(index: number, event: Event) {
   modify({ bbox: box })
 }
 function ignore() {
-  if (!selected.value?.reason.trim()) { error.value = 'Enter a reason for exclusion first. For example, a mirror duplicate or a non-person detection'; return }
+  if (!selected.value?.reason.trim()) { error.value = '请先填写排除原因，例如镜面重复或并非人物'; return }
   error.value = ''; modify({ status: 'ignored' })
 }
 function unreview() {
@@ -122,11 +122,11 @@ function pointerUp(event: PointerEvent) {
   dragEnd.value = point(event)
   const box = pendingBox.value
   dragStart.value = null; dragEnd.value = null
-  if (!box) { notice.value = 'Box too small. Draw the box again'; return }
-  if (rows.value.length >= 200) { error.value = 'Each frame supports up to 200 reviewed people'; return }
+  if (!box) { notice.value = '框太小，请重新拖画'; return }
+  if (rows.value.length >= 200) { error.value = '每帧最多支持 200 个复核对象'; return }
   const id = `manual-${crypto.randomUUID()}`
   rows.value.push({ id, origin: 'manual', bbox: box, status: 'confirmed', label: 'unknown', role: 'unknown', reason: '' })
-  selectedId.value = id; drawing.value = false; notice.value = 'Added bounding box. Check the state and role before saving'
+  selectedId.value = id; drawing.value = false; notice.value = '已补入边框，请核对状态和角色后保存'
 }
 function cancelDrag() { dragStart.value = null; dragEnd.value = null }
 
@@ -134,7 +134,7 @@ async function save(reset = false) {
   if (!doc.value || saving.value || loading.value) return
   const baseline = new Map(reviewRows(doc.value.frame, doc.value.annotations).map(row => [row.id, row]))
   if (!reset && rows.value.some(row => row.status === 'unreviewed' && JSON.stringify(row) !== JSON.stringify(baseline.get(row.id)))) {
-    error.value = 'Some edited people have not been confirmed. Confirm this person or restore the unreviewed state first. Save again'; return
+    error.value = '有修改过的对象尚未确认，请先确认此对象或恢复待复核，再保存'; return
   }
   const generation = requestGeneration, current = clone(doc.value)
   saving.value = true; error.value = ''; notice.value = ''
@@ -143,7 +143,7 @@ async function save(reset = false) {
     if (generation !== requestGeneration) return
     doc.value = result; rows.value = reviewRows(result.frame, result.annotations)
     draftCache.delete(key.value); historyOpen.value = false
-    notice.value = reset ? 'Revoked review for this frame. History remains recoverable' : `Saved version ${result.version}`
+    notice.value = reset ? '已撤回本帧复核，历史仍可恢复' : `已保存版本 ${result.version}`
   } catch (reason) { if (generation === requestGeneration) error.value = message(reason) }
   finally { if (generation === requestGeneration) saving.value = false }
 }
@@ -158,7 +158,7 @@ async function reload() {
     const result = await visionReview.get(lesson, frame)
     if (generation !== requestGeneration) return
     doc.value = result; rows.value = reviewRows(result.frame, result.annotations)
-    notice.value = 'Loaded the server version. The previous draft is available as a backup download. Then compare and edit again'; imageFailed.value = false
+    notice.value = '已载入服务器版本。原草稿可下载备份，再对照重新修改'; imageFailed.value = false
   } catch (reason) { if (generation === requestGeneration) error.value = message(reason) }
   finally { if (generation === requestGeneration) loading.value = false }
 }
@@ -177,7 +177,7 @@ async function restore(version: number) {
     const result = await visionReview.restore(doc.value, version)
     if (generation !== requestGeneration) return
     doc.value = result; rows.value = reviewRows(result.frame, result.annotations); historyOpen.value = false
-    notice.value = `Restored historical content. Current version ${result.version}`
+    notice.value = `已恢复历史内容，当前版本 ${result.version}`
   } catch (reason) { if (generation === requestGeneration) error.value = message(reason) }
   finally { if (generation === requestGeneration) saving.value = false }
 }
@@ -191,58 +191,58 @@ async function exportSamples() {
   if (dirty.value || saving.value || exporting.value) return
   exporting.value = true; error.value = ''
   const generation = requestGeneration
-  try { await visionReview.export(props.lessonId); if (generation === requestGeneration) notice.value = 'Exported the saved human review samples for this lesson ZIP' }
+  try { await visionReview.export(props.lessonId); if (generation === requestGeneration) notice.value = '已导出本课保存的人工复核样本 ZIP' }
   catch (reason) { if (generation === requestGeneration) error.value = message(reason) }
   finally { exporting.value = false }
 }
 </script>
 
 <template>
-  <section ref="reviewRoot" class="vision-review" data-testid="vision-review" aria-label="Visual review and correction">
-    <header class="review-heading"><div><p>HUMAN REVIEW</p><h3>Visual review and correction</h3><small>Confirm each person. Correct missed detections and misclassifications</small></div><button class="primary" :disabled="!frame || loading || saving" @click="loadCurrent">{{ opened ? 'Load current frame' : 'Start reviewing the current frame' }}</button></header>
-    <p v-if="!opened" class="intro">Choose state, Exclude false detection. Or draw a box on the source image to add a missed person. Each confirmation is stored separately. Can be revoked and exported.</p>
+  <section ref="reviewRoot" class="vision-review" data-testid="vision-review" aria-label="视觉复核与纠错">
+    <header class="review-heading"><div><p>HUMAN REVIEW</p><h3>视觉复核与纠错</h3><small>逐对象确认，让漏检和误判有地方修正</small></div><button class="primary" :disabled="!frame || loading || saving" @click="loadCurrent">{{ opened ? '载入当前画面' : '开始复核当前帧' }}</button></header>
+    <p v-if="!opened" class="intro">选择状态、排除误检，或在原图拖框补入漏检对象。每次确认单独留档，可撤回并导出。</p>
     <div v-if="opened" class="review-content">
-      <p v-if="loading" role="status">Loading review records for this frame</p>
-      <p v-if="doc?.source_changed" class="warning">The source image or model results have changed. Previous review records are no longer active. Please verify again. History is preserved</p>
+      <p v-if="loading" role="status">正在读取此帧复核记录</p>
+      <p v-if="doc?.source_changed" class="warning">原图片或模型结果已变化，旧复核记录已停用。请重新核对，历史记录仍保留</p>
       <template v-if="doc && locked">
-        <div class="review-toolbar"><span class="frame-chip">Locked {{ formatReviewTime(locked.timestamp_sec) }} · Scene {{ locked.scene_id }}</span><span>Confirmed {{ confirmed }} · Excluded {{ ignored }} · Unreviewed {{ rows.length-confirmed-ignored }}</span><span v-if="dirty" class="draft-chip">Unsaved draft</span><span v-else>Version {{ doc.version }}</span></div>
-        <p v-if="currentDifferent" class="locked-note">The playback position has changed. This editor is still showing the locked frame. Loading the current frame preserves the draft for the original frame</p>
+        <div class="review-toolbar"><span class="frame-chip">已锁定 {{ formatReviewTime(locked.timestamp_sec) }} · 镜头 {{ locked.scene_id }}</span><span>确认 {{ confirmed }} · 排除 {{ ignored }} · 待复核 {{ rows.length-confirmed-ignored }}</span><span v-if="dirty" class="draft-chip">未保存草稿</span><span v-else>版本 {{ doc.version }}</span></div>
+        <p v-if="currentDifferent" class="locked-note">播放位置已变化，此处仍编辑锁定帧。载入当前画面会保留原帧草稿</p>
         <div class="review-grid" :aria-busy="saving || loading">
           <div class="review-canvas-column">
-            <div class="canvas-toolbar"><button :class="{ active: drawing }" :disabled="saving || loading || original || imageFailed" @click="drawing = !drawing; cancelDrag()">{{ drawing ? 'Drawing a box · Select to cancel' : '＋ Draw a missed person' }}</button><button :aria-pressed="original" @click="original = !original; drawing = false">{{ original ? 'Show review annotations' : 'Compare source image' }}</button><button @click="enlarge">{{ enlarged ? 'Exit enlarged view' : 'Enlarge for review' }}</button></div>
+            <div class="canvas-toolbar"><button :class="{ active: drawing }" :disabled="saving || loading || original || imageFailed" @click="drawing = !drawing; cancelDrag()">{{ drawing ? '正在拖框 · 点击取消' : '＋ 拖框补漏检' }}</button><button :aria-pressed="original" @click="original = !original; drawing = false">{{ original ? '显示复核标记' : '对照原图' }}</button><button @click="enlarge">{{ enlarged ? '退出放大' : '放大复核' }}</button></div>
             <div class="review-canvas" :class="{ drawing }" :style="{ aspectRatio: `${doc.width}/${doc.height}` }">
-              <img :src="imageUrl" alt="Locked source lesson frame" @error="imageFailed = true" />
-              <svg v-if="!original && !imageFailed" ref="svg" :viewBox="`0 0 ${doc.width} ${doc.height}`" aria-label="Human review canvas" data-testid="vision-review-canvas" @pointerdown="pointerDown" @pointermove="pointerMove" @pointerup="pointerUp" @pointercancel="cancelDrag" @keydown.escape="drawing = false; cancelDrag()">
-                <g v-for="(row, index) in rows" :key="row.id" class="review-object" :class="[row.status, { selected: selectedId === row.id }]" role="button" :tabindex="drawing ? -1 : 0" :aria-label="`Review person ${index+1} ${visualLabels[row.label]}`" @click="!drawing && (selectedId = row.id)" @keydown.enter="selectedId = row.id" @keydown.space.prevent="selectedId = row.id">
+              <img :src="imageUrl" alt="锁定的课堂原始帧" @error="imageFailed = true" />
+              <svg v-if="!original && !imageFailed" ref="svg" :viewBox="`0 0 ${doc.width} ${doc.height}`" aria-label="人工复核画布" data-testid="vision-review-canvas" @pointerdown="pointerDown" @pointermove="pointerMove" @pointerup="pointerUp" @pointercancel="cancelDrag" @keydown.escape="drawing = false; cancelDrag()">
+                <g v-for="(row, index) in rows" :key="row.id" class="review-object" :class="[row.status, { selected: selectedId === row.id }]" role="button" :tabindex="drawing ? -1 : 0" :aria-label="`复核对象 ${index+1} ${visualLabels[row.label]}`" @click="!drawing && (selectedId = row.id)" @keydown.enter="selectedId = row.id" @keydown.space.prevent="selectedId = row.id">
                   <rect :x="row.bbox[0]" :y="row.bbox[1]" :width="Math.max(0,row.bbox[2]-row.bbox[0])" :height="Math.max(0,row.bbox[3]-row.bbox[1])" />
                   <text :x="row.bbox[0]+3" :y="Math.max(17,row.bbox[1]-5)">{{ index+1 }}{{ row.status === 'confirmed' ? ' ✓' : row.status === 'ignored' ? ' ×' : '' }}</text>
                 </g>
                 <rect v-if="pendingBox" class="pending-box" :x="pendingBox[0]" :y="pendingBox[1]" :width="pendingBox[2]-pendingBox[0]" :height="pendingBox[3]-pendingBox[1]" />
               </svg>
-              <p v-if="imageFailed" class="image-error">Unable to load source frame. Reload before reviewing again</p>
+              <p v-if="imageFailed" class="image-error">原始帧加载失败，请重新加载后复核</p>
             </div>
-            <div class="canvas-legend"><span>Dashed line Unreviewed</span><span>Solid line Confirmed</span><span>Gray line Excluded</span><small>Box numbers identify people in the current frame only</small></div>
-            <div class="object-list" aria-label="People to review"><button v-for="(row,index) in rows" :key="row.id" :aria-pressed="selectedId === row.id" :class="[row.status,{ active: selectedId === row.id }]" @click="selectedId = row.id">{{ index+1 }}<span>{{ row.status === 'confirmed' ? '✓' : row.status === 'ignored' ? '×' : '·' }}</span></button><p v-if="!rows.length">No people in this frame. Draw a box to add a person</p></div>
+            <div class="canvas-legend"><span>虚线 待复核</span><span>实线 已确认</span><span>灰线 已排除</span><small>框编号仅指当前画面的对象</small></div>
+            <div class="object-list" aria-label="复核对象列表"><button v-for="(row,index) in rows" :key="row.id" :aria-pressed="selectedId === row.id" :class="[row.status,{ active: selectedId === row.id }]" @click="selectedId = row.id">{{ index+1 }}<span>{{ row.status === 'confirmed' ? '✓' : row.status === 'ignored' ? '×' : '·' }}</span></button><p v-if="!rows.length">当前无对象，可拖框补入</p></div>
           </div>
           <fieldset class="review-inspector" :disabled="saving || loading || imageFailed">
-            <template v-if="selected"><div class="inspector-heading"><strong>Person {{ rows.indexOf(selected)+1 }}</strong><span>{{ selected.origin === 'manual' ? 'Manually added box' : 'Model candidate' }}</span></div>
-              <label>Visible states<select data-testid="review-label" :value="selected.label" @change="editLabel"><option v-for="(name,label) in visualLabels" :key="label" :value="label">{{ name }}</option></select></label>
-              <label>Person role<select data-testid="review-role" :value="selected.role" @change="editRole"><option value="unknown">Unconfirmed</option><option value="student">Student</option><option value="teacher">Teacher</option></select></label>
-              <p class="field-note">Only confirmed students with a known state enter the classification training samples</p>
-              <div class="coordinates"><label v-for="(name,index) in ['Left','Top','Right','Bottom']" :key="name">{{ name }}<input type="number" :aria-label="`Box ${name.toLowerCase()} coordinate`" :value="selected.bbox[index]" step="1" min="0" :max="index%2 ? doc.height : doc.width" @change="coordinate(index,$event)" /></label></div>
-              <label>Verification notes<textarea v-model="selected.reason" maxlength="500" rows="2" placeholder="Explain the reason for exclusion. For example, a mirror duplicate" /></label>
-              <div class="inspector-actions"><button class="primary" data-testid="confirm-visual-object" @click="modify({ status: 'confirmed' })">Confirm this person</button><button @click="ignore">Exclude this person</button><button @click="unreview">{{ selected.origin === 'manual' ? 'Delete added box' : 'Restore unreviewed state' }}</button></div>
-              <p class="field-note">{{ selected.status === 'confirmed' ? 'Confirmed. Effective after saving' : selected.status === 'ignored' ? 'Excluded. Effective after saving' : 'Not yet confirmed by a person. Excluded from training samples' }}</p>
-            </template><p v-else>Select a box in the image or a number below. Start review</p>
+            <template v-if="selected"><div class="inspector-heading"><strong>对象 {{ rows.indexOf(selected)+1 }}</strong><span>{{ selected.origin === 'manual' ? '人工补框' : '模型候选' }}</span></div>
+              <label>可见状态<select data-testid="review-label" :value="selected.label" @change="editLabel"><option v-for="(name,label) in visualLabels" :key="label" :value="label">{{ name }}</option></select></label>
+              <label>对象角色<select data-testid="review-role" :value="selected.role" @change="editRole"><option value="unknown">暂不确认</option><option value="student">学生</option><option value="teacher">教师</option></select></label>
+              <p class="field-note">仅确认学生且状态明确的对象进入分类训练样本</p>
+              <div class="coordinates"><label v-for="(name,index) in ['左','上','右','下']" :key="name">{{ name }}<input type="number" :aria-label="`边框${name}坐标`" :value="selected.bbox[index]" step="1" min="0" :max="index%2 ? doc.height : doc.width" @change="coordinate(index,$event)" /></label></div>
+              <label>核对说明<textarea v-model="selected.reason" maxlength="500" rows="2" placeholder="排除时请说明原因，例如镜面重复" /></label>
+              <div class="inspector-actions"><button class="primary" data-testid="confirm-visual-object" @click="modify({ status: 'confirmed' })">确认此对象</button><button @click="ignore">排除此对象</button><button @click="unreview">{{ selected.origin === 'manual' ? '删除补框' : '恢复待复核' }}</button></div>
+              <p class="field-note">{{ selected.status === 'confirmed' ? '已确认，保存后生效' : selected.status === 'ignored' ? '已排除，保存后生效' : '尚未人工确认，不进入训练样本' }}</p>
+            </template><p v-else>点击画面中的边框或下方编号，开始复核</p>
           </fieldset>
         </div>
-        <div class="review-footer"><div class="save-actions"><button class="primary" data-testid="save-vision-review" :disabled="saving || loading || imageFailed || !dirty" @click="save()">{{ saving ? 'Saving' : 'Save frame review' }}</button><button :disabled="saving || loading" @click="reload">Reload records</button><button :disabled="saving || loading || dirty || !doc.annotations.length" @click="save(true)">Revoke this frame review</button></div><div><button :disabled="saving || loading" @click="showHistory">Version history</button><button :disabled="saving || exporting || dirty" data-testid="export-vision-samples" @click="exportSamples">{{ exporting ? 'Exporting' : 'Export lesson samples' }}</button><button v-if="dirty || draftBackups.has(key)" @click="backupDraft">Draft backup</button></div></div>
-        <div v-if="historyOpen" class="review-history"><p v-if="!history.length">No saved records</p><div v-for="entry in history" :key="entry.version"><span>Version {{ entry.version }} · {{ entry.annotations.length }} reviewed people · {{ new Date(entry.updated_at).toLocaleString('en-US') }}</span><button :disabled="saving || dirty || entry.basis_fingerprint !== doc.basis_fingerprint || entry.version === doc.version" @click="restore(entry.version)">{{ entry.basis_fingerprint !== doc.basis_fingerprint ? 'Source has changed' : 'Restore this version' }}</button></div></div>
-        <p class="export-note">The export includes a source manifest, full-frame images, and confirmed student-state crops. Unreviewed, excluded, or unknown states and people with unconfirmed roles are excluded from classification samples; Full frames are partially annotated. They are not complete detection training labels</p>
+        <div class="review-footer"><div class="save-actions"><button class="primary" data-testid="save-vision-review" :disabled="saving || loading || imageFailed || !dirty" @click="save()">{{ saving ? '正在保存' : '保存本帧复核' }}</button><button :disabled="saving || loading" @click="reload">重新加载记录</button><button :disabled="saving || loading || dirty || !doc.annotations.length" @click="save(true)">撤回本帧复核</button></div><div><button :disabled="saving || loading" @click="showHistory">版本历史</button><button :disabled="saving || exporting || dirty" data-testid="export-vision-samples" @click="exportSamples">{{ exporting ? '正在导出' : '导出本课样本' }}</button><button v-if="dirty || draftBackups.has(key)" @click="backupDraft">草稿备份</button></div></div>
+        <div v-if="historyOpen" class="review-history"><p v-if="!history.length">暂无保存记录</p><div v-for="entry in history" :key="entry.version"><span>版本 {{ entry.version }} · {{ entry.annotations.length }} 个复核对象 · {{ new Date(entry.updated_at).toLocaleString() }}</span><button :disabled="saving || dirty || entry.basis_fingerprint !== doc.basis_fingerprint || entry.version === doc.version" @click="restore(entry.version)">{{ entry.basis_fingerprint !== doc.basis_fingerprint ? '来源已变化' : '恢复此版本' }}</button></div></div>
+        <p class="export-note">导出包含来源清单、整帧图片和已确认的学生状态裁剪图。待复核、排除、未知状态和身份未确认的对象不进入分类样本；整帧属于部分标注，不作为完整检测训练标签</p>
       </template>
       <p v-if="error" class="review-error" role="alert">{{ error }}</p><p v-if="notice" class="review-notice" role="status">{{ notice }}</p>
     </div>
-    <p class="review-boundary">Human reviews are saved in separate records. The model results above and whole-lesson curves retain their original calculations. Local corrections are not interpreted as class-wide engagement or model accuracy</p>
+    <p class="review-boundary">人工复核保存在独立记录中。上方模型结果和全课曲线保留原始计算，不会将局部修正解释为全班积极度或模型准确率</p>
   </section>
 </template>
 

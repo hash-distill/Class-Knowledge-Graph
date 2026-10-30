@@ -68,10 +68,10 @@ with sync_playwright() as pw:
     row.locator('button').click()
     page.wait_for_function('(t)=>Math.abs(document.querySelector("video").currentTime-t)<.1',arg=target)
     assert page.evaluate('document.querySelector("video")===window.__comparisonSourceVideo')
-    page.get_by_label('Search correction model comparison').fill('咕噜声')
+    page.get_by_label('搜索校对模型对比').fill('咕噜声')
     assert panel.locator('.comparison-segment').count()==1
     page.screenshot(path=str(args.output/'native-risk-and-original.png'),full_page=True)
-    page.get_by_label('Search correction model comparison').fill('')
+    page.get_by_label('搜索校对模型对比').fill('')
     page.set_viewport_size({'width':390,'height':844})
     page.wait_for_function('document.documentElement.scrollWidth<=innerWidth+1')
     panel.screenshot(path=str(args.output/'comparison-mobile.png'))
@@ -82,7 +82,7 @@ with sync_playwright() as pw:
     assert page.evaluate('document.querySelector("video")===window.__comparisonSourceVideo')
     page.locator('nav [data-view="report"]').click()
     with page.expect_download() as event:
-        page.get_by_role('button',name='Full data',exact=True).click()
+        page.get_by_role('button',name='完整数据',exact=True).click()
     destination=args.output/'lesson-export.json'; event.value.save_as(destination)
     exported=json.loads(destination.read_text(encoding='utf-8'))
     assert exported==fetch('/api/review/lessons/'+args.lesson)

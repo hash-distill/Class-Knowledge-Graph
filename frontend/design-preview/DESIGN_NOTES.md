@@ -1,33 +1,33 @@
-# Jingxi Insight: historical light workspace design notes
+# 智启教学 · 浅色教学工作台
 
-Date: 2026-10-25
+日期：2026-10-25
 
-This historical design used an ivory surface, dark blue navigation, and sage green charts. It retained the then-existing Vue / Pinia / ECharts stack and snapshot/graph data interfaces while reorganizing the lesson review workspace. These notes describe that design iteration rather than the current production interface.
+设计采用米白纸面、深蓝导航与鼠尾草绿图表。保留现有 Vue / Pinia / ECharts 技术栈以及快照和图谱数据接口，围绕课堂复盘重新组织内容。
 
-## Pages and interactions
+## 页面与交互
 
-- The sidebar contained Lesson overview, Knowledge graph, Participation analysis, and Review assistant links that scrolled to their corresponding sections.
-- The summary showed playback duration, tracked people, sample concept segments, and sample engagement values.
-- The overview graph showed 24 nodes; the expanded graph showed 40. It supported dragging, zooming, reset, and linked segment navigation.
-- The timeline, progress slider, video, and concept segments shared playback state.
-- The current JSON snapshot could be exported with a demo-mode notice.
-- Dialogs supported Escape, a keyboard focus trap, and focus restoration on close.
-- The desktop sidebar became an icon rail on tablets and top navigation on phones. Charts resized with their containers.
+- 侧栏分为课堂概览、知识图谱、参与分析和复盘助手，导航会定位到对应区域。
+- 概况栏展示回放时长、跟踪目标、示例知识片段与示例积极度。
+- 图谱在概览中展示 24 个节点，展开后展示 40 个节点；支持拖动、缩放、重置与关联片段跳转。
+- 时间轴、进度条、视频和知识片段共用原有回放状态。
+- 支持导出当前 JSON 快照，导出内容附有演示状态说明。
+- 弹窗支持 Escape、键盘焦点约束和关闭后的焦点恢复。
+- 桌面侧栏在平板收为图标栏，手机端改为顶部导航；图表跟随容器调整尺寸。
 
-## Data limitations
+## 数据边界
 
-This iteration redesigned frontend visuals and interactions. It did not complete the previously discussed evidence-system reconstruction. Concept mappings, engagement curves, graph activity, and heatmaps included demo logic; AI replies were preset. The interface and exports disclosed these limitations. Preset replies were revised to explain operation without inferring student knowledge mastery. Playback was paused on initial load.
+本次为前端视觉与交互重设计，未完成此前讨论的教学证据系统重构。现有知识点映射、积极度时间曲线、图谱活跃度、热力图包含演示逻辑；AI 仍使用预设回复。页面与导出文件已标明这些边界，预设回复改为不推断学生知识掌握程度的操作说明。默认进入页面时暂停回放。
 
-The accompanying `snapshot-export.json` remains explicitly labeled `mode: demo`. Its synthetic metrics are historical preview data and are not connected to current lesson inference or treated as evidence of teaching effectiveness.
+## 运行与核验
 
-## Running and checking
+项目目录中运行 `npm run dev -- --host 127.0.0.1 --port 5173`，使用 `npm run build` 完成类型检查与生产构建。
 
-From the project directory, run `npm run dev -- --host 127.0.0.1 --port 5173`. `npm run build` performs type checking and a production build.
+Windows 下构建脚本将 esbuild 临时文件限制在 `node_modules/.cache/vite-build-temp`，解决本机系统 TEMP 目录中反复出现的删除被拒绝问题。该设置只作用于构建子进程，不修改系统环境变量。其他平台沿用原有临时目录。
 
-On Windows, the build script confines esbuild temporary files to `node_modules/.cache/vite-build-temp` to avoid recurring deletion-denied errors in the local system TEMP directory. This affects the build subprocess only and does not change system environment variables. Other platforms retain their original temporary directory.
+`verify-ui.py` 在本地服务启动后使用 Python Playwright 检查回放、片段定位、图谱弹窗、帮助、导出、演示问答和响应式布局。结果见 `verification.json`，截图位于本目录。界面测试不构成模型有效性验证。
 
-The historical `verify-ui.py` used Python Playwright to check playback, segment navigation, graph dialogs, help, exports, demo Q&A, and responsive layouts. Its saved results are in `verification.json`; the referenced screenshots were local design artifacts. These saved results describe that historical interface, not fresh verification of the current release, and do not validate model effectiveness.
+## 原版备份
 
-## Original backup
+`D:\全球校园人工智能精英大赛\4C\前端\设计备份\Front-设计前-20261025-170703.zip`
 
-A local archive was created before this iteration on 2026-10-25 at 17:07:03. It contained the previous `src`, `index.html`, `package.json`, `package-lock.json`, and `vite.config.ts`. Classroom media and backend source were unchanged by that design pass. The local archive is not included in this release.
+备份包含修改前的 src、index.html、package.json、package-lock.json 和 vite.config.ts；课堂媒体和后台源代码未改动。

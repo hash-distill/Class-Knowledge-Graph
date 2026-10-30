@@ -141,7 +141,7 @@ class TemporalEvidence:
         report = ObservationAssessment(context=context)
         history = list(self.tracks.get(track_id, []))
         if not history or history[-1].score is None or timestamp-history[-1].time > self.max_gap_sec:
-            report.reasons = ['No usable behavior evidence is currently available.']
+            report.reasons = ['当前缺少可判断的行为证据']
             return None, report
         start = max(history[0].time, timestamp-self.window_sec)
         span = timestamp-start
@@ -160,13 +160,13 @@ class TemporalEvidence:
         report.temporal_coverage = round(min(1., support/max(span, 1e-8)), 4)
         report.quality = round(min(1., weighted/max(span, 1e-8)), 4)
         if support + 1e-7 < self.min_evidence_sec or report.quality < self.min_quality or not weighted:
-            report.reasons = ['Collecting continuous behavior evidence, or observation quality is insufficient.']
+            report.reasons = ['正在积累连续行为证据，或观测质量不足']
             return None, report
         report.status = 'estimated'
-        report.reasons = ['Estimated from visible behavior and the teaching task; not calibrated against classroom engagement labels.',
-                          'Unknown behavior is not treated as low engagement. Check coverage alongside the estimate.']
+        report.reasons = ['按可见行为与教学任务估计；未经课堂投入标签校准',
+                          '未知行为未计作低投入；请同时查看覆盖率']
         if context == 'unspecified':
-            report.reasons.append('No teaching task was provided; only general participation cue rules are used.')
+            report.reasons.append('未提供教学任务，仅使用通用参与线索规则')
         return round(numerator/weighted, 4), report
 
 

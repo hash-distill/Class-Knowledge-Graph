@@ -6,7 +6,7 @@ const store = useLessonReviewStore()
 </script>
 <template>
   <div class="evidence-workspace">
-    <div class="feature-tabs" role="tablist" aria-label="Content evidence workspace"><button id="evidence-content-tab" role="tab" :aria-selected="store.evidenceView === 'content'" aria-controls="evidence-content-panel" :class="{ active: store.evidenceView === 'content' }" @click="store.evidenceView = 'content'">Lesson content<small>Audio and recorded slides</small></button><button id="evidence-courseware-tab" role="tab" :aria-selected="store.evidenceView === 'courseware'" aria-controls="evidence-courseware-panel" :class="{ active: store.evidenceView === 'courseware' }" @click="store.evidenceView = 'courseware'">Uploaded courseware<small>Import, Match and verify</small></button></div>
+    <div class="feature-tabs" role="tablist" aria-label="内容证据工作区"><button id="evidence-content-tab" role="tab" :aria-selected="store.evidenceView === 'content'" aria-controls="evidence-content-panel" :class="{ active: store.evidenceView === 'content' }" @click="store.evidenceView = 'content'">课堂内容<small>原声与录像课件</small></button><button id="evidence-courseware-tab" role="tab" :aria-selected="store.evidenceView === 'courseware'" aria-controls="evidence-courseware-panel" :class="{ active: store.evidenceView === 'courseware' }" @click="store.evidenceView = 'courseware'">独立课件<small>导入、匹配与核对</small></button></div>
     <div v-show="store.evidenceView === 'content'" id="evidence-content-panel" role="tabpanel" aria-labelledby="evidence-content-tab"><LessonEvidence /></div>
     <div v-show="store.evidenceView === 'courseware'" id="evidence-courseware-panel" role="tabpanel" aria-labelledby="evidence-courseware-tab"><LessonCourseware /></div>
   </div>

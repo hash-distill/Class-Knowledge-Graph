@@ -86,7 +86,7 @@ def run_smoke(output_json: Path) -> dict:
     # 3. VSAM alignment test
     print(f"\n[3] VSAM Gaussian Alignment:")
     aligner = VSAMAligner(mu=3.0, sigma=1.5, window_duration=10.0)
-    aligner.trigger("Fraction addition and subtraction", t_ocr=5.0)
+    aligner.trigger("分数加减法", t_ocr=5.0)
 
     for t in range(6, 18):
         fake_cas = 0.5 + 0.3 * gaussian_weight(t, 5.0, mu=3.0, sigma=1.5)

@@ -26,9 +26,9 @@ import imageio_ffmpeg
 
 
 DEFAULT_INPUT = PROJECT_ROOT / "test.mp4"
-DEFAULT_GRAPH_PATH = PROJECT_ROOT / "artifacts/knowledge_graph.json"
-DEFAULT_OUTPUT = PROJECT_ROOT / "artifacts/results/synthetic-video/snapshots.json"
-DEFAULT_FRAMES_DIR = PROJECT_ROOT / "artifacts/results/synthetic-video/frames"
+DEFAULT_GRAPH_PATH = Path(r"D:\4C\ai生成和知识后端\china_primary_school_math_knowledge_graph.json")
+DEFAULT_OUTPUT = Path(r"D:\4C\frontend\public\data\visual\latest\snapshots.json")
+DEFAULT_FRAMES_DIR = Path(r"D:\4C\frontend\public\data\visual\latest\frames")
 DEFAULT_GRADE = "小学五年级上册"
 
 ACTION_POOL = [

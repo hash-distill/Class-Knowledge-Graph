@@ -86,7 +86,7 @@ def group_samples(samples, duration, interval):
         slide_id = f"S{index+1:04d}"
         lines = [line.strip() for line in chosen["text"].splitlines() if line.strip()]
         title_candidates = [line for line in lines if len(re.findall(r"[\u4e00-\u9fff]", line)) >= 4]
-        title = (title_candidates[0] if title_candidates else lines[0])[:70] if lines else f"Screen segment with no recognized text {slide_id}"
+        title = (title_candidates[0] if title_candidates else lines[0])[:70] if lines else f"未识别文字的画面片段 {slide_id}"
         slides.append({
             "id": slide_id, "start_sec": 0.0 if index == 0 else group[0]["time_sec"],
             "end_sec": groups[index+1][0]["time_sec"] if index+1 < len(groups) else duration,

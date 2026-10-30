@@ -74,7 +74,7 @@ class TestVSAMAligner:
         """trigger → feed → evaluate lifecycle."""
         aligner = VSAMAligner(mu=3.0, sigma=1.5, window_duration=10.0)
 
-        aligner.trigger("Linear equation in two variables", t_ocr=0.0)
+        aligner.trigger("二元一次方程", t_ocr=0.0)
         assert len(aligner.active_anchors) == 1
 
         for t in range(12):
@@ -82,14 +82,14 @@ class TestVSAMAligner:
 
         closed = aligner.evaluate(current_time=11.0)
         assert len(closed) == 1
-        assert closed[0].entity == "Linear equation in two variables"
+        assert closed[0].entity == "二元一次方程"
         assert closed[0].score_k > 0
         assert len(aligner.active_anchors) == 0
 
     def test_multiple_anchors(self):
         aligner = VSAMAligner(mu=2.0, sigma=1.0, window_duration=5.0)
-        aligner.trigger("Concept A", t_ocr=0.0)
-        aligner.trigger("Concept B", t_ocr=3.0)
+        aligner.trigger("知识点A", t_ocr=0.0)
+        aligner.trigger("知识点B", t_ocr=3.0)
 
         for t in range(10):
             aligner.feed(float(t), 0.7)

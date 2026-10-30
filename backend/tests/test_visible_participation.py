@@ -80,6 +80,6 @@ def test_frame_evidence_distinguishes_current_action_reference_from_unavailable_
     add_visible_summary(frame)
     assert frame['participation_index'] is None and frame['participation']['index']==80
     text=frame_evidence(frame,1)['text']
-    assert 'Behavior participation reference 80.0/100' in text
-    assert 'current explicit actions only' in text
-    assert 'temporal rule participation index unavailable' in text
+    assert '行为积极度参考80.0/100' in text
+    assert '仅当前明确动作' in text
+    assert '时序规则参与指数不可用' in text

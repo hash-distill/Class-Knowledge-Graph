@@ -1,45 +1,43 @@
-# Jingxi Insight frontend
+# 精析智评前端
 
-A lesson review workspace built with Vue 3, TypeScript, Vite, and Pinia. See the [application README](../README.md) for startup, models, and data preparation.
+Vue 3、TypeScript、Vite 和 Pinia 构建的课堂复盘工作台。完整启动、模型与数据准备见 [应用 README](../../README.md)。
 
-## Development and build
+## 开发与构建
 
-Use Node.js 22 or 24 and run the following in this directory:
+使用 Node.js 22 或 24，在本目录执行：
 
 ```powershell
 npm ci
 npm run dev -- --host 127.0.0.1 --port 5175
 ```
 
-In another terminal at the repository root, run `python scripts/run_workbench.py --api-only --port 8000`. Vite proxies `/api/review` to `127.0.0.1:8000`. After a production build, FastAPI serves the interface and API from the same origin:
+根目录另开终端运行 `python scripts/run_workbench.py --api-only --port 8000`。Vite 将 `/api/review` 代理到 `127.0.0.1:8000`。生产构建后由 FastAPI 同源提供页面与 API：
 
 ```powershell
 npm test
 npm run build
 ```
 
-`npm run build` runs the Vue/TypeScript checks and Vite build. `dist/` contains application and brand assets only; historical classroom images and snapshots from `public/` are not copied into the production bundle. `npm run preview` provides a static preview. Use the backend origin for the complete application.
+`npm run build` 包含 Vue/TypeScript 检查与 Vite 构建。`dist/` 只含应用与品牌资源，历史 `public/` 课堂图片和快照不会复制进生产包。`npm run preview` 用于静态预览，完整功能请使用后端同源入口。
 
-## Interface and data
+## 页面与数据
 
-English is the default interface language. Original lesson transcripts, OCR quotations, and teacher-entered content retain their source language.
+课堂概览以学生画面、可见状态、整体积极度和同刻转写为主；课件在语音与课件页面查阅。学生行为支持来源查看、时序、人工补框、标签纠正、误检排除、版本历史和样本导出。另有知识图谱、复盘报告与教学改进页面。
 
-The overview focuses on student images, visible states, overall engagement estimates, and synchronized transcripts. Courseware is available on the Audio and courseware page. Student behavior includes provenance, timelines, manual boxes for missed detections, label corrections, false-detection exclusions, version history, and sample export. The workspace also includes a knowledge graph, review report, and teaching improvement records.
+默认课程来自 `/api/review/lessons`。空数据、服务故障、模型离线与未知观测显示对应状态，不自动切换演示。前端不保存模型密钥，不直接启动 GPU 推理。
 
-The lesson list comes from `/api/review/lessons`. Empty data, service failures, offline models, and unknown observations have explicit states; the interface does not automatically switch to demo data. The frontend stores no model secrets and does not start GPU inference directly.
-
-| Code | Responsibility |
+| 代码 | 职责 |
 | --- | --- |
-| `src/components/review/` | Lesson workspace and six feature views |
-| `src/api/` | API clients, errors, and visual review requests |
-| `src/utils/classEngagement.ts` | Shared scoring for frames, trends, and exports |
-| `src/utils/studentStates.ts` | State labels and interpretation |
-| `scripts/test-*.mjs` | Contracts, records, behavior, visual drafts, and scoring checks |
+| `src/components/review/` | 课堂工作台与六个页面 |
+| `src/api/` | API 客户端、错误处理与视觉复核请求 |
+| `src/utils/classEngagement.ts` | 当前帧、趋势和导出共用的评分 |
+| `src/utils/studentStates.ts` | 标签与来源解释 |
+| `scripts/test-*.mjs` | 合同、记录、行为、视觉草稿和评分测试 |
 
-Derived scores are exported in a separate `derived_engagement` field without changing original observations. Unknown people are not assigned zero scores. Limited-support estimates and human review are displayed separately. See the [scoring notes](../backend/docs/CLASS_ENGAGEMENT_20261029.md) and [visual review notes](../backend/docs/VISUAL_REVIEW_20261029.md).
+当前派生评分以独立 `derived_engagement` 字段导出，不修改原始观测。未知对象不按零分处理；低支持估计与人工复核分开展示。规则见 [评分说明](../../backend/docs/CLASS_ENGAGEMENT_20261029.md)，人工纠错见 [复核说明](../../backend/docs/VISUAL_REVIEW_20261029.md)。
 
-## Verification
+## 验证
 
-`npm test` runs `test:review`, `test:activity`, `test:vision-review`, and `test:engagement`. Browser checks in `scripts/verify-*.py` require a separate Playwright environment and the corresponding local lesson data. Browser evidence stays in the ignored `output/` directory and is not part of the source package. Several older verification scripts target historical interfaces; their presence is not evidence that the current application passed those checks.
+`npm test` 依次运行 `test:review`、`test:activity`、`test:vision-review` 和 `test:engagement`。浏览器检查脚本在 `scripts/verify-*.py`，需要单独的 Playwright 环境及对应本地课堂；浏览器证据留在忽略的 `output/` 目录，不打入源码包。
 
-Historical data contracts and interface notes remain in [LESSON_REVIEW.md](LESSON_REVIEW.md). Existing classroom data and local test paths described there are development records, not materials included with a fresh clone.
+历史数据合同与接口说明保留在 [LESSON_REVIEW.md](LESSON_REVIEW.md)。其中既有课堂数据与本机测试路径属于开发记录，不是新克隆随附素材。

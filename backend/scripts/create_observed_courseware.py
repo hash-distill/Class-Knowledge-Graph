@@ -44,32 +44,32 @@ def main():
     if not ok or abs(decoded_sec-a.at_sec)>.1:raise ValueError('Source frame decode did not match requested time')
     image=a.output/'observed-page-45s.png'
     cv2.imencode('.png',frame)[1].tofile(str(image))
-    title='Observed courseware provenance'
+    title='观测课件来源说明'
     rows=[
-        ('Lesson','Chinese lesson: introduction to amino acids'),
-        ('Frame source','Actual projected page in the original video, observed at 45 s'),
-        ('Review','Compare speech, courseware, and visible behavior on the source timeline'),
-        ('Provenance','Compiled from video frames; not the original author-supplied courseware'),
-        ('Time limit','This note is absent from the video and receives no lesson timestamp'),
+        ('课程片段','中文课堂：认识氨基酸'),
+        ('画面来源','原始录像中的实际投影页，观测时刻为第45秒'),
+        ('使用方式','对照语音、课件与可见行为，沿原录像时间回看'),
+        ('资料性质','由录像画面整理，非原作者提供的原始课件'),
+        ('匹配边界','本说明页未在录像出现，不能给它编造课堂时间'),
     ]
     pptx_path=a.output/'amino-acids-observed-courseware.pptx'
     deck=Presentation();deck.slide_width=Inches(12.8);deck.slide_height=Inches(7.2)
-    deck.core_properties.title='Introduction to amino acids: observed video courseware'
-    deck.core_properties.author='';deck.core_properties.subject='Same-source lesson demonstration; not original courseware'
+    deck.core_properties.title='认识氨基酸：录像观测课件'
+    deck.core_properties.author='';deck.core_properties.subject='同源课堂演示；非原始课件'
     page=deck.slides.add_slide(deck.slide_layouts[6]);page.shapes.add_picture(str(image),0,0,deck.slide_width,deck.slide_height)
-    page.notes_slide.notes_text_frame.text=f'Original video SHA-256: {source["sha256"]}; observed time: {a.at_sec} s; projected content is not cropped or altered.'
+    page.notes_slide.notes_text_frame.text=f'原始视频SHA-256：{source["sha256"]}；观测时刻：{a.at_sec}秒；未裁改投影内容。'
     note=deck.slides.add_slide(deck.slide_layouts[6])
     note.background.fill.solid();note.background.fill.fore_color.rgb=RGBColor.from_string('FCFCF7')
     def text_box(text,x,y,w,h,size,color='203C4A',bold=False):
         shape=note.shapes.add_textbox(Inches(x),Inches(y),Inches(w),Inches(h))
         tf=shape.text_frame;tf.word_wrap=True
         tf.margin_left=tf.margin_right=tf.margin_top=tf.margin_bottom=0
-        run=tf.paragraphs[0].add_run();run.text=text;run.font.name='Microsoft YaHei';run.font.size=Pt(size);run.font.bold=bold;run.font.color.rgb=RGBColor.from_string(color)
+        run=tf.paragraphs[0].add_run();run.text=text;run.font.name='微软雅黑';run.font.size=Pt(size);run.font.bold=bold;run.font.color.rgb=RGBColor.from_string(color)
     text_box(title,.65,.55,11.5,.65,30,bold=True)
-    text_box('Keep original frames so every evidence item can be replayed.',.65,1.35,11.5,.4,17,'698173')
+    text_box('保留原始画面，让每条证据可回看。',.65,1.35,11.5,.4,17,'698173')
     for i,(label,value) in enumerate(rows):
         y=2.15+i*.72;text_box(label,.7,y,1.4,.45,17,'698173');text_box(value,2.35,y,9.4,.48,19)
-    text_box('Video hash and build record are saved. Page order is not lesson time.',.7,6.37,11.3,.35,13,'698173')
+    text_box('完整视频哈希及生成记录随文件保存；页码不代表上课进度。',.7,6.37,11.3,.35,13,'698173')
     deck.save(pptx_path)
     pdf_path=a.output/'amino-acids-observed-courseware.pdf'
     document=fitz.open();page=document.new_page(width=1280,height=720)
@@ -79,13 +79,13 @@ def main():
         page.insert_text((60,105),searchable,fontname='china-s',fontsize=20,render_mode=3)
     page=document.new_page(width=1280,height=720);page.draw_rect(page.rect,fill=(.988,.988,.969),color=None)
     page.insert_text((65,95),title,fontname='china-s',fontsize=31,color=(.125,.235,.29))
-    page.insert_text((65,145),'Keep original frames so every evidence item can be replayed.',fontname='china-s',fontsize=18,color=(.41,.51,.45))
+    page.insert_text((65,145),'保留原始画面，让每条证据可回看。',fontname='china-s',fontsize=18,color=(.41,.51,.45))
     for i,(label,value) in enumerate(rows):
         y=244+i*72
         page.insert_text((70,y),label,fontname='china-s',fontsize=17,color=(.41,.51,.45))
         page.insert_text((235,y),value,fontname='china-s',fontsize=19,color=(.125,.235,.29))
-    page.insert_text((70,658),'Video hash and build record are saved. Page order is not lesson time.',fontname='china-s',fontsize=13,color=(.41,.51,.45))
-    document.set_metadata({'title':'Introduction to amino acids: observed video courseware','author':'','subject':'Compiled from observed source-video pages; not original courseware'})
+    page.insert_text((70,658),'完整视频哈希及生成记录随文件保存；页码不代表上课进度。',fontname='china-s',fontsize=13,color=(.41,.51,.45))
+    document.set_metadata({'title':'认识氨基酸：录像观测课件','author':'','subject':'原录像观测页整理，非原始课件'})
     document.save(pdf_path)
     for i,page in enumerate(document):page.get_pixmap(matrix=fitz.Matrix(1,1)).save(a.output/f'preview-{i+1}.png')
     document.close()

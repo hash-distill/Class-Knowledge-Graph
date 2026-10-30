@@ -45,7 +45,7 @@ const fixture = {
 }
 const bad = mutation => { const value = structuredClone(fixture); mutation(value); return value }
 // RED first: old parser silently accepts activity from an unrelated recording.
-assert.throws(() => util.parseLessonPackage(bad(f => { f.activity_analysis.source_sha256 = 'other-source' })), /Invalid activity analysis data.*source|same-origin/i)
+assert.throws(() => util.parseLessonPackage(bad(f => { f.activity_analysis.source_sha256 = 'other-source' })), /行为分析.*来源|同源/)
 const parsed = util.parseLessonPackage(fixture)
 assert.equal(parsed.activity_analysis.frames[0].participation_index, 0, 'Measured zero is retained')
 assert.equal(parsed.activity_analysis.frames[1].participation_index, null, 'Unknown is retained as null')
@@ -59,10 +59,10 @@ dense.activity_analysis.summary.known_observations = 1
 assert.equal(util.parseLessonPackage(dense).activity_analysis.frames[0].visual_reference.index, 85, 'A trained seven-state class has a separate declared visual rule, never a geometry attention score')
 const changedReference = structuredClone(dense)
 changedReference.activity_analysis.frames[0].visual_reference.index = 99
-assert.throws(() => util.parseLessonPackage(changedReference), /Invalid activity analysis data|Visual rule reference/i)
+assert.throws(() => util.parseLessonPackage(changedReference), /行为分析|规则参考/)
 const fakeGeometry = structuredClone(dense)
 fakeGeometry.activity_analysis.frames[0].participants[0].student_state.source = 'pose_geometry_rule'
-assert.throws(() => util.parseLessonPackage(fakeGeometry), /Invalid activity analysis data|Visual rule reference/i)
+assert.throws(() => util.parseLessonPackage(fakeGeometry), /行为分析|规则参考/)
 const old = structuredClone(fixture); delete old.activity_analysis
 assert.equal(util.parseLessonPackage(old).activity_analysis, undefined, 'Existing v3 lessons remain valid')
 for (const mutate of [
@@ -91,17 +91,17 @@ for (const mutate of [
   f => { f.activity_analysis.evidence[0].start_sec = 2; f.activity_analysis.evidence[0].end_sec = 4 },
   f => { f.activity_analysis.evidence[0].end_sec = 10.01 },
   f => { f.activity_analysis.summary.sampled_frames = 99 },
-]) assert.throws(() => util.parseLessonPackage(bad(mutate)), /Invalid activity analysis data|same-origin/i, String(mutate))
+]) assert.throws(() => util.parseLessonPackage(bad(mutate)), /行为分析|同源/, String(mutate))
 const empty = bad(f => { Object.assign(f.activity_analysis, { frames: [], context_segments: [], evidence: [], summary: { sampled_frames: 0, scene_count: 0, person_observations: 0, known_observations: 0 } }) })
 assert.equal(util.parseLessonPackage(empty).activity_analysis.frames.length, 0, 'Empty lists never trigger demo data')
 assert.equal(util.evidenceIndex(parsed).get('E1').text, fixture.activity_analysis.evidence[0].text)
 const answer = { answer: '根据观测复盘。', source: 'local_llm', model: 'test-fixture', request_id: 'test-fixture', evidence_ids: ['E1'], citations: [fixture.activity_analysis.evidence[0]] }
 assert.equal(util.parseChatResponse(answer, parsed).citations[0].kind, 'behavior')
-assert.throws(() => util.parseChatResponse({ ...answer, citations: [{ ...answer.citations[0], text: '改写后的行为结论' }] }, parsed), /text or kind/i)
-assert.throws(() => util.parseChatResponse({ ...answer, citations: [{ ...answer.citations[0], end_sec: 1.02 }] }, parsed), /times.*do not match/i)
-assert.throws(() => util.parseChatResponse({ ...answer, citations: [{ ...answer.citations[0], kind: 'transcript' }] }, parsed), /text or kind/i)
+assert.throws(() => util.parseChatResponse({ ...answer, citations: [{ ...answer.citations[0], text: '改写后的行为结论' }] }, parsed), /文本或类型/)
+assert.throws(() => util.parseChatResponse({ ...answer, citations: [{ ...answer.citations[0], end_sec: 1.02 }] }, parsed), /时间.*不符/)
+assert.throws(() => util.parseChatResponse({ ...answer, citations: [{ ...answer.citations[0], kind: 'transcript' }] }, parsed), /文本或类型/)
 const markdown = util.buildReviewMarkdown(parsed)
-for (const expected of [/Student behavior/, /same-source/, /Temporal rule participation index/, /coverage/, /E1/, /Lesson context model predictions/, /Macro-F1/, /0\.42/, /仅为可见对象/]) assert.match(markdown, expected)
+for (const expected of [/学生行为/, /same-source/, /规则参与指数/, /覆盖率/, /E1/, /课堂情境预测/, /宏平均综合得分/, /0\.42/, /仅为可见对象/]) assert.match(markdown, expected)
 assert.doesNotMatch(markdown, /C:\\private|\/mnt\/Data4\/private/, 'Readable model provenance excludes private absolute paths')
 const activity = await import(pathToFileURL(join(cache, 'activityAnalysis.mjs')).href)
 assert.deepEqual(activity.participationRuns(parsed.activity_analysis.frames).map(run => run.map(frame => frame.id)), [['V1'], ['V3']], 'Null, gaps and scene cuts break the curve')
@@ -112,23 +112,23 @@ assert.deepEqual(heatmap.map(row => row.track_id), ['S2-T1'])
 assert.equal(heatmap[0].cells[0].score, .75)
 assert.equal(activity.sceneTrackRows(parsed.activity_analysis.frames, 1)[0].cells[1], null, 'Absent object is unknown, not a zero observation')
 const modelFields = activity.readableModelFields(parsed.activity_analysis.models)
-assert.ok(modelFields.some(item => item.label.includes('Macro-F1') && item.value === '0.42'))
+assert.ok(modelFields.some(item => item.label.includes('宏平均综合得分') && item.value === '0.42'))
 assert.ok(modelFields.every(item => !item.value.includes('private')))
 const cropFields = activity.readableModelFields({ observation: { pipeline: 'dense_person_then_seven_crop_observation_v2', models: [{ task: 'person_crop_classification', architecture: 'mobilenet_v3_small', weight_bytes: 3145239, test_metrics: { samples: 833, macro_f1: .81694 }, weight_file: 'C:\\private\\model.pt' }] } })
-assert.ok(cropFields.some(row => row.value.includes('Not yet reviewed against human annotations for this lesson')))
-assert.ok(cropFields.some(row => row.value.includes('same classrooms and adjacent times')))
+assert.ok(cropFields.some(row => row.value.includes('本课尚未人工标注验收')))
+assert.ok(cropFields.some(row => row.value.includes('相同课堂、相邻时刻')))
 assert.ok(cropFields.every(row => !row.value.includes('private')))
 const cropFixture = structuredClone(dense)
 for (const person of cropFixture.activity_analysis.frames[0].participants) person.source = person.student_state.source = 'trained_classifier'
 assert.equal(util.parseLessonPackage(cropFixture).activity_analysis.frames[0].visual_reference.index, 85)
-assert.match(util.buildReviewMarkdown(cropFixture), /Overall student engagement 85/)
+assert.match(util.buildReviewMarkdown(cropFixture), /学生整体积极度 85/)
 const workspace = readFileSync(join(root, 'src/components/review/LessonReviewWorkspace.vue'), 'utf8')
-assert.match(workspace, /title: 'Student behavior'/)
-assert.doesNotMatch(workspace, /\?snapshots=1|Behavior snapshot workspace/, 'Removed legacy behavior entry never returns')
+assert.match(workspace, /title: '学生行为'/)
+assert.doesNotMatch(workspace, /\?snapshots=1|行为快照工作台/, 'Removed legacy behavior entry never returns')
 const component = readFileSync(join(root, 'src/components/review/LessonBehavior.vue'), 'utf8')
-assert.match(component, /Detected participation action fraction/)
-assert.match(component, /Visible people/)
-assert.match(component, /Unknown/)
+assert.match(component, /已检出参与动作比例/)
+assert.match(component, /可见对象/)
+assert.match(component, /未知/)
 assert.match(component, /store\.seek\(/, 'Source frame actions seek original recording')
 assert.doesNotMatch(component, /Math\.random|synthetic_demo|demoData/)
 // Render the actual Vue component, using the real store and source fixture.
@@ -145,8 +145,8 @@ function compileComponent(source, filename, replacements = {}) {
 }
 const presentationUrl = compile('src/utils/reviewPresentation.ts', 'reviewPresentation.mjs')
 const presentation = await import(presentationUrl)
-assert.equal(presentation.reviewTerm('behavior'), 'Activity evidence')
-assert.equal(presentation.reviewTerm('video_ocr'), 'Video screen OCR')
+assert.equal(presentation.reviewTerm('behavior'), '行为证据')
+assert.equal(presentation.reviewTerm('video_ocr'), '录像画面文字识别')
 assert.equal(presentation.readableChineseText('英文噪声 noise\n北国的槐树与秋天\nPR XX'), '北国的槐树与秋天')
 compileComponent('src/components/common/AppIcon.vue', 'AppIcon.mjs')
 compile('src/utils/studentStates.ts', 'studentStates.mjs')
@@ -161,14 +161,14 @@ const store = useLessonReviewStore()
 store.data = parsed
 async function renderAt(time, view = 'overview') { store.behaviorView = view; store.seek(time); const app = createSSRApp(Behavior); app.use(pinia); return renderToString(app) }
 const observedHtml = await renderAt(0)
-assert.match(observedHtml, /Student behavior analysis/)
+assert.match(observedHtml, /学生行为分析/)
 assert.match(observedHtml, /data-testid="visible-participation">0\.0/, 'Actual component retains valid zero')
 assert.match(await renderAt(0, 'models'), /讲授 <b>80\.0%/)
 assert.doesNotMatch(observedHtml, /track-table|source-grid|behavior-provenance/, 'Overview only renders the active analysis task')
 assert.match(observedHtml, /S1-T1/)
 assert.doesNotMatch(observedHtml, /C:\\private|\/mnt\/Data4\/private/)
-assert.match(await renderAt(1), /data-testid="visible-participation">Unknown/)
-assert.match(await renderAt(2), /No behavior sample interval at this time/)
+assert.match(await renderAt(1), /data-testid="visible-participation">未知/)
+assert.match(await renderAt(2), /当前没有行为采样区间/)
 const secondSceneHtml = await renderAt(4, 'heatmap')
 assert.match(secondSceneHtml, /S2-T1/)
 assert.doesNotMatch(secondSceneHtml, /<th>S1-T1<\/th>/, 'Rendered heatmap never associates tracks across scenes')
@@ -186,25 +186,25 @@ const recognizedWithoutRuleScore = bad(f => {
 })
 store.data = util.parseLessonPackage(recognizedWithoutRuleScore)
 const noScoreHtml = await renderAt(0)
-assert.match(noScoreHtml, /Rule-score coverage/, 'Coverage describes available temporal rule scores, not instantaneous recognition')
-assert.match(noScoreHtml, /data-testid="visible-participation">Unknown/)
-assert.match(noScoreHtml, /Hand raising<\/span><b>2<\/b>/, 'Recognized labels remain visible even when no temporal rule score is available')
+assert.match(noScoreHtml, /规则分数覆盖率/, 'Coverage describes available temporal rule scores, not instantaneous recognition')
+assert.match(noScoreHtml, /data-testid="visible-participation">未知/)
+assert.match(noScoreHtml, /举手<\/span><b>2<\/b>/, 'Recognized labels remain visible even when no temporal rule score is available')
 const rawReadWrite = structuredClone(recognizedWithoutRuleScore)
 rawReadWrite.activity_analysis.frames[0].behaviors = { read: 1, write: 1 }
 rawReadWrite.activity_analysis.frames[0].participants[0].label = 'read'
 rawReadWrite.activity_analysis.frames[0].participants[1].label = 'write'
 store.data = util.parseLessonPackage(rawReadWrite)
 const readWriteHtml = await renderAt(0)
-assert.match(readWriteHtml, /Reading<\/span><b>1<\/b>/)
-assert.match(readWriteHtml, /Writing<\/span><b>1<\/b>/)
+assert.match(readWriteHtml, /阅读<\/span><b>1<\/b>/)
+assert.match(readWriteHtml, /书写<\/span><b>1<\/b>/)
 store.data = util.parseLessonPackage(recognizedWithoutRuleScore)
-assert.match(noScoreHtml, /data-testid="visible-participation">Unknown/)
-assert.doesNotMatch(noScoreHtml, /Recognized behavior|Recognized behavior coverage/)
+assert.match(noScoreHtml, /data-testid="visible-participation">未知/)
+assert.doesNotMatch(noScoreHtml, /已识别行为|行为已识别覆盖率/)
 const noScoreMarkdown = util.buildReviewMarkdown(store.data)
-assert.match(noScoreMarkdown, /Observations with usable rule scores: 1/)
-assert.match(noScoreMarkdown, /Detected 2. People with usable rule scores 0; Rule-score coverage 0\.0%/)
+assert.match(noScoreMarkdown, /规则分数可用观测：1/)
+assert.match(noScoreMarkdown, /检测 2，规则分数可用对象 0；规则分数覆盖率 0\.0%/)
 assert.match(noScoreMarkdown, /raise_hand: 2/)
-assert.doesNotMatch(noScoreMarkdown, /Recognized behavior observations: /)
+assert.doesNotMatch(noScoreMarkdown, /已识别行为观测：/)
 // V2 visible states never turn posture-only evidence into a psychological score.
 const visible = structuredClone(fixture)
 const state = (label, source = 'pose_geometry_rule') => ({ label, name: label, source, confidence: .8, evidence: ['合同夹具的可见依据'], keypoint_indices: [] })
@@ -224,7 +224,7 @@ unmatchedPose.activity_analysis.frames[0].participants[0].keypoints = []
 assert.doesNotThrow(() => util.parseLessonPackage(unmatchedPose), 'An unmatched pose retains its source action and an empty keypoint list')
 const invalidPose = structuredClone(visible)
 invalidPose.activity_analysis.frames[0].participants[0].keypoints = [[1, 1, .8]]
-assert.throws(() => util.parseLessonPackage(invalidPose), /Invalid activity analysis data/i, 'Partial malformed keypoint arrays remain invalid')
+assert.throws(() => util.parseLessonPackage(invalidPose), /行为分析/, 'Partial malformed keypoint arrays remain invalid')
 store.data = util.parseLessonPackage(visible)
 assert.equal(JSON.stringify(store.data), originalVisible)
 const actionHtml = await renderAt(0)
@@ -233,18 +233,18 @@ assert.match(actionHtml, /data-testid="visible-participation">80\.0/)
 assert.match(actionHtml, /student-state-boxes/)
 assert.match(actionHtml, /viewBox="0 0 1280 720"/)
 assert.match(actionHtml, /student-diagnostics/)
-assert.match(await renderAt(1), /data-testid="visible-action-fraction">Unknown/)
+assert.match(await renderAt(1), /data-testid="visible-action-fraction">未知/)
 const postureHtml = await renderAt(4)
-assert.match(postureHtml, /Head raised/)
+assert.match(postureHtml, /头部抬起/)
 assert.match(postureHtml, /data-testid="visible-action-fraction">0/)
-assert.match(postureHtml, /data-testid="visible-participation">Unknown/, 'Head position alone never receives an engagement score')
+assert.match(postureHtml, /data-testid="visible-participation">未知/, 'Head position alone never receives an engagement score')
 store.data = util.parseLessonPackage(cropFixture)
 const sevenHtml = await renderAt(0)
-assert.match(sevenHtml, /The seven-class candidates for this lesson have not passed human annotation review/)
+assert.match(sevenHtml, /本课的七类候选尚未人工标注验收/)
 assert.match(sevenHtml, /data-testid="overall-engagement-index">85\.0/)
 assert.match(sevenHtml, /data-testid="visible-state-timeline"/)
-assert.match(sevenHtml, /Geometric posture/)
-assert.match(sevenHtml, /These proportions do not describe the whole class or psychological engagement/)
+assert.match(sevenHtml, /几何姿态/)
+assert.match(sevenHtml, /构成比例不是全班比例或心理积极度/)
 for (const mutation of [
   f => { f.activity_analysis.frames[0].student_state_counts.read = 2 },
   f => { f.activity_analysis.frames[0].participation.active_fraction = .9 },
@@ -254,9 +254,9 @@ for (const mutation of [
   f => { f.activity_analysis.frames[1].participation.coverage = 0 },
   f => { f.activity_analysis.frames[2].participation.index = 90 },
   f => { f.activity_analysis.frames[0].participants[0].bbox[2] = 1400 },
-]) { const bad = structuredClone(visible); mutation(bad); assert.throws(() => util.parseLessonPackage(bad), /Invalid activity analysis data/i) }
+]) { const bad = structuredClone(visible); mutation(bad); assert.throws(() => util.parseLessonPackage(bad), /行为分析/) }
 store.data = old
 const missingHtml = await renderAt(0)
-assert.match(missingHtml, /No behavior analysis from the same source is available for this lesson/)
+assert.match(missingHtml, /本课未提供同源的行为分析/)
 assert.doesNotMatch(missingHtml, /participation-chart|track-table/)
 console.log('PASS: same-source optional activity contract, exact evidence/time citations, null versus zero, scene-local heatmap, curve gaps, readable provenance and export.')

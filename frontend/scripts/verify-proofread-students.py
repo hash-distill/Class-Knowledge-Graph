@@ -69,14 +69,14 @@ with sync_playwright() as pw:
         page.goto(args.url + '/?' + old + '&lesson=' + args.lesson, wait_until='networkidle')
         expect(page.locator('[data-active-view]')).to_have_attribute('data-active-view', 'review')
         assert page.locator('nav [data-view]').count() == 5
-        assert page.get_by_text('Behavior snapshot workspace', exact=True).count() == 0
+        assert page.get_by_text('行为快照工作台', exact=True).count() == 0
         assert page.locator('a[href*="snapshots="]').count() == 0
     checks.append('All former snapshot/demo/data query routes render the modern workspace; legacy workbench link is absent')
     page.wait_for_function('document.querySelector("video").readyState>=2')
     page.evaluate('window.__sourceVideo=document.querySelector("video")')
 
     def seek(at):
-        page.get_by_label('Whole-lesson playback progress').evaluate('(el,t)=>{el.value=String(t);el.dispatchEvent(new Event("input",{bubbles:true}))}', at)
+        page.get_by_label('整堂课回放进度').evaluate('(el,t)=>{el.value=String(t);el.dispatchEvent(new Event("input",{bubbles:true}))}', at)
         page.wait_for_function('(t)=>Math.abs(document.querySelector("video").currentTime-t)<.1&&!document.querySelector("video").seeking', arg=at)
 
     def view(name):
@@ -102,7 +102,7 @@ with sync_playwright() as pw:
     expect(action_jump).to_be_visible()
     action_jump.click()
     page.wait_for_function('document.querySelector("video").currentTime>0&&!document.querySelector("video").seeking')
-    expect(page.get_by_test_id('visible-participation')).not_to_contain_text('Unknown')
+    expect(page.get_by_test_id('visible-participation')).not_to_contain_text('未知')
     checks.append('An unknown opening posture links to an actual supported participation-action frame without inventing an opening score')
     for at in [0, 40, 44.5, 60]:
         seek(at)
@@ -114,7 +114,7 @@ with sync_playwright() as pw:
         assert image.evaluate('im=>im.complete&&im.naturalWidth>0')
         expect(page.get_by_test_id('student-state-counts')).to_be_visible()
         if frame['participation']['index'] is None:
-            expect(page.get_by_test_id('visible-participation')).to_contain_text('Unknown')
+            expect(page.get_by_test_id('visible-participation')).to_contain_text('未知')
         else:
             expect(page.get_by_test_id('visible-participation')).to_contain_text(f"{frame['participation']['index']:.1f}")
         if frame['participants']:
@@ -136,7 +136,7 @@ with sync_playwright() as pw:
     checks.append('Behavior page prioritizes current students; cumulative engineering counts are collapsed diagnostics; mobile has no horizontal overflow')
     view('report')
     with page.expect_download() as event:
-        page.get_by_role('button', name='Full data', exact=True).click()
+        page.get_by_role('button', name='完整数据', exact=True).click()
     destination = args.output / 'full-lesson.json'
     event.value.save_as(destination)
     assert json.loads(destination.read_text(encoding='utf-8')) == get_data()

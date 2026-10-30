@@ -118,11 +118,11 @@ def test_failed_native_request_can_preserve_original_without_model_metadata(meas
     native['result']['status']='partial'
     row=native['native_outputs'][0]
     row.update(status='failed_preserved_original',corrected_text=row['original_text'],
-        metadata={},error={'code':'model_timeout','message':'Request timed out; original text retained'})
+        metadata={},error={'code':'model_timeout','message':'请求超时，原文保留'})
     atomic_json(path,native)
     result=assemble(directory,runs)
     assert result['runs'][1]['native_status']=='partial'
-    assert result['runs'][1]['native_segments'][0]['uncertainties']==['Request timed out; original text retained']
+    assert result['runs'][1]['native_segments'][0]['uncertainties']==['请求超时，原文保留']
 
 
 def test_changed_baseline_source_is_rejected_before_any_publication(measured,monkeypatch):

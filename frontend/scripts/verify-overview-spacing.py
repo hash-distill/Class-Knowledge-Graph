@@ -24,7 +24,7 @@ def main():
             page.set_viewport_size({'width':width, 'height':height})
             page.evaluate('(zoom)=>{document.documentElement.style.zoom=String(zoom)}', zoom)
             for seconds in [21, 0, 40, 45, 75, 89.9]:
-                page.get_by_role('slider', name='Whole-lesson playback progress').evaluate(
+                page.get_by_role('slider', name='整堂课回放进度').evaluate(
                     '(el,seconds)=>{el.value=String(seconds);el.dispatchEvent(new Event("input",{bubbles:true}))}', seconds)
                 clock = f'{int(seconds)//60:02d}:{int(seconds)%60:02d}'
                 expect(page.locator('.overview-heading>.mono')).to_have_text(clock)
@@ -64,7 +64,7 @@ def main():
                 if seconds == 21:
                     page.get_by_test_id('overview-behavior').screenshot(path=str(args.output/f'student-{width}-{zoom}.png'))
             # Expanded raw transcript must not spill into adjacent cards.
-            page.get_by_role('slider', name='Whole-lesson playback progress').evaluate(
+            page.get_by_role('slider', name='整堂课回放进度').evaluate(
                 '(el)=>{el.value="21";el.dispatchEvent(new Event("input",{bubbles:true}))}')
             toggle=page.get_by_test_id('transcript-raw-toggle')
             if toggle.count():

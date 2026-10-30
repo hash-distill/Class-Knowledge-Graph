@@ -123,7 +123,7 @@ def prepare(video, reuse, output, lesson_id):
                          "representative_time_sec": chosen["time_sec"], "representative_sample_id": chosen["id"],
                          "sample_ids": [r["id"] for r in observations if r["screen_visible"]],
                          "quality": {"status": "machine_ocr_unreviewed", "screen_status": "text_observed",
-                                     "note": "OCR from a region of the original video; check chemical structures against the original image. Courseware evidence is retained only while the projection is observed at 43.5–47.5 s, with 0.5 s boundary sampling uncertainty."}}]
+                                     "note": "原视频区域OCR；化学结构式以原始画面核对。只在观测到投影的43.5至47.5秒保留课件证据，边界抽样误差0.5秒。"}}]
     slides["coverage"]["page_segment_count"] = 1
     slides["coverage"]["visible_courseware_union_sec"] = SCREEN_RANGE[1] - SCREEN_RANGE[0]
     slides["provenance"]["screen_selection"] = {
@@ -203,7 +203,7 @@ def transcribe(video, reuse, output):
                 "quality": {"status": "machine_transcript_ocr_vocabulary_prompted_unreviewed",
                     "avg_logprob": segment.avg_logprob, "no_speech_prob": segment.no_speech_prob,
                     "compression_ratio": segment.compression_ratio,
-                    "note": "Machine transcription prompted with same-source courseware OCR vocabulary. Original unprompted results are stored separately; speech was not manually rewritten."}}
+                    "note": "同源课件OCR词汇提示的机器转写；原无提示结果另存，未手工改写台词。"}}
             if row["text"] and row["end_sec"] > row["start_sec"]:
                 segments.append(row)
                 stream.write(json.dumps(row, ensure_ascii=False) + "\n")
@@ -237,7 +237,7 @@ def build(video, output, lesson_id, register):
         # Use the builder's validated implementation while owning its usual lease
         # through post-processing. This avoids a gap for a concurrent PDF import.
         with LessonMutationLock(output):
-            bundle = builder._build_lesson(lesson_id, video, output, "Introduction to amino acids · same-lesson speech, courseware, and visible behavior")
+            bundle = builder._build_lesson(lesson_id, video, output, "认识氨基酸 · 同课语音、课件与可见行为")
             document = bundle.get("courseware")
             base = read_json(output / "bundle.base.json") if document else bundle
             base["transcript_unguided"] = read_json(output / "asr.unguided.json")["segments"]
@@ -245,8 +245,8 @@ def build(video, output, lesson_id, register):
                 "displayed": "automatically_proofread_machine_asr" if base.get("transcript_proofreading") else "same_video_ocr_vocabulary_prompted_machine_asr",
                 "raw_guided_field": "transcript", "proofread_field": "transcript_proofreading.segments",
                 "unguided_export_field": "transcript_unguided", "unguided_artifact": "asr.unguided.json"}
-            notices = ["Speech is machine-transcribed with same-source courseware OCR vocabulary prompts. The original 36 unprompted segments are retained. Speech was not manually replaced, and transcription accuracy was not calculated.",
-                       "Courseware supplies evidence only when the projection is visible at 43.5–47.5 s in the original video. Other shots do not inherit the previous page."]
+            notices = ["语音为同源课件OCR词汇提示的机器转写；保留原36段无提示转写，未人工替换台词，未计算转写准确率。",
+                       "课件只在原录像43.5至47.5秒投影可见时提供证据；其他镜头不沿用上一页。"]
             base["report"]["limitations"] = list(dict.fromkeys(base["report"].get("limitations", []) + notices))
             proofread_graph = bool(base.get("transcript_proofreading", {}).get("edit_count"))
             # Preserve the pre-proofreading candidates byte-for-byte. A new
@@ -312,7 +312,7 @@ def filter_graph_with_observed_courseware(bundle, *, candidate_archive=None):
             "schema_version": "1.0", "source_video_sha256": source_hash,
             "candidate_semantics": "original_model_proposed_machine_candidates_unreviewed",
             "original_graph": deepcopy(bundle["graph"]),
-            "notice": "Original model candidates are retained. Occurrence in source text does not establish correct terminology or teacher confirmation.",
+            "notice": "原模型候选留存；原文出现不等于术语正确或教师确认。",
         }
     else:
         candidate_archive = deepcopy(candidate_archive)
@@ -351,7 +351,7 @@ def filter_graph_with_observed_courseware(bundle, *, candidate_archive=None):
         "hidden_candidate_ids": [n["id"] for n in original_nodes if n["id"] not in kept_ids],
         "original_candidate_ids": list(originals), "original_candidates_artifact": candidate_archive.get("artifact_name", "graph-candidates-proofread.json" if use_proofread else "graph-candidates-original.json"),
         "teacher_or_chemical_accuracy_validated": False,
-        "notice": "Candidates were extracted by the model in this run and checked for literal occurrence in proofread speech or actual courseware. Automatic proofreading has not been manually approved." if use_proofread else "Shows only model-proposed candidates with literal support in actual courseware OCR from this lesson. No terms were added; no manual chemistry validation is claimed.",
+        "notice": "候选词来自本轮模型提取并以校对语音或实际课件字面出现核对；自动校对未人工核准。" if use_proofread else "仅展示模型已提议且在本课实际课件OCR中有字面支持的候选词；未新增术语，未声称化学人工验证。",
     }
     for row in result.get("alignment", []):
         row["concept_ids"] = [identifier for identifier in row.get("concept_ids", []) if identifier in kept_ids]
@@ -364,17 +364,17 @@ def filter_graph_with_observed_courseware(bundle, *, candidate_archive=None):
                                   node["properties"]["observed_courseware_literal_refs"] +
                                   node["properties"].get("proofread_literal_refs", [])))
         sections.append({"title": node["label"],
-            "text": "The model candidate occurs in automatically proofread speech or observed courseware. Open citations to compare proofreading differences with the original audio. Not yet teacher-confirmed." if use_proofread else "The model-proposed candidate also occurs in actual courseware OCR from this lesson. Open citations to check the original speech and courseware. Not yet teacher-confirmed.",
+            "text": "模型候选词在自动校对语音或实测课件中出现。点击引用核对校对差异与原声；尚未教师确认。" if use_proofread else "模型已提议的候选词，同时在本课实际课件OCR中出现。点击引用核对原始语音和课件；尚未教师确认。",
             "evidence_ids": refs})
     report["sections"] = sections + other_sections
     statistics = report.setdefault("statistics", {})
     statistics.update({"concepts": len(kept), "relations": len(graph["edges"]),
                        "graph_candidates_original": len(original_nodes),
                        "graph_candidates_hidden": len(original_nodes) - len(kept)})
-    report["summary"] = (f"Full source video: {result['lesson']['duration_sec']:.2f} s; "
-        f"{len(result.get('transcript', []))} speech segments, {len(result.get('slides', []))} courseware screen segments; "
-        f"showing {len(kept)} model concept candidates with literal support in {'automatically proofread speech or actual courseware' if use_proofread else 'actual courseware OCR'}.")
-    notice = ("The graph was re-extracted using speech automatically proofread at generation and actual courseware. Original candidates are stored separately. No manual chemistry validation was performed." if use_proofread else "The graph shows only model-proposed candidates with literal support in actual courseware OCR from this lesson. Original candidates are stored separately. No manual chemistry validation was performed.")
+    report["summary"] = (f"完整源录像 {result['lesson']['duration_sec']:.2f} 秒，产生 "
+        f"{len(result.get('transcript', []))} 条语音片段、{len(result.get('slides', []))} 个课件画面段，"
+        f"展示 {len(kept)} 个得到{'自动校对语音或实际课件' if use_proofread else '实际课件OCR'}字面支持的模型候选概念。")
+    notice = ("图谱依据生成时自动校对的语音与实际课件重新提取，原候选另存可查，未作化学人工验证。" if use_proofread else "图谱只展示模型已提议且得到本课实际课件OCR字面支持的候选词；原候选另存可查，未作化学人工验证。")
     report["limitations"] = list(dict.fromkeys(report.get("limitations", []) + [notice]))
     return result, candidate_archive
 

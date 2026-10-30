@@ -99,9 +99,9 @@ def derive(activity, video, directory, *, imgsz=960, device='cpu', pose_cache=No
         'wall_time_sec':round(time.perf_counter()-started,3),'time_base':'source_media_seconds',
         'original_labels_scores_tracks_preserved':True}
     result['limitations']=list(dict.fromkeys(result['limitations']+[
-        'Added head-up/lowered, hand-near-head, and standing-posture cues use geometric rules on COCO17 keypoints from the same source frame. They have not been evaluated against manual ground truth for this lesson. Lowered heads do not distinguish reading/writing from other activities; raised heads do not establish gaze toward the teacher. Posture alone receives no participation score.',
-        'The detected participation fraction divides people with current explicit reading/writing/hand-raising cues by currently detected people. It is a proportion of visible cues, not a whole-class proportion of engaged students. Unrecognized does not mean nonparticipating.',
-        'Person boxes come from existing detections and within-shot tracks; re-extracted poses match existing boxes one to one. Teachers, students, and reflections are not automatically distinguished. Detection counts do not represent class attendance; untracked people remain unresolved.']))
+        '新增头部抬起/降低、手靠近头部、站姿为当前同源帧COCO17关键点几何规则，未经本课人工真值评测；低头无法区分读写与其他活动，抬头不等于注视教师。姿态不单独赋参与分。',
+        '已检出参与动作比例按当前明确阅读/书写/举手线索人数除以当前检测人物数；它是可见线索占比，不是全班积极学生比例。未识别不等于未参与。',
+        '人物框来自原有检测与镜头内轨迹，重提取姿态仅与原框一一匹配。未自动区分教师/学生或镜中反射，检测人物数不是全班实到人数；未跟踪的人物继续保留待辨。']))
     existing={e['source_refs'][0]:e for e in result['evidence'] if e.get('method')=='visible_behavior_observation' and e.get('source_refs')}
     for row in result['frames']:
         if row['id'] in existing:

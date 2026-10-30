@@ -16,6 +16,8 @@ DROP={'.git','node_modules','artifacts','target','build','dist','dist-ssr','work
       '.vendor','runs','checkpoints','wandb','tensorboard','test_images'}
 TEXT={'.py','.pyi','.ts','.vue','.js','.mjs','.cjs','.html','.css','.scss','.json','.yaml','.yml','.toml',
       '.md','.txt','.ps1','.lock','.ini','.nsh','.rs','.svg'}
+SCREENSHOTS={'docs/screenshots/overview.png','docs/screenshots/student-review.png',
+             'docs/screenshots/knowledge-graph.png'}
 TOKEN=re.compile(r'(?:sk-[A-Za-z0-9_-]{20,}|gh[pousr]_[A-Za-z0-9_]{25,}|hf_[A-Za-z0-9]{25,}|AKIA[A-Z0-9]{16}|-----BEGIN (?:RSA |OPENSSH |EC )?PRIVATE KEY-----)')
 
 
@@ -40,7 +42,7 @@ def source_files(root):
                         'frontend/public/brand.svg','frontend/public/favicon.ico'}:continue
                 image=path.suffix.lower() in {'.png','.ico','.jpg','.jpeg','.webp','.icns'} and (
                     relative.startswith(('desktop/src-tauri/icons/','desktop/assets/','frontend/src/assets/')) or
-                    relative=='frontend/public/favicon.ico')
+                    relative=='frontend/public/favicon.ico' or relative in SCREENSHOTS)
                 if path.suffix.lower() in TEXT or image or name in {'.gitignore','.gitattributes'} or name.upper().startswith(('LICENSE','NOTICE')):
                     found.add(path)
     return sorted(found,key=lambda p:p.relative_to(root).as_posix())

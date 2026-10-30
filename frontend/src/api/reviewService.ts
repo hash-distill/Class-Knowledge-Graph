@@ -10,12 +10,12 @@ export async function reviewRequest(path: string, init?: RequestInit): Promise<u
   try {
     const response = await fetch(`/api/review${path}`, { ...init, signal: controller.signal })
     let data: any
-    try { data = await response.json() } catch { throw new Error(`The service did not return valid JSON (HTTP ${response.status}). Check that the review service is running.`) }
-    if (!response.ok) throw new ReviewServiceError(data?.error?.message || `Review service request failed (HTTP ${response.status})`, response.status, data?.error?.code || '')
+    try { data = await response.json() } catch { throw new Error(`服务未返回有效 JSON（HTTP ${response.status}），请确认复盘服务已启动。`) }
+    if (!response.ok) throw new ReviewServiceError(data?.error?.message || `复盘服务请求失败（HTTP ${response.status}）`, response.status, data?.error?.code || '')
     return data
   } catch (error) {
-    if (error instanceof Error && error.name === 'AbortError') throw new Error('The service timed out. Please try again later.')
-    if (error instanceof TypeError) throw new Error('Unable to connect to the backend service. Check the connection and try again.')
+    if (error instanceof Error && error.name === 'AbortError') throw new Error('服务响应超时，请稍后重试。')
+    if (error instanceof TypeError) throw new Error('无法连接课堂复盘服务，请检查服务连接后重试。')
     throw error
   } finally { clearTimeout(timeout) }
 }

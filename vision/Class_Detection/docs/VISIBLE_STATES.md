@@ -1,35 +1,33 @@
-# Current-frame behavior and posture states
+# 当前画面的行为与姿态状态
 
-This describes the earlier three-class pretrained/pose-derived path, retained for traceability. The [module README](../../README.md) and [current scoring](../../../backend/docs/CLASS_ENGAGEMENT_20261029.md) describe later workbench behavior.
+`student_state` 是当前画面的主状态，`posture_tags` 独立保留可同时存在的姿态。例如，原模型判为阅读的人可以同时有“头部降低”标签。原有 `action`、`label`、置信度、轨迹和时序规则分保持原样。
 
-`student_state` is the frame's primary state; `posture_tags` separately retain simultaneous poses. A reading prediction can also have a lowered-head tag. Original `action`, `label`, confidence, tracks, and temporal rule scores remain unchanged.
-
-| State | Evidence | Interpretation |
+| 状态 | 实际依据 | 解释范围 |
 | --- | --- | --- |
-| `read` / `write` / `raise_hand` | Three actual classes in pinned SCB weights | Model clues, not human-annotated lesson accuracy |
-| `head_up` | Confident nose, at least one eye, both shoulders; nose at least 0.28 shoulder-width above shoulder midpoint | Head/shoulder geometry, not listening/gaze at the teacher |
-| `head_lowered` | Same points; nose/shoulder vertical gap at most 0.16 shoulder-width | Cannot distinguish reading, writing, or other activity alone |
-| `hand_near_head` | Confident wrist within 0.48 shoulder-width of nose | No phone detection or sleep inference |
-| Geometric `raise_hand` | Wrist 0.25 shoulder-width above nose and 0.8 above shoulders; elbow above shoulders | Separate strict raised-wrist rule, not the original model prediction |
-| `standing` | Both shoulders and bilateral hips/knees/ankles; hip/knee/ankle descend; knee ≥160°, hip ≥155° | Standing geometry, not speaking or role identity |
-| `unknown` | Missing, low-confidence, ambiguous, or unmatched boxes | Does not carry the previous frame or mean low participation |
+| `read` / `write` / `raise_hand` | 固定 SCB 预训练权重的三个真实类别 | 模型行为线索，未在本课人工标注评测 |
+| `head_up` | 鼻点、至少一个眼点、双肩均有置信度支持；鼻点比肩中点高至少 0.28 倍肩宽 | 头肩几何，不等同于听讲或注视教师 |
+| `head_lowered` | 相同关键点条件；鼻肩高度差不超过 0.16 倍肩宽 | 不能仅凭低头区分阅读、书写和其他活动 |
+| `hand_near_head` | 可信腕点距离鼻点不超过 0.48 倍肩宽 | 不识别手机等物体，也不推断睡觉 |
+| 姿态 `raise_hand` | 腕点高于鼻点 0.25 倍肩宽、高于肩部 0.8 倍肩宽，同时肘点高于肩部 | 独立的严格举腕规则；与原模型预测来源分开 |
+| `standing` | 双肩及双侧髋膝踝可见；髋、膝、踝依次向下，膝角至少 160°、髋角至少 155° | 站姿几何，不推断发言或师生身份 |
+| `unknown` | 缺失、低置信度、模糊区间或无法匹配原框 | 不沿用上一帧，不解释为低参与 |
 
-Used keypoints need confidence ≥0.5 and shoulder width ≥12 source pixels. These are engineering thresholds, not lesson-calibrated classifiers; point confidence is not state accuracy. Primary states prefer original SCB outputs before geometry. Geometry records point IDs, measurements, rule descriptions, and provenance.
+姿态规则要求所用关键点置信度至少 0.5、肩宽至少 12 个源图像素。阈值是公开的工程规则，尚非经本课真值校准的分类器；关键点置信度也不是状态准确率。主状态优先保留原 SCB 模型输出，其后才选择几何状态。每项几何状态输出所用关键点编号、测量值、规则文字和来源。
 
-## Frame statistics contract
+## 当前帧的统计合同
 
-- `student_state_counts`: mutually exclusive primary states. Detections without stable tracks are added as unknown, so the sum equals `detected_people` and may exceed boxed `participants`.
-- `participation.active_people` / `active_fraction`: explicit reading/writing/hand-raising count divided by detected people. Unrecognized does not mean not participating.
-- `participation.observed_people` / `coverage`: people with behavior or posture evidence, separate from scoring support.
-- `participation.index`: mean explicit-action weights (reading 0.80, writing 0.85, hand raising 0.95) ×100. Poses are unscored; `scored_people` / `score_coverage` show support. It is not psychological-engagement probability.
-- With no people, fractions/scores remain `null`. With people but no recognized actions, fraction zero means only that none of these three actions was detected in that frame.
+- `student_state_counts`：主状态互斥计数。原检测中没有稳定轨迹的人物补入 `unknown`，所以计数和等于 `detected_people`，可能大于 `participants` 的框数。
+- `participation.active_people`：当前明确阅读、书写、举手线索人数；`active_fraction` 用此数除以当前检测人物数。它是已检出动作比例，未识别不代表没有参与。
+- `participation.observed_people` / `coverage`：具有动作或姿态状态的人数及比例。这与能打参与参考分的人数分开。
+- `participation.index`：仅对明确动作使用阅读 0.80、书写 0.85、举手 0.95 的既有规则权重求平均并乘 100。姿态不赋分；`scored_people` / `score_coverage` 展示该参考分的支持范围。它不是心理积极度概率。
+- 无人物时，比例和参考分保持 `null`。有检测但未检出三类动作时，动作比例可以是 0，含义仅为“本帧未检出这三类动作”。
 
-No reliable role classifier is present. Population is `visible_people_roles_unverified`: detected counts are not enrolled attendance, and teachers, others, reflections, or occlusion fragments are not automatically students. Tracks reset after cuts.
+目前模型没有可靠的师生身份分类器。人口范围明确为 `visible_people_roles_unverified`：不把检测人物数说成全班实到学生数，不把教师、其他人员、反射或遮挡自动解释为学生身份。轨迹在切镜头后重置。
 
-## Historical same-video derivation
+## 同源视频实际派生
 
-`backend/scripts/derive_visible_states.py` re-extracts pose at all 181 existing timestamps and uses one-to-one IoU ≥0.35 association to original boxes, preserving behavior labels/scores. Provenance includes video/activity digests, model digests, raw pose-cache digest, and completion time.
+`backend/scripts/derive_visible_states.py` 对原视频的全部 181 个既有采样时间重新提取姿态，用一一 IoU 匹配（至少 0.35）挂到原人物框，保留原行为类别和分数。源视频 SHA-256、原 activity SHA-256、模型摘要、原始姿态缓存摘要及完成时间都写入派生 provenance。
 
-The chemistry source SHA-256 is `bd955b05ac65bcae85890ecda939e8e027389f3e739f1ea3775299db5231df1d`. Recorded outputs: at 0 s, 20 head-up clues; at 35 s, 11 reading, one writing, three head-lowered, one head-up, four unknown; at 40 s, 15 reading, four writing, two unknown; at 60 s, 20 head-up and two unknown. At 45/89.9 s no usable people were detected and scores stayed unknown. No sample met the standing rule.
+本次化学片段源 SHA-256 为 `bd955b05ac65bcae85890ecda939e8e027389f3e739f1ea3775299db5231df1d`。0 秒观察到 20 个头部抬起线索；35 秒主状态包含阅读 11、书写 1、头部降低 3、头部抬起 1、待辨 4；40 秒原模型为阅读 15、书写 4、待辨 2；60 秒为头部抬起 20、待辨 2。45 秒和 89.9 秒无可用人物检测，参考分保持未知。本片没有达到站姿规则的样本。
 
-These are real-video model/rule outputs, not verified accuracy or independent held-out evaluation. Prioritize timestamps, visible counts, behavior/posture states, and source-image replay for inspection. Generated frames and results are excluded from source distributions.
+这些是当前模型和几何规则在实际视频上的输出，不是人工核验准确率，也不是独立留出评测。实际界面应优先展示时间、当前人数、动作与姿态状态，并允许回看原图核查。

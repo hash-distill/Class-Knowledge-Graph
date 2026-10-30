@@ -74,7 +74,7 @@ export const useLessonReviewStore = defineStore('lessonReview', () => {
         updateTime(currentTime.value)
         if (!result.graph.nodes.some(node => node.id === selectedNodeId.value)) selectedNodeId.value = ''
       } else { currentTime.value = 0; seekVersion.value++; isPlaying.value = false; selectedNodeId.value = ''; messages.value = [] }
-    } catch (reason) { if (version === loadVersion) error.value = reason instanceof Error ? reason.message : 'Unable to load the lesson.' }
+    } catch (reason) { if (version === loadVersion) error.value = reason instanceof Error ? reason.message : '课程加载失败。' }
     finally { if (version === loadVersion) loading.value = false }
   }
   async function loadLessons() {
@@ -88,7 +88,7 @@ export const useLessonReviewStore = defineStore('lessonReview', () => {
       const requested = typeof window === 'undefined' ? null : parseWorkbenchRoute(window.location.search).lesson
       const chosen = result.find(l => l.id === (requested || data.value?.lesson.id)) || result[0]!
       await selectLesson(chosen.id)
-    } catch (reason) { if (version === loadVersion) error.value = reason instanceof Error ? reason.message : 'Unable to load the lesson list.' }
+    } catch (reason) { if (version === loadVersion) error.value = reason instanceof Error ? reason.message : '课程列表加载失败。' }
     finally { if (version === loadVersion) loading.value = false }
   }
   async function refreshLesson(id: string): Promise<boolean> {
@@ -114,7 +114,7 @@ export const useLessonReviewStore = defineStore('lessonReview', () => {
       message.response = response; message.status = 'answered'
     } catch (reason) {
       if (!messages.value.includes(message)) return
-      message.error = reason instanceof Error ? reason.message : 'Model request failed.'; message.status = 'error'
+      message.error = reason instanceof Error ? reason.message : '模型请求失败。'; message.status = 'error'
     }
   }
   async function ask(query: string) {

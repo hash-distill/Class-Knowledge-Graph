@@ -1,81 +1,88 @@
-# Run pretrained classroom-behavior observation
+# 免训练课堂行为观察：直接运行
 
-Historical setup dated 2026-10-25: this entry used public pretrained weights without training, two pinned downloads, and a separate `.venv-inference` to avoid global Anaconda OpenMP conflicts. This three-class workflow is retained separately from the [newer seven-class workbench path](README.md). The installed environment is excluded from source releases.
+2026-10-25：默认入口已改为公开权重推理，未执行模型训练。已下载两份固定权重，已创建独立 `.venv-inference`，避免全局 Anaconda 的 OpenMP 冲突。
 
-## Components
+## 现在接入了什么
 
-| Stage | Implementation | Boundary |
-| --- | --- | --- |
-| People, pose, tracks | Official YOLO26n-pose + ByteTrack | 17-point poses and video-local IDs; no names/automatic teacher-student distinction |
-| Behavior | Public SCB YOLOv9e checkpoint | Only hand raising, reading, writing; IDs verified from the checkpoint |
-| Association | One-to-one behavior/person matching | Unmatched objects stay unknown; geometric hand raising has separate provenance |
-| Temporal fusion | Four-second evidence window integrated over real seconds | Quality, valid duration, and task determine whether rules return an estimate |
-| Teaching content | User-provided timed tasks/concepts; optional OCR | No automatic concepts or mastery inference from behavior scores |
-| Historical viewer | JSON import, frame replay, trends, object heatmaps, provenance | Mock/real modes separate; unknown stays null/— |
+| 环节 | 实现 | 输出边界 |
+|---|---|---|
+| 人物、姿态与轨迹 | 官方 YOLO26n-Pose + ByteTrack | 17 点姿态与当前录像中的轨迹 ID；不识别姓名，不自动区分师生 |
+| 课堂行为 | SCB 场景公开 YOLOv9e 权重 | 仅举手、阅读、书写三类，实际类别从 checkpoint 核验 |
+| 行为归属 | 行为框与人物框一对一匹配 | 无法匹配时保留未知；姿态举手规则单独标记来源 |
+| 时间融合 | 4 秒证据窗口，按真实秒数积分 | 质量、有效持续时间与教学任务共同决定是否给出规则估计 |
+| 教学内容 | 用户提供带秒数的任务/知识点标注；OCR 可选 | 不自动生成知识点，不用行为分数推断知识掌握 |
+| 展示 | 真实 JSON 导入、帧回放、时间曲线、对象热图、来源查询 | 模拟模式与真实模式分开；未知保持 null/— |
 
-The rule index is not a learned engagement probability. Three classes mainly provide positive-participation clues; there is no reliable low-engagement classifier. Unknowns are excluded from means, so a high value may cover few objects. Always inspect coverage. Target-classroom annotated accuracy was not evaluated.
+**规则指数不是训练出的学生投入概率。** 三类行为主要提供积极参与线索；当前并没有可靠的“低投入”分类器。未知对象不参与均值，因此高指数可能仅代表少数有证据的对象，必须同时查看覆盖率。没有用人工标注的目标课堂验证准确率，不能宣称已达到某个准确率或已经提升。
 
-## Run locally
+## 本机快速运行
 
-From `vision/` in PowerShell, with your own local media:
-
-```powershell
-./run_pretrained.ps1 -Source './local-media/lesson.mp4' -MaxFrames 35 -Device cpu
-```
-
-Remove `-MaxFrames 35` for the full video. Defaults analyze about every 0.2 s and save snapshots about every second, plus the final frame. Analysis times snap to the nearest video frame. Analysis and export intervals are independent.
+PowerShell 在本目录运行；相对路径按当前工作目录解释：
 
 ```powershell
-./run_pretrained.ps1 -Source 'D:\recordings\lesson.mp4' -Task lecture -StudentRoi '0.05,0.1,0.95,1' -AnnotatedVideo
+cd 'D:\全球校园人工智能精英大赛\4C\视觉模型'
+./run_pretrained.ps1 -Source '../frontend/public/data/visual/latest/test.mp4' -MaxFrames 35 -Device cpu
 ```
 
-- `-Task`: `unspecified / lecture / exercise / discussion / presentation`; supplies rule context without changing weights. Default: unspecified.
-- `-StudentRoi`: normalized `x1,y1,x2,y2`; count detections with centers inside. Set it for the camera. Full-frame default may include teachers/others.
-- `-AnnotatedVideo`: additionally writes boxed video; default outputs JSON/frames only.
-- `-PoseOnly`: person/pose and geometric hand-raising diagnostics without reading/writing; not the full workflow.
-- `-SnapshotIntervalSec 0`: save every analyzed frame; default one second limits volume.
-- `-Device auto`: selects `cuda:0` if usable, otherwise CPU. The historical installation/check was CPU-only. Explicit GPU selection fails if unavailable instead of silently switching.
+替换为自己的录像，并去掉 `-MaxFrames 35`，即可处理完整文件。默认约每 0.2 秒分析一帧、约每秒保存一个快照，末帧也保存；分析时间会按视频 FPS 取最接近的帧。处理间隔和导出间隔互相独立。
 
-Outputs use a new `Class_Detection/artifacts/results/pretrained_<timestamp>/` directory:
+```powershell
+./run_pretrained.ps1 -Source 'D:\录像\课堂.mp4' -Task lecture -StudentRoi '0.05,0.1,0.95,1' -AnnotatedVideo
+```
+
+- `-Task`：`unspecified / lecture / exercise / discussion / presentation`，为规则提供教学情境，不改变已训练模型。默认 unspecified。
+- `-StudentRoi`：归一化 `x1,y1,x2,y2`，只统计中心落在区域内的检测对象；需按实际机位设置。默认整幅画面，可能包含老师和其他人物。
+- `-AnnotatedVideo`：额外输出带框视频；默认只输出 JSON 和抽样帧图。
+- `-PoseOnly`：只跑人物姿态和几何举手提示，用于设备排查；会失去阅读/书写识别，不能称为完整方案。
+- `-SnapshotIntervalSec 0`：保存每个分析帧，适合短视频验证。默认 1 秒减小文件量。
+- `-Device auto`：有可用 CUDA 时选择 `cuda:0`，否则 CPU。当前安装的是 CPU PyTorch，已验证 CPU 路径；CUDA 执行尚未实测。明确指定 GPU 但环境不可用时会报错，不静默换设备。
+
+新结果写入 `Class_Detection/artifacts/results/pretrained_时间戳/`，不会覆盖旧录像和旧结果：
 
 ```text
-snapshots.json             # JSON array for the compatible legacy viewer
-snapshots_002.json         # Subsequent chunks for long videos
-frames/frame_0000001.jpg   # Sampled source frame
-observations.mp4           # Only with AnnotatedVideo
-run_manifest.json         # Completion, chunks, model digests, configuration, counts
+snapshots.json             # 前端可导入的 JSON 数组
+snapshots_002.json         # 长录像自动分段，后续编号递增
+frames/frame_0000001.jpg   # 抽样原图
+observations.mp4           # 仅请求 AnnotatedVideo 时生成
+run_manifest.json          # 成功完成标记、全部分段、模型摘要、配置和统计
 ```
 
-JSON chunks are at most 16 MiB, within the historical viewer's 25 MB, 20,000-frame, 300,000-object limits. It loads one chunk at a time; seconds retain source time. `analyzed_frames` differs from exported `snapshots`. Cross-frame counts are repeated observations, not unique students. Failed runs retain `.partial` diagnostics; only `run_manifest.json` with `completed=true` establishes completion.
+单个 JSON 段上限 16 MiB，兼容前端 25 MB、2 万帧、30 万对象记录的导入限制。前端一次载入一段；秒数保持原录像时间。运行清单中的 `analyzed_frames` 是分析帧数，`snapshots` 是导出帧数，人数统计也是分析帧上的重复观测次数，不是独立学生人数。异常时保留 `.partial` 排查，**只有 `run_manifest.json` 中 `completed=true` 才表示整次任务完成**。
 
-## Historical standalone viewer
+## 前端查看
 
-The original workflow used the frontend inference-JSON importer. Files were local; a browser cannot infer neighboring image paths from local JSON. With a compatible standalone viewer, copy the complete result to a new `frontend/public/data/visual/<run>/` directory and load it from the same origin:
+在 `4C/frontend` 运行 `npm run dev`，点击“导入推理 JSON”选择某个 `snapshots*.json`。文件仅本机读取；浏览器不能通过本地 JSON 自动读取旁边的图片。
+
+需要帧图时，把本次结果目录整体复制到 `Front/public/data/visual/` 下一个新名称，再用同源地址加载：
 
 ```text
-http://127.0.0.1:5173/?data=/data/visual/my-run/snapshots.json
+http://127.0.0.1:5173/?data=/data/visual/你的结果目录/snapshots.json
 ```
 
-This documents the legacy viewer contract, not the full application's default lesson/API route. The earlier 35-frame `pretrained-v2` sample was real inference on an existing demo recording, not an independent test set. Public exports exclude that media/output.
+本机已提供一次 35 帧联调结果：
 
-The original viewer began at the first frame with no score until evidence accumulated. Without concept annotations, its graph remained empty. Model provenance showed hashes/revisions/links. For current integration use the [backend lesson workflow](../backend/README.md).
+```text
+http://127.0.0.1:5173/?data=/data/visual/pretrained-v2/snapshots.json
+```
 
-## Task/concept alignment
+该记录来自项目已有演示录像的真实模型推理，来源于录像并不等于独立测试集。页面默认进入录像首帧，连续证据尚未积累时分数为空；播放或拖动进度可查看后续估计。无知识标注时图谱保持空态。可展开“模型来源”查看完整 SHA-256、固定版本和来源链接。
 
-After checking video times, create UTF-8 context JSON. This is a format example, not real annotation:
+## 教学任务与知识点对齐
+
+手动核对录像时间后，建立 UTF-8 JSON，例如下列**仅演示格式**的时间段；不要未经核对直接当作真实课堂标注：
 
 ```json
 [
-  {"start_sec": 0, "end_sec": 120, "task": "lecture", "knowledge_point": "An actually taught concept"},
+  {"start_sec": 0, "end_sec": 120, "task": "lecture", "knowledge_point": "实际讲授的知识点"},
   {"start_sec": 120, "end_sec": 300, "task": "exercise"}
 ]
 ```
 
-Pass `-ContextJson './context.json'`. Intervals are half-open, nonnegative, and non-overlapping; uncovered time uses the default task. Concepts are content annotations with null scores. This entry disables ASR, slide OCR, facial gaze, and LLMs by default. Legacy PaddleOCR is optional, needs another environment, and was outside the smoke check.
+使用 `-ContextJson './context.json'`。区间为左闭右开，必须不重叠且秒数非负；未覆盖区间回到默认任务。知识点字段仅作内容标注，分数保持 null。当前默认未启用 ASR、PPT OCR、脸部视线或大语言模型，以避免未验证的依赖和推断进入结果。OCR 是可选旧模块，需要额外 PaddleOCR 环境，未纳入本次冒烟验收。
 
-## Recreate the CPU environment
+## 在另一台机器重建环境
 
-From `vision/`, with Python 3.11/uv:
+当前已装环境无需重复执行。以下示例复建本次 CPU 路径；Python 3.11 和 uv 需可用：
 
 ```powershell
 uv venv .venv-inference --python 3.11
@@ -86,10 +93,10 @@ uv pip install --python .venv-inference/Scripts/python.exe -r requirements-infer
 & .venv-inference/Scripts/python.exe -m pytest Class_Detection/tests -q
 ```
 
-`requirements-inference.lock.txt` records that CPU environment, not CUDA. Downloads pin size/revision/SHA-256; inference rechecks task/classes/architecture. Corrupt files are rejected; only explicit `--repair` attempts replacement.
+`requirements-inference.lock.txt` 记录本次已安装版本；不是 CUDA 环境锁。下载器固定字节大小、revision 和 SHA-256，推理前再次检查任务、类别与架构。遇到损坏文件会拒绝加载，显式 `--repair` 才尝试修复。
 
-## Legacy and publication boundaries
+## 保留项与开源边界
 
-Earlier code/manuals/formulas remain legacy comparisons and are not called by this entry. Old configuration is `Class_Detection/configs/pipeline_legacy.yaml`; do not mix its scores with this index. Historical backups are local and excluded.
+原有代码、训练手册和公式保留为 legacy 对照，新推理默认不调用它们。旧配置是 `Class_Detection/configs/pipeline_legacy.yaml`；不要用旧公式分数与新规则指数直接混算。源代码备份在 `../模型优化方案/改造备份/`。
 
-See [Pretrained sources](Class_Detection/docs/PRETRAINED_MODELS.md) for URLs/hashes/classes/terms. SCB restrictions are not removed by downstream Space MIT metadata; Ultralytics has separate terms. This integration establishes no unrestricted commercial redistribution permission. Publish code/manifests/downloaders with separate provenance, excluding unchecked video/weights.
+权重的固定地址、哈希、实际类别与许可记录见 [PRETRAINED_MODELS.md](Class_Detection/docs/PRETRAINED_MODELS.md)。行为权重可下载，但 SCB 上游有非商业限制；Space 的 MIT 元数据不覆盖所有上游权益。Ultralytics 也有其自身许可要求。因此本次接入不代表已取得可任意商业分发的授权。发布仓库时建议提交代码、清单和下载器，分别声明第三方来源；不要把演示录像和下载权重不加核对地一起打包。

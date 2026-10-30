@@ -22,7 +22,7 @@ def router(services):
     def chat(payload:ChatRequest):
         lesson=services.effective(payload.lesson_id)
         if not services.chat_lock.acquire(blocking=False):
-            raise ReviewError('model_busy','Another answer is being generated. Please try again shortly.',429)
+            raise ReviewError('model_busy','另一个问题正在生成，请稍后重试。',429)
         try:
             result=answer_question(lesson,payload.query,payload.at_sec,payload.scope,services.provider)
             result['request_id']=str(uuid.uuid4())

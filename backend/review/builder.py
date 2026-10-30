@@ -68,21 +68,21 @@ def _build_lesson(lesson_id,video_path,media_dir,title,provider=None,*,allow_no_
     sections=[]
     for node in graph['nodes']:
         refs=node['properties']['source_refs']
-        sections.append({'title':node['label'],'text':f'This term occurs in the original transcript/courseware, with {len(refs)} evidence references. Open the references to review the source and verify the recognized text.',
+        sections.append({'title':node['label'],'text':f'原始转写/课件中检出该词，共 {len(refs)} 条证据。点击引用回看并核对识别文本。',
                          'evidence_ids':refs})
-    limits=['ASR/OCR is machine recognition and may contain word or formula recognition errors. Accuracy against manual annotations has not been calculated.',
-            'Courseware boundaries come from video sampling; see uncertainty_sec for each page. Temporal overlap does not automatically establish a complete semantic match.',
-            'Concepts were proposed by the model and verified for occurrence in the source, but have not been confirmed by a teacher. Segment co-occurrence is not a prerequisite, causal, or mastery relationship.',
-            'No student behavior video has been confirmed as synchronized with this lesson; engagement, knowledge mastery, and teaching effectiveness were not calculated.']
-    report={'title':title+' · Whole-lesson evidence report',
-        'summary':f'Full source video: {duration:.2f} s; {len(transcript)} speech segments, {len(slides)} courseware screen segments, and {len(graph["nodes"])} concepts verifiable in the source.',
+    limits=['ASR/OCR为机器识别，可能包含错字和公式识别错误，尚未计算人工标注准确率。',
+            '课件边界来自视频抽样，误差见各页 uncertainty_sec；时间重合不自动等于语义完全匹配。',
+            '概念由模型提议并校验原文出现，尚未教师确认；同段出现不是先修、因果或掌握关系。',
+            '未提供与本课确认同步的学生行为录像，未计算投入度、知识掌握或教学效果。']
+    report={'title':title+' · 整课证据报告',
+        'summary':f'完整源录像 {duration:.2f} 秒，产生 {len(transcript)} 条语音片段、{len(slides)} 个课件画面段、{len(graph["nodes"])} 个原文可核实概念。',
         'sections':sections,'limitations':limits,'generated_by':'deterministic_evidence_summary',
         'statistics':{'duration_sec':duration,'transcript_segments':len(transcript),'slide_segments':len(slides),
                       'speech_span_union_sec':round(speech_duration,3),'slide_span_union_sec':round(slide_duration,3),
                       'concepts':len(graph['nodes']),'relations':len(graph['edges']),
                       'alignment_segments':len(alignment)}}
     if not transcript:
-        limits.append('No reliable speech content was recognized in this segment. Teacher speech is not invented. The content review uses actual courseware screen text and behavior evidence and must not be treated as a speech transcript.')
+        limits.append('本片段未识别到可靠语音内容；不补写教师台词。内容复盘依据实际课件画面文字与行为证据，不能当作语音转写。')
     bundle={'schema_version':'3.0','data_source':'lesson_review',
         'lesson':{'id':lesson_id,'title':title,'duration_sec':duration,'status':'complete',
             'video_url':f'/api/review/media/{lesson_id}/source.mp4',
@@ -116,8 +116,8 @@ def _build_lesson(lesson_id,video_path,media_dir,title,provider=None,*,allow_no_
     atomic_json(media_dir/'report.json',report)
     markdown=[f'# {report["title"]}',report['summary'],'']
     for section in sections:
-        markdown.extend([f'## {section["title"]}',section['text'],'Evidence: '+', '.join(section['evidence_ids']),''])
-    markdown.extend(['## Evidence limitations',*['- '+s for s in limits]])
+        markdown.extend([f'## {section["title"]}',section['text'],'证据：'+', '.join(section['evidence_ids']),''])
+    markdown.extend(['## 数据边界',*['- '+s for s in limits]])
     (media_dir/'report.md').write_text('\n\n'.join(markdown),encoding='utf-8')
     atomic_json(media_dir/'bundle.json',bundle)
     # Private registry is never served; source absolute paths stay server-side.

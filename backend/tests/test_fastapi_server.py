@@ -84,13 +84,13 @@ def test_native_chat_citations_and_model_failure_are_preserved(tmp_path):
 
     class Offline(Provider):
         def complete(self, *args, **kwargs):
-            raise ReviewError('model_unavailable', 'The model is not ready', 503,
+            raise ReviewError('model_unavailable', '模型未就绪', 503,
                               diagnostic={'private': 'must not be exposed'})
 
     with TestClient(app_fixture(tmp_path, Offline())) as client:
         response = client.post('/api/review/chat', json={'lesson_id': 'test', 'query': '测试'})
         assert response.status_code == 503
-        assert response.json() == {'error': {'code': 'model_unavailable', 'message': 'The model is not ready'}}
+        assert response.json() == {'error': {'code': 'model_unavailable', 'message': '模型未就绪'}}
 
 
 def test_media_get_head_ranges_and_missing_files(tmp_path):

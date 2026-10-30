@@ -1,61 +1,61 @@
-# Independent courseware: import, alignment, and terminology suggestions
+# 独立课件导入、时间对齐与术语建议
 
-The workbench supports PDF, PPTX, and legacy binary PPT. It preserves original ASR, audio/video, and recorded-screen OCR. Original courseware is stored by SHA-256; every terminology change is a separate, traceable suggestion. No model training is required.
+工作台支持 PDF、PPTX 和传统二进制 PPT。原始转写、音视频、录像 OCR 不覆盖；课件原件按 SHA-256 保存，每一项术语修订都是独立、可追溯的建议。无需训练模型。
 
-## Workbench workflow
+## 在工作台操作
 
-1. Select a lesson and choose a file in independent courseware alignment. Limits: 64 MiB and 200 pages.
-2. A background job renders original pages, extracts text or OCR, and matches them to observed screen intervals. The original lesson stays visible during processing; failed jobs do not publish partial results.
-3. Select pages/time intervals to replay the recording. Automatic, ambiguous, unmatched, confirmed, and no-page states remain separate. A filter shows items needing confirmation.
-4. Compare with the source video and assign a page, or no corresponding page/teacher shot, to an existing observation interval. Saving recomputes citations and terminology suggestions. Repeated visits and skipped pages remain separate rather than merging all appearances of one page.
-5. Compare original/suggested wording and page provenance in terminology suggestions; click a time to replay audio. The assistant reads suggestions and aligned original pages, with prompts explicitly stating these are not a human transcript.
-6. JSON includes original speech, courseware, mappings, revisions, and provenance. Markdown includes the file SHA, mapping states, and original/suggested text. Removing the association restores pre-import lesson evidence while retaining historical originals.
+1. 打开本机工作台，选择对应的课堂，在「独立课件对齐」中选择课件。文件限制为 64 MiB、200 页。
+2. 后台渲染原页、提取原文或 OCR，并与已观测的课堂屏幕段匹配。处理过程中仍显示原课堂，失败不发布半成品。
+3. 点击页面与课堂时间列表回看录像。自动匹配、待确认、未匹配、人工确认、无对应页分别展示。可只看待确认项。
+4. 对照原录像，为选中的观测区间指定课件页，或指定「无对应页 / 教师镜头」。保存后会重新计算该课的引用和术语建议。重复回翻、跳页分别保留，不把同一页多次出现合并成一大段。
+5. 在「课件辅助术语修订」核对原始文本、建议文本及页码来源，点击时间回听原声。复盘助手会读取这些修订建议和已对齐的原页；模型提示明确说明其不是人工逐字稿。
+6. 完整 JSON 包括原始语音、课件、映射、修订与来源；Markdown 包含课件 SHA、时间映射状态和原文/建议对照。点击「移除关联」恢复导入前的课堂证据，历史原件仍保留。
 
-On the recorded Windows machine, PPT/PPTX conversion used installed PowerPoint in a hidden read-only export session, including legacy PPT. Macros are disabled. If PowerPoint is already running, the converter refuses to take it over and reports why. Close your own PowerPoint session and retry, or export to PDF. PDF remains available without PowerPoint; no LibreOffice fallback is provided.
+PPT/PPTX 在这台 Windows 电脑使用已安装 PowerPoint 的只读无窗口导出；也已测试传统 PPT。宏执行被禁用。若已有 PowerPoint 进程，转换器会拒绝接管，界面给出原因；可关闭自己的 PowerPoint 后重试，或将文件另存为 PDF 上传。没有安装 PowerPoint 的环境仍可使用 PDF。当前未提供 LibreOffice 备用转换器。
 
-## Alignment and unknown states
+## 对齐方式和保留的未知状态
 
-Independent courseware has no intrinsic lesson timestamps. The system preserves page text, images, and file digests, then compares them with S-numbered observations from the same video:
+独立课件没有内在的课堂时间。系统先保留页原文、页原图与文件哈希，再与同一录像已有的 S 编号屏幕观测比较：
 
-- Literal text similarity accommodates some animations and missing OCR text; near-tied candidates remain undecided.
-- ORB keypoints and RANSAC geometry support image matching despite scale, animation, or annotation differences.
-- The first/second candidate margin uses unclipped scores to avoid false certainty at thresholds. Similarity is an engineering heuristic, not a calibrated probability or accuracy.
-- Only `auto_matched` / `confirmed` pages become timed citations. Other pages receive no invented times. Citations copy the corresponding S interval; boundary precision depends on the original screen-sampling interval.
-- Teacher close-ups, blank pages, near-duplicates, and insufficient text/image evidence may remain unmatched. Human confirmation applies only to existing observations.
+- 原文字面相似度可匹配部分动画和 OCR 缺字；近分候选不自动决定。
+- ORB 关键点及 RANSAC 几何验证辅助匹配页面图像，允许尺寸、动画、批注差异。
+- 第一和第二候选的差距在未截断分数上计算，避免阈值边界制造假确定性。相似度是工程启发式值，不是校准概率或准确率。
+- 只把 `auto_matched` / `confirmed` 的页面派生为带时间引用。其他页没有虚构时间。每个引用复制对应 S 观测区间，边界精度受原画面采样间隔约束。
+- 教师近景、空白页、近似重复页、文字/图像证据不足均可能无匹配；人工确认仅作用于已有观测区间。
 
-PyMuPDF and OpenCV once stalled in the same process on the recorded machine. Image matching now uses a separate process with a timeout. Rendering has page-count and per-page/total pixel budgets. Damaged or encrypted files are not replaced with simulated pages.
+PyMuPDF 与 OpenCV 在本机同进程运行曾出现原生运行库停滞，图像匹配已放到独立、有超时边界的进程。页面渲染也有页数、单页及总像素预算。损坏或加密文件不会被换成模拟页面。
 
-## Chinese terminology suggestions
+## 数学术语改善方式
 
-Terms are extracted from actual aligned page text, without a preset wrong-to-correct replacement table. A suggestion requires identical pronunciation ignoring tone, identical length, an unambiguous target, and a limited edit scope. It uses the page's actual spelling; simplified/traditional differences alone are not ASR errors.
+从已对齐页中分词提取真实出现的中文术语。候选源于课件原文，不使用预设的「错词→正确词」替换表。只有发音完全相同（不区分声调）、长度相同、目标无歧义且修改范围有限的词，才产生建议；修订词使用课件实际写法，纯繁简差异不算识别错误。
 
-Source-language mechanism example: a page containing “正弦定理” (sine rule) and “向量” (vector) can support suggestions for ASR text “鄭賢定理” and “相量” at the corresponding time. The Chinese strings are retained because their pronunciation is the evidence for the example. Suggestions include page and match IDs. Numbers, negation, and formula-like clauses are protected, including full-width symbols, parentheses, and whitespace. No aligned evidence, differing pronunciation, or multiple homophones means no change.
+例如页面含「正弦定理」「向量」，相应时间的语音将其识别为「鄭賢定理」「相量」时，可产生带页码与匹配 ID 的建议。数字、否定词及公式样式子句不参与修订；公式保护包含全角符号、括号和空格。没有已对齐课件证据、发音不同或有多个同音目标时不改。
 
-This can reduce homophone errors explained by current courseware. It does not guarantee the spoken truth or recover every omission, spoken formula, or non-homophone error. Q&A uses full B blocks with neighboring context; original counts such as 745/646 segments do not change through revision. Real accuracy gains require human reference labels; no percentage improvement is claimed.
+这种方法减少了可由当前课件解释的同音错词，不能保证还原口语真值，也不处理全部漏词、公式口述或异音误识别。问答使用保留邻句上下文的完整 B 段；原始 745/646 等片段数不会因修订而改变。是否提高真实准确率仍需人工标注对照，当前不报识别准确率提升百分比。
 
-## Installation and CLI
+## 安装与命令行
 
-Run from `backend/` in the existing media environment:
+在原媒体环境安装新增依赖：
 
 ```powershell
 uv pip install --python .venv-media/Scripts/python.exe -r requirements-courseware.txt
 ./start_review.ps1 -Restart
 ```
 
-Import into a registered lesson:
+将课件导入已经登记的课堂：
 
 ```powershell
-& .venv-media/Scripts/python.exe scripts/import_courseware.py --lesson-id lesson1-real --file 'D:\lesson-materials\sine-rule.pptx'
+& .venv-media/Scripts/python.exe scripts/import_courseware.py --lesson-id lesson1-real --file 'D:\课堂资料\正弦定理.pptx'
 ```
 
-The CLI and browser use the same core logic. Avoid editing one lesson concurrently through both. Changed source media invalidates old mappings; realign rather than applying old times to a new recording.
+这条命令与工作台导入使用相同核心逻辑；避免同时通过命令行和浏览器编辑同一课堂。原课堂素材变化时旧映射失效，需重新对齐，不把旧时间映射套给新视频。
 
-Media preparation supports `--language zh` (default) and `--language en`, followed by the existing `build_review.py` bundle step. Rebuilding verifies and retains valid courseware overlays and explicitly rejects reuse after provenance changes.
+新课程的媒体准备支持 `--language zh`（默认）或 `--language en`，之后仍使用原 `build_review.py` 建立课程包。重新构建原课程时会验证并保留有效课件叠加层；证据来源已变化时明确拒绝复用。
 
-## Public acceptance materials
+## 公开配套验收素材
 
-Historical acceptance used the full MIT OCW 6.0002 Fall 2016 Lecture 1 video and official 31-page PDF: [official video](https://ocw.mit.edu/courses/6-0002-introduction-to-computational-thinking-and-data-science-fall-2016/resources/lecture-1-introduction-and-optimization-problems/) and [official slides](https://ocw.mit.edu/courses/6-0002-introduction-to-computational-thinking-and-data-science-fall-2016/resources/mit6_0002f16_lec1/). These are not the slides for the existing sine-rule recording.
+使用 MIT OCW 6.0002 Fall 2016 第 1 讲的完整视频和官方 31 页 PDF；来源分别为 [官方视频页](https://ocw.mit.edu/courses/6-0002-introduction-to-computational-thinking-and-data-science-fall-2016/resources/lecture-1-introduction-and-optimization-problems/) 与 [官方课件页](https://ocw.mit.edu/courses/6-0002-introduction-to-computational-thinking-and-data-science-fall-2016/resources/mit6_0002f16_lec1/)。它不是原有正弦定理录像的课件。
 
-Local `artifacts/public-courseware/mit-6-0002-f2016-lec01/` records URLs, file digests, source terms, and visual-pairing evidence. Official subtitles were reference-only; project ASR was rerun from full audio. This English lesson checked real alignment and Q&A. Separate, explicitly labeled Chinese-homophone mechanism tests must not be combined with it as evidence of Chinese recognition accuracy.
+本地 `artifacts/public-courseware/mit-6-0002-f2016-lec01/` 记录下载 URL、文件 SHA、来源许可和视觉配对证据。官方字幕仅作参考，本项目 ASR 是从完整音频重新推理所得。课程为英文，用于验证真实页面对齐与问答；中文同音术语修订另有明确标记的机制测试，不能把两者合并成中文识别准确率证据。
 
-The provenance manifest records MIT materials' CC BY-NC-SA 4.0 terms and third-party illustration exclusions in the PDF. Downloaded materials remain ignored local acceptance inputs and are not packaged as project-owned open-source assets.
+MIT 材料的 CC BY-NC-SA 4.0 与 PDF 中第三方插图排除声明记录在来源清单；下载素材是本地验收输入，保留在被忽略的 artifacts 中，不作为项目自有开源资产打包。

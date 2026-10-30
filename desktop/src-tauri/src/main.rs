@@ -16,7 +16,7 @@ struct Backend {
 fn show_error(app: &tauri::AppHandle, message: &str) {
     if let Some(window) = app.get_webview_window("main") {
         // JSON escaping prevents backend error text from becoming executable JS.
-        let text = serde_json::to_string(message).unwrap_or_else(|_| "\"Startup failed\"".into());
+        let text = serde_json::to_string(message).unwrap_or_else(|_| "\"启动失败\"".into());
         let _ = window.eval(format!("document.getElementById('status').textContent={text};"));
     }
 }
@@ -38,7 +38,7 @@ fn main() {
             let permitted_origin = Arc::new(Mutex::new(None::<String>));
             let navigation_origin = permitted_origin.clone();
             WebviewWindowBuilder::new(app, "main", WebviewUrl::App("index.html".into()))
-                .title("Jingxi Insight")
+                .title("精析智评")
                 .inner_size(1440.0, 920.0)
                 .min_inner_size(1024.0, 700.0)
                 .data_directory(data.join("webview"))
@@ -72,7 +72,7 @@ fn main() {
                                                         *permitted_origin.lock().unwrap() = Some(url.origin().ascii_serialization());
                                                         if let Some(window) = handle.get_webview_window("main") {
                                                             if let Err(error) = window.navigate(url) {
-                                                                show_error(&handle, &format!("Unable to open the workbench: {error}"));
+                                                                show_error(&handle, &format!("无法打开工作台：{error}"));
                                                             } else { ready = true; }
                                                         }
                                                     }
@@ -83,23 +83,23 @@ fn main() {
                                 }
                                 CommandEvent::Terminated(_) => {
                                     exited.store(true, Ordering::Release);
-                                    if !ready { show_error(&handle, "The backend failed to start. Use the documented command-line entry point to inspect the error and check the frontend files."); }
+                                    if !ready { show_error(&handle, "后端启动失败。请用文档中的命令行入口查看错误并确认前端文件完整。"); }
                                     break;
                                 }
                                 CommandEvent::Error(_) => {
-                                    if !ready { show_error(&handle, "Unable to read backend output. Check the installation directory and local permissions."); }
+                                    if !ready { show_error(&handle, "无法读取后端进程输出。请检查安装目录和本机权限。"); }
                                 }
                                 _ => {}
                             }
                         }
                     });
                 }
-                _ => show_error(&handle, "Unable to start the backend. Check that 4c-review-backend.exe was installed with the application."),
+                _ => show_error(&handle, "无法启动后端。请确认 4c-review-backend.exe 随安装包完整安装。"),
             }
             Ok(())
         })
         .build(tauri::generate_context!())
-        .expect("Failed to initialize the Jingxi Insight desktop window");
+        .expect("精析智评桌面窗口初始化失败");
     app.run(|app, event| {
         if matches!(event, RunEvent::ExitRequested { .. } | RunEvent::Exit) {
             let state = app.state::<Backend>();

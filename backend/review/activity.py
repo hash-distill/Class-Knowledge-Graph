@@ -9,12 +9,12 @@ import re
 from .common import atomic_json, read_json, sha256, valid_id
 from .mutation import LessonMutationLock
 
-REPORT_TITLE = 'Visible behavior and lesson context'
-NO_BEHAVIOR_LIMIT = 'No student behavior video has been confirmed as synchronized with this lesson; engagement, knowledge mastery, and teaching effectiveness were not calculated.'
+REPORT_TITLE = '可见行为与课堂情境'
+NO_BEHAVIOR_LIMIT = '未提供与本课确认同步的学生行为录像，未计算投入度、知识掌握或教学效果。'
 # Historical generated labels are data identifiers for updating older bundles.
 # Keep them as aliases so a language change cannot duplicate stale report rows.
-REPORT_TITLES = {REPORT_TITLE, '可见行为与课堂情境'}
-NO_BEHAVIOR_LIMITS = {NO_BEHAVIOR_LIMIT, '未提供与本课确认同步的学生行为录像，未计算投入度、知识掌握或教学效果。'}
+REPORT_TITLES = {REPORT_TITLE, 'Visible behavior and lesson context'}
+NO_BEHAVIOR_LIMITS = {NO_BEHAVIOR_LIMIT, 'No student behavior video has been confirmed as synchronized with this lesson; engagement, knowledge mastery, and teaching effectiveness were not calculated.'}
 VISIBLE_ACTION_WEIGHTS = {'read': .80, 'write': .85, 'raise_hand': .95}
 VISIBLE_STATE_LABELS = {'read','write','raise_hand','head_up','head_lowered','hand_near_head','standing','unknown',
                         'lookup','turn_head','stand','discuss'}
@@ -34,7 +34,7 @@ def visible_participation(row):
             'active_people':len(actions), 'active_fraction':round(len(actions)/total,6) if total else None,
             'scored_people':len(actions), 'score_coverage':round(len(actions)/total,6) if total else None,
             'weights':dict(VISIBLE_ACTION_WEIGHTS),
-            'definition':'Detected participation fraction = people with current reading, writing, or hand-raising cues / currently detected people. Unrecognized does not mean nonparticipating. Posture is shown separately and receives no participation score. The reference score averages only explicit actions using the published weights.'}
+            'definition':'已检出参与动作比例=当前阅读/书写/举手线索人数÷当前检测人物数。未识别不等于未参与；姿态单独展示且不赋参与分。参考分只在明确动作内按公开权重求均值。'}
 
 
 def add_visible_summary(row):
@@ -230,7 +230,7 @@ def overlay_activity(bundle, activity, media_dir=None):
     report = result['report']; summary = activity['summary']
     report['sections'] = [r for r in report.get('sections', []) if r.get('title') not in REPORT_TITLES]
     report['sections'].append({'title': REPORT_TITLE,
-        'text': f"Sampled {summary['sampled_frames']} frames and {summary['scene_count']} detected shots from the same source video; {summary['person_observations']} person observations in total, including {summary['known_observations']} with rule-based participation cues. Counts accumulate frame observations, not unique people. Context is predicted at segment level.",
+        'text': f"同源录像抽样 {summary['sampled_frames']} 帧、{summary['scene_count']} 个检测镜头段；累计 {summary['person_observations']} 人次观测，{summary['known_observations']} 人次具有规则参与线索。人数是逐帧观测累计，不是唯一人数。情境为片段级模型预测。",
         'evidence_ids': [r['id'] for r in activity.get('evidence', [])]})
     report['limitations'] = list(dict.fromkeys([r for r in report.get('limitations', []) if r not in NO_BEHAVIOR_LIMITS] + activity['limitations']))
     report.setdefault('statistics', {}).update({'activity_'+key: value for key, value in summary.items()})
@@ -361,15 +361,15 @@ def compact_metrics(report):
 def aric_record(path):
     return {'scope': 'offline_research_only', 'online_compatible': False, 'report_sha256': sha256(path),
             'report': compact_metrics(read_json(path)),
-            'limitation': 'The online contract between ARIC feature inputs and the current raw video has not been verified. This evaluation is not the source of current-frame predictions.'}
+            'limitation': 'ARIC特征输入与当前原始视频的在线合同未验证；该评测不是当前帧预测来源。'}
 
 
 def context_evidence(context, index):
-    labels = ', '.join(f"{row['name']} {row['probability']:.3f}" for row in context['labels']) or 'No class exceeds the validation threshold'
+    labels = '、'.join(f"{row['name']} {row['probability']:.3f}" for row in context['labels']) or '没有类别超过验证阈值'
     return {'id': f'E{index:04d}', 'kind': 'behavior', 'start_sec': context['start_sec'],
             'end_sec': context['end_sec'], 'source_refs': [context['id']], 'method': 'trained_context',
             'source_split': context.get('source_split', 'unknown'),
-            'text': f"Segment-level lesson context prediction at {context['start_sec']:.2f}–{context['end_sec']:.2f} s: {labels}. Model: {context['model_id']}. These are trained classifier probabilities, not second-by-second facts or manual annotations. "+context.get('text', '')}
+            'text': f"{context['start_sec']:.2f}至{context['end_sec']:.2f}秒片段级教学情境预测：{labels}。模型{context['model_id']}；是训练分类器概率，不是逐秒事实或人工标注。"+context.get('text', '')}
 
 
 def enrich_activity(activity, video_path, *, context_model=None, aric_report=None, device='cpu'):
@@ -381,8 +381,8 @@ def enrich_activity(activity, video_path, *, context_model=None, aric_report=Non
         result['evidence'] = [row for row in result['evidence'] if row.get('method') != 'trained_context']
         next_id = max((int(row['id'][1:]) for row in result['evidence'] if re.fullmatch(r'E\d+', row['id'])), default=0)+1
         result['evidence'].extend(context_evidence(row, next_id+i) for i, row in enumerate(result['context_segments']))
-        result['limitations'] = [text for text in result['limitations'] if not text.startswith(('No trained context model is configured', 'The trained context model is unavailable', 'Lesson context is a coarse probability prediction by a trained classifier'))]
-        result['limitations'].append('Lesson context is a coarse probability prediction by a trained classifier for the entire segment/window, not second-by-second behavior facts or manual annotations.')
+        result['limitations'] = [text for text in result['limitations'] if not text.startswith(('本轮未配置训练情境模型', '训练情境模型不可用', '教学情境为训练分类器'))]
+        result['limitations'].append('教学情境为训练分类器对整个片段/窗口的粗粒度概率预测，不是逐秒真实行为或人工标注。')
     if aric_report:
         result['models']['aric'] = aric_record(aric_report)
         result['limitations'] = list(dict.fromkeys(result['limitations']+[result['models']['aric']['limitation']]))
@@ -393,29 +393,29 @@ def enrich_activity(activity, video_path, *, context_model=None, aric_report=Non
 
 
 def frame_evidence(row, index):
-    names = {'read': 'Reading', 'write': 'Writing', 'raise_hand': 'Hand raising', 'unknown': 'Unknown behavior',
-             'lookup':'Model head-up cue','turn_head':'Head-turning cue','stand':'Standing cue','discuss':'Discussion cue'}
-    observed = ', '.join(f"{names.get(label, label)}: {amount} observations" for label, amount in row['behaviors'].items()) or 'No people detected'
-    score = 'unavailable' if row['participation_index'] is None else f"{row['participation_index']:.1f}/100 (rule estimate, not a probability)"
-    coverage = f"{row['coverage']*100:.1f}%" if row['detected_people'] else 'unknown (no usable detections)'
+    names = {'read': '阅读', 'write': '书写', 'raise_hand': '举手', 'unknown': '未知行为',
+             'lookup':'模型抬头线索','turn_head':'转头线索','stand':'站立线索','discuss':'讨论线索'}
+    observed = '、'.join(f"{names.get(label, label)}{amount}人次" for label, amount in row['behaviors'].items()) or '未检测到人物'
+    score = '不可用' if row['participation_index'] is None else f"{row['participation_index']:.1f}/100（规则估计，不是概率）"
+    coverage = f"{row['coverage']*100:.1f}%" if row['detected_people'] else '未知（无可用检测）'
     current = ''
     if row.get('participation'):
-        p = row['participation']; names.update({'head_up':'Head up','head_lowered':'Head lowered','hand_near_head':'Hand near head','standing':'Standing posture cue'})
-        distribution=', '.join(f"{names.get(label,label)}: {amount} people" for label,amount in row['student_state_counts'].items())
-        proportion=f"{p['active_fraction']*100:.1f}%" if p['active_fraction'] is not None else 'unknown'
-        reference='unavailable' if p['index'] is None else f"{p['index']:.1f}/100"
-        weights=', '.join(f"{names.get(label,label)}{weight:g}" for label,weight in p['weights'].items())
-        current=f"Current visible states: {distribution or 'no people visible'}; participation actions detected for {p['active_people']}/{p['total_people']} people, fraction {proportion}. Behavior participation reference {reference} (rule mean for current explicit actions only; {weights}; support {p['scored_people']}/{p['total_people']} people; not a probability of psychological engagement). Head pose is only a geometric cue and receives no participation score on its own. Unrecognized does not mean nonparticipating. "
+        p = row['participation']; names.update({'head_up':'头部抬起','head_lowered':'头部降低','hand_near_head':'手靠近头部','standing':'站姿线索'})
+        distribution='、'.join(f"{names.get(label,label)}{amount}人" for label,amount in row['student_state_counts'].items())
+        proportion=f"{p['active_fraction']*100:.1f}%" if p['active_fraction'] is not None else '未知'
+        reference='不可用' if p['index'] is None else f"{p['index']:.1f}/100"
+        weights='、'.join(f"{names.get(label,label)}{weight:g}" for label,weight in p['weights'].items())
+        current=f"当前可见状态：{distribution or '无人可见'}；已检出参与动作{p['active_people']}/{p['total_people']}人，比例{proportion}。行为积极度参考{reference}（仅当前明确动作的规则均值；{weights}；支持{p['scored_people']}/{p['total_people']}人；不是心理积极度概率）。头部姿态仅为几何线索，不单独赋参与分；未识别不等于未参与。"
     if row.get('visual_reference'):
         ref=row['visual_reference']
-        value='unknown (insufficient support)' if ref['index'] is None else f"{ref['index']:.1f}/100; smoothed {ref['smoothed_index']:.1f}/100"
-        current+=f"Seven-class model visible-behavior rule reference: {value}; scored support {ref['scored_people']}/{ref['total_people']}. Uses the original project action weights, not a probability of psychological engagement. Head turning, standing, unknown states, and geometric head-up cues receive no score. A head-up class does not confirm listening. "
+        value='未知（支持不足）' if ref['index'] is None else f"{ref['index']:.1f}/100；平滑后{ref['smoothed_index']:.1f}/100"
+        current+=f"七类模型的可见行为规则参考：{value}，可计分支持{ref['scored_people']}/{ref['total_people']}；采用原项目动作权重，不是心理积极度概率。转头、站立、未知和几何抬头不赋分；抬头类别不等于已确认听讲。"
     if row.get('detection_review'):
-        current+='This run locates people using full images and overlapping tiles, merges poses, and removes duplicates before classifying each box. The classifier creates no new person boxes. Box counts do not represent class size or detection recall. Rear-wall reflection candidates are excluded using this segment configuration. '
+        current+='本轮先通过整图加重叠切片定位人物、融合姿态并去重，再逐框分类行为；分类器不生成新增人物框。检测框数不是全班人数或检测召回率；按本片段配置排除后墙反射候选。'
     return {'id': f'E{index:04d}', 'kind': 'behavior', 'start_sec': row['start_sec'], 'end_sec': row['end_sec'],
             'source_refs': [row['id']], 'image_url': row['image_url'], 'method': 'visible_behavior_observation',
-            'text': f"Sampled frame at {row['timestamp_sec']:.2f} s, shot {row['scene_id']}: {row['detected_people']} people detected (teacher/student roles are not inferred); {observed}. "
-                    f"{current}{row['known_people']} people have usable temporal rule scores, coverage {coverage}; temporal rule participation index {score}. Unknown or invisible states cannot be interpreted as low engagement or lack of knowledge mastery."}
+            'text': f"{row['timestamp_sec']:.2f}秒抽样画面，镜头{row['scene_id']}：检测到{row['detected_people']}人（不推断师生身份）；{observed}。"
+                    f"{current}具有可用时序规则分数{row['known_people']}人，覆盖率{coverage}；时序规则参与指数{score}。未知/不可见不能解释为低投入或知识未掌握。"}
 
 
 def analyze_video(video_path, lesson_id, media_dir, *, interval_sec=1., device='cpu', context_model=None,
@@ -477,10 +477,10 @@ def analyze_video(video_path, lesson_id, media_dir, *, interval_sec=1., device='
     # Completed observation diagnostics remain recoverable if optional model metadata fails later.
     atomic_json(directory/'activity'/f'snapshots-v2-{run_id}.json', snapshots)
     limits = [
-        'Behavior comes from samples of the current source video. Pretrained reading/writing/hand-raising detection and pose-based hand-raising rules have not been evaluated against manual labels for this lesson. Teacher/student roles are not inferred.',
-        'The behavior participation index is an uncalibrated 0–100 rule estimate, not a probability of psychological engagement. Unknown and invisible states are not scored as low engagement. It cannot establish knowledge mastery or teaching effectiveness.',
-        f'Frames are sampled every {interval_sec:g} s and at the end. Inter-frame states and shot boundaries are approximate at the sampling resolution; shot detection has not been evaluated against manual ground truth. Tracks reset for each shot and do not establish cross-shot identities.',
-        'known_people and coverage count only rule scores with enough temporal evidence. A current behavior label may be visible while its index remains unavailable due to insufficient temporal evidence. Cumulative observations do not count unique people.']
+        '行为来自当前同源录像抽样；预训练阅读/书写/举手检测与姿态举手规则未在本课人工标注评测，不推断师生身份。',
+        '行为参与指数是0–100的未校准规则估计，不是心理积极度概率；未知与不可见不记为低投入，不据此判断知识掌握或教学效果。',
+        f'按{interval_sec:g}秒抽样并观察末尾画面；帧间状态与镜头边界只在抽样分辨率内近似，切镜头检测未经人工真值评测。每个镜头重置轨迹，轨迹不是跨镜头身份。',
+        'known_people与coverage仅统计具有足够时序证据的规则分数；当前行为标签可见但时序证据不足时指数仍不可用。人次累计不是独立人物总数。']
     models = {'observation': public_metadata(pipeline.provenance),
               'scene_detection': {'method': 'downsampled_pixel_0.7_plus_gray_histogram_0.3', 'threshold': scene_threshold,
                                   'accuracy_evaluated': False},
@@ -491,9 +491,9 @@ def analyze_video(video_path, lesson_id, media_dir, *, interval_sec=1., device='
         try: contexts, models['context'] = load_context(video_path, context_model, device)
         except Exception as exc:
             models['context'] = {'status': 'unavailable', 'reason': type(exc).__name__}
-            limits.append('The trained context model is unavailable. Reference annotations were not substituted for predictions. Error type: '+type(exc).__name__)
-        else: limits.append('Lesson context is a coarse probability prediction by a trained classifier for the entire segment/window, not second-by-second behavior facts or manual annotations.')
-    else: limits.append('No trained context model is configured for this run; context_segments is empty. Reference annotations were not substituted for predictions.')
+            limits.append('训练情境模型不可用；未使用参考标注替代预测。错误类型：'+type(exc).__name__)
+        else: limits.append('教学情境为训练分类器对整个片段/窗口的粗粒度概率预测，不是逐秒真实行为或人工标注。')
+    else: limits.append('本轮未配置训练情境模型，context_segments为空；未使用参考标注替代预测。')
     if aric_report:
         models['aric'] = aric_record(aric_report)
         limits.append(models['aric']['limitation'])

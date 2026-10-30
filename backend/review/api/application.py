@@ -51,13 +51,13 @@ def create_app(*,store=None,provider=None,courseware_service=None,data_dir=None,
         try:yield
         finally:jobs.stop()
 
-    app=FastAPI(title='Jingxi Insight',version='4.0',redirect_slashes=False,lifespan=lifespan)
+    app=FastAPI(title='精析智评',version='4.0',redirect_slashes=False,lifespan=lifespan)
     app.state.services=services
 
     @app.exception_handler(HTTPException)
     async def http_error(request,exc):
         code='not_found' if exc.status_code==404 else 'method_not_allowed'
-        return error_response(ReviewError(code,'Endpoint not found.' if exc.status_code==404 else 'This endpoint does not support this request method.',exc.status_code))
+        return error_response(ReviewError(code,'接口不存在。' if exc.status_code==404 else '接口不支持此请求方法。',exc.status_code))
 
     for module in (lessons,media,chat,courseware,workspace,tasks,vision_review):app.include_router(module.router(services))
     frontend=Path(frontend_dir or os.getenv('REVIEW_FRONTEND_DIR') or ROOT.parent/'frontend/dist')

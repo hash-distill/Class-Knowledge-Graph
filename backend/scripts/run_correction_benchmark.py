@@ -33,8 +33,7 @@ from scripts.prepare_proofreading import prepare
 PROFILES = {'qwen': ROOT/'configs/local_llm.json', 'cec4': ROOT/'configs/correction_llm.json'}
 SOURCE_FILES = ('asr.json', 'asr.unguided.json', 'asr.secondary.json', 'audio.wav',
                 'slides.json', 'activity.json')
-# English translation of the published Chinese native-task instruction.
-OFFICIAL_NATIVE_SYSTEM = 'Act as a professional Chinese text correction expert. Analyze grammatical error types and reasons for correction, but output only the corrected sentence in its original language. Error types include typos, incorrect collocations, incorrect parts of speech, word order, missing components, redundant components, incorrect conjunctions, ambiguous references, semantic or logical errors, and no error.'
+OFFICIAL_NATIVE_SYSTEM = '假如你是一名专业的纠错专家，请分析输入句子的语法错误类型和修改原因，并只输出纠正后的语句，错误类型如下：错别字、词语搭配错误、词性错误、语序错误、成分残缺、成分赘余、关联词使用错误、指代不明、语义逻辑不通、无误。'
 
 
 def utc_now():
@@ -338,15 +337,15 @@ def generate_reports(directory, output_dir, external_dir=None):
         reports.append((sample['id'], report))
     summary = aggregate_external_reports(reports)
     atomic_json(output_dir/'external-summary.json', summary)
-    lines = ['# Chinese-LiPS external manual-reference check', '',
-             f"Sample count: {summary['sample_count']}. A small subset of the official test set; independence from model training data is unverified.", '',
-             '| Output | Reference characters | Original ASR CER | Corrected CER | Repaired characters | Damaged characters | Insertion errors: before → after |',
+    lines = ['# Chinese-LiPS 外部人工参考检查', '',
+             f"样本数：{summary['sample_count']}。官方 test 小样本，未证实模型训练数据独立。", '',
+             '| 输出 | 参考字符 | 原 ASR CER | 纠错后 CER | 修复字符 | 损伤字符 | 插入错误：前→后 |',
              '| --- | ---: | ---: | ---: | ---: | ---: | ---: |']
     for label, metrics in summary['runs'].items():
         normalized = metrics['normalizations']['no_whitespace_or_punctuation']
         transition = metrics['reference_character_transitions']['no_whitespace_or_punctuation']
         lines.append(f"| {label} | {normalized['reference_characters']} | {normalized['source_cer']:.2%} | {normalized['cer']:.2%} | {transition['repaired_reference_characters']} | {transition['damaged_previously_correct_reference_characters']} | {transition['insertion_errors_before']}→{transition['insertion_errors_after']} |")
-    lines += ['', 'This table removes whitespace and Unicode punctuation. See JSON for strict CER, numerators, denominators, per-sample results, and raw responses. The small sample count does not support extrapolation to the full dataset.', '']
+    lines += ['', '表格去除空白与 Unicode 标点；严格 CER、分子分母、逐样本结果及原始返回见 JSON。样本数较少，不能外推至全数据集。', '']
     (output_dir/'external-summary.md').write_text('\n'.join(lines), encoding='utf-8')
     emit('external_report_complete', path=str(output_dir/'external-summary.md'))
 
@@ -432,7 +431,7 @@ def benchmark(args):
             provider = CorrectionProvider(config_path=profile, managed_lifecycle=False,
                                           base=config['base_url'], model=config['model_alias'], timeout=args.request_timeout)
             provider.config['native_system'] = OFFICIAL_NATIVE_SYSTEM
-            provider.config['native_system_policy'] = 'same_english_translation_of_upstream_recommended_system_both_models_temperature_0.1_not_upstream_deterministic_benchmark'
+            provider.config['native_system_policy'] = 'same_verified_upstream_recommended_system_both_models_temperature_0.1_not_upstream_deterministic_benchmark'
             controlled_path = output_dir/f'{model_label}-controlled.json'
             current_contract = controlled_contract(directory, profile)
             if args.native_only:

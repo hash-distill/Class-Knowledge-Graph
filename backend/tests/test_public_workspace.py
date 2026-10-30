@@ -79,16 +79,19 @@ def test_legacy_registry_without_video_still_loads_bundle(tmp_path):
 
 
 def fixture_source(tmp_path):
-    files={'README.md':'# Jingxi Insight','backend/review/main.py':'print("source")',
+    files={'README.md':'# 精析智评','backend/review/main.py':'print("source")',
         'vision/Class_Detection/models/graph.py':'class Graph: pass',
         'backend/configs/lessons.example.json':'{}','frontend/src/App.vue':'<template>source</template>',
-        'frontend/public/brand.svg':'<svg/>','desktop/src-tauri/icons/icon.png':'owned icon'}
+        'frontend/public/brand.svg':'<svg/>','desktop/src-tauri/icons/icon.png':'owned icon',
+        'docs/screenshots/overview.png':'synthetic page screenshot',
+        'docs/screenshots/student-review.png':'synthetic review screenshot',
+        'docs/screenshots/knowledge-graph.png':'synthetic graph screenshot'}
     private={'backend/configs/lessons.json':'private registry','backend/artifacts/lesson/transcript.json':'private transcript',
         'backend/.venv-media/private.py':'environment','frontend/.git/config':'private Git settings',
         'frontend/output/playwright/export.json':'classroom export','frontend/public/classroom.json':'private snapshots',
         'frontend/design-preview/snapshot-export.json':'historical classroom export',
         'desktop/workspace/workspace.sqlite3':'private state','vision/Class_Detection/artifacts/weights.pt':'weights',
-        'backend/.env':'credentials'}
+        'backend/.env':'credentials','docs/screenshots/raw-classroom.png':'unapproved classroom image'}
     for name, content in {**files,**private}.items():
         path=tmp_path/name;path.parent.mkdir(parents=True,exist_ok=True);path.write_text(content,encoding='utf-8')
     return files, private

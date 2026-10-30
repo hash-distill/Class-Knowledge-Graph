@@ -9,14 +9,14 @@ import time
 import numpy as np
 
 CLASSES = {
-    'knowledge_presentation': ('Knowledge presentation', ['Explain and state','Summarize the lecture','Evaluation summary','Demonstrate and explain']),
-    'guiding_questions': ('Questions and task guidance', ['Raise a question','Assign tasks','Follow up with a counter-question','Following up with a counter-question']),
-    'resource_display': ('Teaching resource display', ['Physical display','Experimental demonstration','Text display','Picture display','Data display','Blackboard writing display']),
-    'process_management': ('Classroom management and feedback', ['Activity guidance','Communication guidance','Order management','Emotional motivation','Performance evaluation']),
-    'independent_exploration': ('Independent thinking and exploration', ['Independent thinking','Information query']),
-    'oral_expression': ('Student oral expression', ['Student read aloud','Students read aloud','Speak and answer together',"Student's direct answers","Students' direct answers"]),
-    'practical_operation': ('Writing and practical activity', ['Start writing by hand','Hands-on operation']),
-    'cooperation_exchange': ('Cooperation and discussion', ['Group discussion','Report conversation','Reporting conversation','Work display']),
+    'knowledge_presentation': ('知识讲授', ['Explain and state','Summarize the lecture','Evaluation summary','Demonstrate and explain']),
+    'guiding_questions': ('提问与任务引导', ['Raise a question','Assign tasks','Follow up with a counter-question','Following up with a counter-question']),
+    'resource_display': ('教学资源展示', ['Physical display','Experimental demonstration','Text display','Picture display','Data display','Blackboard writing display']),
+    'process_management': ('课堂组织与反馈', ['Activity guidance','Communication guidance','Order management','Emotional motivation','Performance evaluation']),
+    'independent_exploration': ('独立思考与探究', ['Independent thinking','Information query']),
+    'oral_expression': ('学生口头表达', ['Student read aloud','Students read aloud','Speak and answer together',"Student's direct answers","Students' direct answers"]),
+    'practical_operation': ('书写与动手操作', ['Start writing by hand','Hands-on operation']),
+    'cooperation_exchange': ('合作与讨论', ['Group discussion','Report conversation','Reporting conversation','Work display']),
 }
 TARGET_MAPPING_VERSION = 'ts_header_aliases_v2'
 
@@ -205,7 +205,7 @@ def predict_context(video_path, model_dir, device='cpu'):
     labels=[{'label':str(label),'name':CLASSES.get(str(label),(str(label),[]))[0],'probability':round(float(p),6)}
             for label,p,t in zip(head['labels'],probs,head['thresholds']) if p>=t]
     labels.sort(key=lambda r:r['probability'],reverse=True)
-    text='Lesson context model prediction for the full video: '+(', '.join(r['name'] for r in labels) if labels else 'No class exceeds the validation threshold')+'. This is a segment-level prediction, not second-by-second manual annotation.'
-    text+=' Source partition for this segment: '+{'train':'training set; demonstration only, excluded from held-out evaluation','val':'validation set, used to select thresholds','test':'test set','external':'video outside the training manifest','unknown':'unknown'}[role]+'.'
+    text='整段视频的教学情境模型预测：'+('、'.join(r['name'] for r in labels) if labels else '没有超过验证阈值的类别')+'。这是片段级预测，不是逐秒人工标注。'
+    text+=' 本段来源划分：'+{'train':'训练组，仅作功能演示，不计入留出评测','val':'验证组，用于选阈值','test':'测试组','external':'训练清单外视频','unknown':'未知'}[role]+'。'
     return [{'id':'X0001','start_sec':0.,'end_sec':metadata['duration_sec'],'text':text,'labels':labels,
              'model_id':config['model_id'],'method':'trained_context','source_split':role}]

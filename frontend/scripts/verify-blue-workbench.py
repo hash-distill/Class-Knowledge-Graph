@@ -64,9 +64,9 @@ def main():
                 else:
                     assert layout['stacked'], (width, view, 'responsive ordering', layout)
                 assert not layout['green'], (width, view, layout['green'][:5])
-                assert page.locator('h1').inner_text()[-1] not in '.．.!!??:: ;; ,. , …·—–-'
+                assert page.locator('h1').inner_text()[-1] not in '。．.!！?？:：;；,，、…·—–-'
                 for heading in layout['headings']:
-                    assert not heading or heading[-1] not in '.．.!!??:: ;; ,. , …·—–-', (width, view, heading)
+                    assert not heading or heading[-1] not in '。．.!！?？:：;；,，、…·—–-', (width, view, heading)
                 samples.append({'width': width, 'view': view, **layout})
                 if width in (1440, 390):
                     page.screenshot(path=str(args.output / f'{view}-{width}.png'), full_page=True)
@@ -74,7 +74,7 @@ def main():
         page.set_viewport_size({'width': 1440, 'height': 1000})
         navigate('teaching')
         original_goal = page.get_by_test_id('teacher-goals').input_value()
-        page.get_by_test_id('teacher-goals').fill('Unsaved UI verification draft')
+        page.get_by_test_id('teacher-goals').fill('界面验收未保存草稿')
         page.locator('[data-teaching-tab="actions"]').click()
         expect(page.get_by_test_id('teacher-action-title')).to_be_visible()
         expect(page.get_by_test_id('teacher-goals')).not_to_be_visible()
@@ -83,16 +83,16 @@ def main():
         page.locator('[data-teaching-tab="records"]').click()
         expect(page.get_by_test_id('teacher-task-list')).to_be_visible()
         page.locator('[data-teaching-tab="review"]').click()
-        expect(page.get_by_test_id('teacher-goals')).to_have_value('Unsaved UI verification draft')
+        expect(page.get_by_test_id('teacher-goals')).to_have_value('界面验收未保存草稿')
         navigate('knowledge')
         navigate('teaching')
-        expect(page.get_by_test_id('teacher-goals')).to_have_value('Unsaved UI verification draft')
+        expect(page.get_by_test_id('teacher-goals')).to_have_value('界面验收未保存草稿')
         page.get_by_test_id('teacher-goals').fill(original_goal)
 
-        page.get_by_role('button', name='Review assistant', exact=True).click()
-        expect(page.get_by_role('complementary', name='Review assistant')).to_be_visible()
-        assert page.get_by_role('heading', name='Start with a question about the lesson', exact=True).count() == 1
-        page.get_by_role('button', name='Close review assistant').click()
+        page.get_by_role('button', name='复盘助手', exact=True).click()
+        expect(page.get_by_role('complementary', name='课堂复盘助手')).to_be_visible()
+        assert page.get_by_role('heading', name='从一个课堂问题开始', exact=True).count() == 1
+        page.get_by_role('button', name='关闭复盘助手').click()
         page.emulate_media(reduced_motion='reduce')
         motion = page.locator('.review-page-heading').evaluate('(el) => getComputedStyle(el).animationDuration')
         assert all(float(value.strip().removesuffix('s')) <= .001 for value in motion.split(',')), motion

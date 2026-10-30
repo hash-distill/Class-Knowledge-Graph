@@ -95,7 +95,7 @@ def test_native_quality_rejects_corrupt_font_map():
 def test_invalid_source_and_page_limit_are_rejected_without_artifacts(tmp_path):
     source = tmp_path / 'not-a-pdf.pdf'
     source.write_bytes(b'<html>download failed</html>')
-    with pytest.raises(CoursewareError, match='not PDF'):
+    with pytest.raises(CoursewareError, match='不是 PDF'):
         import_document(source, tmp_path / 'lesson', 'invalid-source')
     _pdf(source, ['x'] * 201)
     with pytest.raises(CoursewareError, match='200'):

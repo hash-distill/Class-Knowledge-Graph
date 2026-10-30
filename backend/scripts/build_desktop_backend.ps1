@@ -1,4 +1,4 @@
-param(
+﻿param(
     [string]$Python = '',
     [string]$Target = 'x86_64-pc-windows-msvc'
 )
@@ -6,9 +6,9 @@ $ErrorActionPreference = 'Stop'
 $reviewRoot = Split-Path $PSScriptRoot -Parent
 $desktopRoot = Join-Path (Split-Path $reviewRoot -Parent) 'desktop'
 if (-not $Python) { $Python = Join-Path $desktopRoot '.venv-build\Scripts\python.exe' }
-if (-not (Test-Path -LiteralPath $Python -PathType Leaf)) { throw 'The isolated build environment is missing. Follow docs/DESKTOP.md to install .venv-build dependencies.' }
+if (-not (Test-Path -LiteralPath $Python -PathType Leaf)) { throw '缺少独立构建环境。请按 docs/DESKTOP.md 安装 .venv-build 依赖。' }
 $frontend = Join-Path (Split-Path $reviewRoot -Parent) 'frontend\dist'
-if (-not (Test-Path -LiteralPath (Join-Path $frontend 'index.html'))) { throw 'Frontend dist/index.html is missing. Build the frontend first.' }
+if (-not (Test-Path -LiteralPath (Join-Path $frontend 'index.html'))) { throw '缺少前端 dist/index.html。请先构建前端。' }
 $binaryDir = Join-Path $desktopRoot 'src-tauri\binaries'
 $buildRoot = Join-Path $desktopRoot 'build'
 New-Item -ItemType Directory -Force -Path $binaryDir, $buildRoot | Out-Null
@@ -31,7 +31,7 @@ $arguments = @('-m', 'PyInstaller', '--noconfirm', '--clean', '--onefile', '--co
     '--add-data', ((Join-Path $reviewRoot 'review\courseware_alignment.py') + ';review'),
     (Join-Path $PSScriptRoot 'desktop_entry.py'))
 & $Python @arguments
-if ($LASTEXITCODE -ne 0) { throw "Backend packaging failed: $LASTEXITCODE" }
+if ($LASTEXITCODE -ne 0) { throw "后端打包失败：$LASTEXITCODE" }
 Copy-Item -LiteralPath (Join-Path $buildRoot 'dist\4c-review-backend.exe') -Destination (Join-Path $binaryDir "4c-review-backend-$Target.exe") -Force
 # tauri.conf.json maps the current Front/dist directly to the frontend resource.
 # There is no mutable staging copy that can retain obsolete hashed UI assets.

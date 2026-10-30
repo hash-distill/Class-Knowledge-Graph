@@ -1,52 +1,78 @@
-# Jingxi Insight
+# 精析智评
 
-A local classroom review assistant for teachers. It aligns classroom video, transcripts, courseware, and visible student behavior on one timeline for evidence replay, manual correction, cited Q&A, and teaching improvement records.
+面向教师的本地课堂复盘辅助系统，将课堂录像、语音转写、课件与学生可见行为放到同一条时间轴，支持证据回看、人工纠错、带引用问答和教学改进记录。
 
-Repository: [hash-distill/Class-Knowledge-Graph](https://github.com/hash-distill/Class-Knowledge-Graph). The repository retains its historical name; the application is **Jingxi Insight**. The interface defaults to English. Original lesson language, transcripts, source quotations, and imported courseware remain in their source language.
+仓库地址：[hash-distill/Class-Knowledge-Graph](https://github.com/hash-distill/Class-Knowledge-Graph)。仓库沿用历史名称，应用名称统一为“精析智评”。
 
-## Features
+文件夹和文件名使用英文，系统界面与说明文档正文使用中文。
 
-| Workspace | Supported tasks |
+## 页面预览
+
+以下截图来自本地运行的当前程序。课堂文本、人物示意与行为分布均为合成演示数据，不包含真实学生影像，不代表模型实测准确率或教学效果。
+
+### 课堂概览
+
+在同一条时间轴上回看课堂，重点展示学生状态、整体积极度和同刻转写。
+
+![精析智评课堂概览](docs/screenshots/overview.png)
+
+### 学生行为与视觉复核
+
+查看当前对象与状态，按原始图像坐标补框、改标签或排除误检，复核结果独立保存。
+
+![精析智评学生行为与视觉复核](docs/screenshots/student-review.png)
+
+### 知识图谱
+
+从本课概念查看关联关系，点击节点或证据回到对应片段。
+
+![精析智评知识图谱](docs/screenshots/knowledge-graph.png)
+
+截图来源与展示范围见 [页面截图说明](docs/screenshots/README.md)。
+
+## 已有功能
+
+| 工作区 | 可以完成的操作 |
 | --- | --- |
-| Classroom overview | View student footage alongside the current state, overall behavior engagement, and synchronized transcript |
-| Speech and courseware | Compare original ASR, machine proofreading, recorded slides, and separate PDF/PPTX/PPT files; jump from evidence to the source video |
-| Student behavior | Inspect boxes, state provenance, trends, and scoring support; add missed boxes, correct labels, and exclude false detections |
-| Knowledge graph | Inspect lesson concepts and their original evidence; follow co-occurrence links to their sources |
-| Review report | Export JSON and Markdown with original observations and separate derived scores |
-| Teaching improvement | Save goals, teacher revisions, plans, implementation results, exercises, and actual answers |
+| 课堂概览 | 以学生画面为主，联动当前状态、整体积极度和同刻转写 |
+| 语音与课件 | 对照原始转写、机器校对、录像课件和独立 PDF/PPTX/PPT，点击证据定位原录像 |
+| 学生行为 | 查看人物框、状态来源、趋势和评分支持情况，人工补框、改标签、排除误检 |
+| 知识图谱 | 查看本课概念及其原文证据，共同出现关系可回到来源 |
+| 复盘报告 | 导出 JSON 和 Markdown，保留原始观测与独立的派生评分 |
+| 教学改进 | 保存目标、教师核对稿、改进计划、执行结果、练习和实际作答 |
 
-Manual review keeps versions and source digests, with conflict detection, withdrawal, restoration, and classification-sample ZIP export. Courseware jobs persist in SQLite, retain interrupted status after a restart, and support retries. Model answers undergo citation validation. Model outages, missing evidence, and insufficient data have explicit states.
+人工复核保存版本和来源摘要，支持冲突检测、撤回、恢复和分类样本 ZIP 导出。后台课件任务使用 SQLite 持久化，重启后保留中断状态并支持重试。模型问答会检查引用编号；模型离线、证据缺失或数据不足时给出对应状态。
 
-## Architecture
+## 技术结构
 
-| Layer | Current implementation |
+| 层次 | 当前实现 |
 | --- | --- |
-| Interface | Vue 3, TypeScript, Vite, and Pinia; blue theme and responsive layouts |
-| API | Python 3.11, FastAPI, and Uvicorn; preserves the `/api/review` contract |
-| Local storage | SQLite for teacher records, jobs, retrieval indexes, and manual review; JSON for original lesson evidence |
-| Media | FFmpeg, OpenCV, and Tesseract; API media endpoints support Range/HEAD requests |
-| Local Q&A | Lesson text/time retrieval, citation validation, and a separate llama.cpp-compatible service |
-| Desktop | Tauri 2 with a Python sidecar; model runtimes and weights are installed separately |
+| 界面 | Vue 3、TypeScript、Vite、Pinia，蓝色主题和响应布局 |
+| API | Python 3.11、FastAPI、Uvicorn，保留 `/api/review` 接口 |
+| 本地存储 | SQLite 保存教师记录、任务、检索索引和人工复核；JSON 保存原始课堂证据 |
+| 媒体 | FFmpeg、OpenCV、Tesseract；媒体通过 API 提供 Range/HEAD 读取 |
+| 本地问答 | 本课文本与时间检索、引用校验、独立的 llama.cpp 兼容服务 |
+| 桌面端 | Tauri 2 与 Python sidecar；模型运行时和权重单独安装 |
 
-Browsing processed lessons, editing records, and replaying evidence do not load a large model. Video processing, vision inference, and language models run through separate scripts or processes. On a computer with about 8 GB VRAM, load models sequentially by task; memory use depends on the model, context length, and configuration.
+浏览、编辑记录和回看已处理课堂不需要加载大模型。视频处理、视觉分析和语言模型使用独立脚本或进程。面向约 8 GB 显存的电脑，应按任务串行加载；显存占用取决于具体模型、上下文长度和运行配置。
 
-## Models and integration status
+## 模型与实际接入状态
 
-| Task | Existing path | Status |
+| 任务 | 已有路径 | 说明 |
 | --- | --- | --- |
-| Primary transcription | faster-whisper Small, CPU int8 | Default path in `prepare_media.py` |
-| Chinese ASR upgrade | Qwen3-ASR-1.7B | Separate experiment; see [Qwen upgrade](backend/docs/QWEN_UPGRADE.md) |
-| Secondary Chinese ASR | FunASR Seaco Paraformer, FSMN-VAD, CT-Punc | Optional SSH reference channel; requires an explicitly configured remote host |
-| Person and pose detection | YOLO26n and YOLO26n-pose, with full-frame/tiled fusion | Person localization is separate from behavior classification; box counts are not class attendance |
-| Seven visible behaviors | MobileNetV3 Small crop classifier | Experimental weights of about 3.15 MB; low-confidence and conflicting states remain unknown |
-| Concepts and Q&A | Qwen3-4B GGUF with llama.cpp | Separate local service; generated citations must pass validation |
-| Proofreading | Source rules, ChineseErrorCorrector4-4B, and Qwen3.5-4B comparisons | Original ASR is preserved; machine revisions require teacher review |
+| 主转写 | faster-whisper Small，CPU int8 | `prepare_media.py` 的默认处理路径 |
+| 中文语音升级 | Qwen3-ASR-1.7B | 独立实验配置，见 [Qwen 升级说明](backend/docs/QWEN_UPGRADE.md) |
+| 中文二次识别 | FunASR Seaco Paraformer、FSMN-VAD、CT-Punc | 可选 SSH 参考通道，需明确配置远程主机 |
+| 人物与姿态 | YOLO26n、YOLO26n-pose，整图与切片融合 | 人物定位与行为分类分开；检测框数量不是班级人数 |
+| 七类可见行为 | MobileNetV3 Small 裁剪分类器 | 已有约 3.15 MB 权重实验；低置信和冲突状态保留未知 |
+| 概念与问答 | Qwen3-4B GGUF，llama.cpp | 本地模型服务，生成结果需通过引用检查 |
+| 校对 | 来源规则、ChineseErrorCorrector4-4B、Qwen3.5-4B 对照 | 原始转写始终保留，机器校对待教师核验 |
 
-Qwen3-ASR-0.6B, PP-OCRv6 ONNX, and BGE-small in runtime manifests are recommended installs or pending adapters. A manifest entry alone does not establish deployment. Current Q&A uses text retrieval; a vector database and GraphRAG are not default components.
+运行时清单中的 Qwen3-ASR-0.6B、PP-OCRv6 ONNX 和 BGE-small 属于推荐安装项或待完成适配项，不能仅凭清单出现就认为已经部署。当前问答使用文本检索，没有把向量数据库或 GraphRAG 作为默认实现。
 
-## Run from source
+## 从源码启动
 
-Install Python 3.11, [uv](https://docs.astral.sh/uv/), and Node.js 22 or 24. Run these commands from the repository root to start the application and API. They do not download models or classroom video.
+需要 Python 3.11、[uv](https://docs.astral.sh/uv/) 和 Node.js 22 或 24。以下命令在仓库根目录执行，先启动应用壳和 API；这一步不下载模型或课堂录像。
 
 ```powershell
 git clone https://github.com/hash-distill/Class-Knowledge-Graph.git
@@ -61,23 +87,23 @@ python scripts/workspace_setup.py
 python scripts/run_workbench.py --port 8000 --open-browser
 ```
 
-Open the [local workbench](http://127.0.0.1:8000/). [API documentation](http://127.0.0.1:8000/docs) is available at `/docs`; the health endpoint is `/api/review/health`. The service binds to `127.0.0.1`.
+打开 [本机工作台](http://127.0.0.1:8000/)。接口文档位于 [API 文档](http://127.0.0.1:8000/docs)，健康检查为 `/api/review/health`。服务只监听 `127.0.0.1`。
 
-The first run creates an empty lesson registry and local data directories. An empty lesson list is expected. Source distributions exclude classroom video, transcripts, student images, model weights, and personal workspaces. Initialization preserves an existing registry.
+首次启动会创建空的课程登记和本地数据目录；页面没有课程是正常状态。源码不附带课堂视频、转写、学生图像、模型权重或个人工作区。已有登记不会被初始化脚本覆盖。
 
-On Linux/macOS, use `backend/.venv-media/bin/python` for dependency installation. The source launcher recognizes both virtual environment layouts. See [Desktop and runtimes](backend/docs/DESKTOP.md) for Windows package and PowerShell media-entry support.
+Linux/macOS 安装依赖时将解释器路径换成 `backend/.venv-media/bin/python`。源码启动器会识别两种虚拟环境路径；Windows 安装包及 PowerShell 媒体入口的支持范围见 [桌面与运行时](backend/docs/DESKTOP.md)。
 
-### Frontend/backend development
+### 前后端开发
 
-Run `python scripts/run_workbench.py --api-only --port 8000` in one terminal. In another, enter `frontend` and run `npm run dev -- --host 127.0.0.1 --port 5175`. Vite proxies `/api/review` to the backend. `npm run preview` checks the static build; use the source launcher above for the full application.
+在一个终端运行 `python scripts/run_workbench.py --api-only --port 8000`，在另一个终端进入 `frontend` 运行 `npm run dev -- --host 127.0.0.1 --port 5175`。Vite 将 `/api/review` 代理到后端。`npm run preview` 只用于检查静态构建；完整应用使用上面的同源启动入口。
 
-If the API started before the first frontend build, stop it with `Ctrl+C` in its original terminal, then launch the full application. The launcher refuses to reuse an older service without static pages and leaves that service running.
+若 API 在前端首次构建前已启动，构建后先在原终端按 `Ctrl+C` 结束，再启动完整应用。启动器会拒绝复用缺少静态页面的旧服务，并保留它运行。
 
-`python scripts/run_workbench.py --check` checks paths, tools, and build status. Use `--python`, `--registry`, and `--data-dir` to override the interpreter, lesson registry, and state directory.
+`python scripts/run_workbench.py --check` 只检查路径、工具和构建状态。可使用 `--python`、`--registry`、`--data-dir` 指定解释器、课程登记和状态目录。
 
-## Use your own lessons
+## 使用自己的课堂
 
-Register processed lessons in the private file `backend/configs/lessons.json`, for example:
+已处理课程通过私有文件 `backend/configs/lessons.json` 登记，例如：
 
 ```json
 {
@@ -88,21 +114,21 @@ Register processed lessons in the private file `backend/configs/lessons.json`, f
 }
 ```
 
-Relative paths resolve from the registry file's directory; absolute paths are also supported. `directory` must contain a complete, source-consistent `bundle.json` and its evidence files. Registering a video path alone does not generate analysis. Keep original media and the registry local.
+相对路径以登记文件所在目录为基准，也支持绝对路径。`directory` 需要包含完成且来源一致的 `bundle.json` 和对应证据文件；只登记一个视频路径不会自动生成分析。原始素材和登记文件请保存在本地。
 
-New video processing requires extra media dependencies, FFmpeg, Tesseract Chinese/English language packs, the relevant models, and the actual slide region for that recording. See [Backend and lesson processing](backend/README.md) and the [Vision module](vision/README.md). Uploading PDF/PPTX/PPT supplements an already registered lesson; it does not run the entire video inference pipeline.
+处理新录像需要额外安装媒体依赖、FFmpeg、Tesseract 中文/英文语言包及相应模型，并配置真实的课件区域。具体命令见 [后端与课堂处理](backend/README.md)。人物行为分析见 [视觉模块](vision/README.md)。上传 PDF/PPTX/PPT 是向已登记课堂补充课件，不等同于上传录像后自动完成全部推理。
 
-See [Local models](backend/docs/LOCAL_LLM.md) for Q&A configuration. If the server explicitly sets an external `REVIEW_LLM_BASE_URL`, retrieved evidence is sent there. Optional secondary Chinese ASR sends the lesson WAV to an explicitly configured SSH host; no remote host is selected by default.
+本地问答配置见 [本地模型说明](backend/docs/LOCAL_LLM.md)。若在服务端显式设置外部 `REVIEW_LLM_BASE_URL`，检索证据会发送到该服务。可选中文二次识别会把该课 WAV 发往明确配置的 SSH 主机；默认不选择远程主机。
 
-## Overall behavior engagement
+## 整体积极度如何计算
 
-The interface uses `overall_behavior_engagement_v1`: writing 85, reading 80, looking up 85, turning the head 30, raising a hand 95, standing 90, and discussion 75. After normalizing valid behavior weights, it computes `100 × mean × exp(-0.6 × population standard deviation)` and applies temporal smoothing within a continuous shot. Overview, detail, trends, and exports share the implementation.
+当前界面使用 `overall_behavior_engagement_v1`：书写 85、阅读 80、抬头 85、转头 30、举手 95、站立 90、讨论 75。将有效行为分归一化后，计算 `100 × 均值 × exp(-0.6 × 总体标准差)`，连续同镜头再作时间平滑。概览、详情、曲线和导出共用同一实现。
 
-One trusted behavior observation is sufficient for an estimate. Fewer than three scored objects or coverage below 60% produces a low-support label. No-person frames, absent valid behaviors, geometric poses, and unrecognized objects are not assigned zero. Manual review is stored separately and does not automatically recompute the lesson-wide model curve. See [Scoring details](backend/docs/CLASS_ENGAGEMENT_20261029.md) for weights, smoothing, coverage, and exports.
+至少一个可信行为对象即可给出估计分；不足 3 个对象或覆盖率低于 60% 时标记“低支持估计”。无人物、无有效行为、几何姿态或未识别对象不按零分处理。人工复核独立保存，尚不会自动重算全课模型曲线。权重、平滑、覆盖和导出字段见 [评分说明](backend/docs/CLASS_ENGAGEMENT_20261029.md)。
 
-This is an uncalibrated rule estimate of detected objects' visible behavior. It does not measure individual grades, psychological engagement, or knowledge mastery. The classifier's fixed-crop test contains adjacent-frame overlap; its Macro-F1 is not independent classroom end-to-end accuracy. See the [Vision change record](backend/docs/VISION_IMPROVEMENT_20261029.md).
+评分是检测对象的可见行为规则估计，尚未完成人工校准，不能解释成学生个人成绩、心理投入或知识掌握。分类器现有固定裁剪测试存在相邻画面重叠，其 Macro-F1 不能作为独立课堂端到端准确率；详见 [视觉改造记录](backend/docs/VISION_IMPROVEMENT_20261029.md)。
 
-## Verification and release
+## 验证与发布
 
 ```powershell
 & backend/.venv-media/Scripts/python.exe -m pytest backend/tests -q
@@ -114,26 +140,26 @@ python scripts/prepare_release.py --check
 python scripts/prepare_release.py --output release/github-ready
 ```
 
-The exporter creates `source/`, `jingxi-insight-source.zip`, and a per-file SHA-256 manifest. It excludes local registries, databases, lesson artifacts, weights, environments, build directories, and nested Git metadata. It refuses to overwrite an existing output directory and stops on common credential patterns. Inspect file contents and material permissions before publication.
+源码导出生成 `source/`、`jingxi-insight-source.zip` 和逐文件 SHA-256 清单，过滤本地登记、数据库、课堂产物、权重、环境、构建目录和嵌套 Git 元数据。输出目录已存在时拒绝覆盖，常见凭据格式命中时中止导出。它不能替代人工检查文件内容和素材授权。
 
-[GitHub publishing](docs/PUBLISHING.md) explains the unified layout, migration of historical vision files, and publication checks. GitHub Actions runs backend/frontend tests, production builds, and source audits. Model accuracy and real classroom acceptance require separate evaluation.
+[GitHub 更新说明](docs/PUBLISHING.md) 说明统一仓库布局、历史视觉目录迁移和上传前检查。GitHub Actions 配置会执行后端测试、前端测试、生产构建和源码审计；模型识别准确率与真实课堂验收仍需单独评测。
 
-## Layout and documentation
+## 目录与文档
 
 ```text
-scripts/    Workspace initialization, source launcher, release exporter
-backend/    FastAPI, media processing, evidence, teacher workspace, tests
-frontend/   Vue workbench
-desktop/    Tauri shell and packaging scripts
-vision/     Person localization, state classification, historical vision pipeline
-docs/       Release documentation
+scripts/              初始化、源码启动与发布导出
+backend/             FastAPI、媒体处理、证据、教师工作区与测试
+frontend/           Vue 工作台
+desktop/              Tauri 壳和打包脚本
+vision/             人物定位、状态分类与历史视觉管线
+docs/                 发布说明
 ```
 
-- [Manual vision review and sample export](backend/docs/VISUAL_REVIEW_20261029.md)
-- [Local jobs and data architecture](backend/docs/LOCAL_ARCHITECTURE.md)
-- [Independent courseware import and alignment](backend/docs/COURSEWARE.md)
-- [Frontend development](frontend/README.md)
-- [Contributing](CONTRIBUTING.md)
-- [Licensing and third-party material](NOTICE)
+- [人工视觉复核与训练样本导出](backend/docs/VISUAL_REVIEW_20261029.md)
+- [本地任务与数据架构](backend/docs/LOCAL_ARCHITECTURE.md)
+- [独立课件导入与对齐](backend/docs/COURSEWARE.md)
+- [前端开发](frontend/README.md)
+- [贡献约定](CONTRIBUTING.md)
+- [许可与第三方材料](NOTICE)
 
-Existing classroom materials, training data, third-party code, and models retain their respective terms. No single open-source license currently covers all application code. Public source availability does not grant redistribution rights for classroom materials or model weights.
+现有课堂素材、训练数据、第三方代码和模型分别遵守其原有许可。仓库尚未声明覆盖全部代码的统一开源许可证；公开源码不自动授予课堂素材与模型权重的再分发权。

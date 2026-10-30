@@ -39,7 +39,7 @@ def write_profiles(root, profiles):
 
 
 def profile(**extra):
-    return {'id': 'qa', 'role': 'qa', 'label': 'Local Q&A', 'config': 'configs/qa.json',
+    return {'id': 'qa', 'role': 'qa', 'label': '本地问答', 'config': 'configs/qa.json',
             'assets': [{'path': 'artifacts/models/small.gguf', 'kind': 'file'}],
             'runtimes': [{'path': 'artifacts/runtime/llama-server.exe', 'kind': 'file'}], **extra}
 
@@ -124,10 +124,10 @@ def test_launch_paths_use_explicit_args_and_dedicated_data(tmp_path, monkeypatch
     entry = entry_module()
     monkeypatch.setenv('LOCALAPPDATA', str(tmp_path / 'Local'))
     args = entry.parse_args(['--port', '0', '--registry', str(tmp_path / 'lessons.json'),
-                             '--frontend-dir', str(tmp_path / 'frontend dist')])
+                             '--frontend-dir', str(tmp_path / '前端 dist')])
     paths = entry.resolve_paths(args)
     assert paths['registry'] == (tmp_path / 'lessons.json').resolve()
-    assert paths['frontend'] == (tmp_path / 'frontend dist').resolve()
+    assert paths['frontend'] == (tmp_path / '前端 dist').resolve()
     assert paths['data'].is_relative_to(tmp_path / 'Local')
     assert paths['data'] != tmp_path / 'Local'
     with pytest.raises(SystemExit):
@@ -199,7 +199,7 @@ def test_real_backend_lifecycle_and_reuse_do_not_stop_original(tmp_path, frozen,
     frontend = tmp_path / 'frontend'
     if not api_only:
         frontend.mkdir()
-        (frontend / 'index.html').write_text('<!doctype html><title>Jingxi Insight Test</title>')
+        (frontend / 'index.html').write_text('<!doctype html><title>4C Test</title>')
     command = [binary] if frozen else [sys.executable, str(ROOT / 'scripts/desktop_entry.py')]
     args = [*command, '--port', '0',
             '--data-dir', str(tmp_path / 'state'), '--registry', str(registry),
@@ -221,7 +221,7 @@ def test_real_backend_lifecycle_and_reuse_do_not_stop_original(tmp_path, frozen,
             assert str(tmp_path) not in json.dumps(inventory)
         if not api_only:
             with urlopen(info['url'], timeout=5) as response:
-                assert 'Jingxi Insight Test' in response.read().decode()
+                assert '4C Test' in response.read().decode()
                 assert "default-src 'self'" in response.headers['Content-Security-Policy']
                 assert "object-src 'none'" in response.headers['Content-Security-Policy']
         second = subprocess.Popen([*args, '--reuse'], stdin=subprocess.PIPE, stdout=subprocess.PIPE,
@@ -240,7 +240,7 @@ def test_real_backend_lifecycle_and_reuse_do_not_stop_original(tmp_path, frozen,
                                     stderr=subprocess.PIPE,text=True,encoding='utf-8',env=environment)
             output,error=second.communicate(timeout=8)
             assert second.returncode!=0 and '4C_DESKTOP_READY' not in output
-            assert 'Ctrl+C' in error and 'The existing service was left running' in error
+            assert 'Ctrl+C' in error and '已有服务未停止' in error
             assert first.poll() is None
         first.communicate('stop\n', timeout=8)
         assert first.returncode == 0

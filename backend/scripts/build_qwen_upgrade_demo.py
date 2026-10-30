@@ -125,7 +125,7 @@ def build(video,directory,lesson_id):
         if proof['status']!='complete':raise ValueError('Qwen3.5 correction is incomplete; not publishing a completed lesson')
         proof['provenance'].update(model_label='Qwen3.5-4B',model_sha256=config['model']['sha256'])
         atomic_json(directory/'transcript.proofreading.json',proof)
-        bundle=_build_lesson(lesson_id,video,directory,'Introduction to amino acids · Qwen ASR and conservative proofreading',
+        bundle=_build_lesson(lesson_id,video,directory,'认识氨基酸 · Qwen 新语音与保守校对',
             correction_provider=CorrectionProvider(config_path=config_path))
         base=read_json(directory/'bundle.base.json') if bundle.get('courseware') else bundle
         base['transcript_unguided']=read_json(directory/'asr.unguided.json')['segments']
@@ -154,9 +154,9 @@ def publish_experiment(parent,directory,profile_path):
         payload={'schema_version':'1.0','source_video_sha256':bundle['lesson']['source_video']['sha256'],
             'source_audio_sha256':sha256(directory/'audio.wav'),'evaluated_at':now(),
             'reference_status':'no_human_verbatim_reference',
-            'asr_runs':[{'id':'baseline','model_label':'Whisper small · same-lesson courseware vocabulary prompts',
+            'asr_runs':[{'id':'baseline','model_label':'Whisper small · 同课课件词汇提示',
                 'source_asr_sha256':sha256(parent/'asr.json'),'segments':read_json(parent/'asr.json')['segments']},
-                {'id':'qwen3_asr','model_label':'Qwen3-ASR-1.7B · unprompted recognition',
+                {'id':'qwen3_asr','model_label':'Qwen3-ASR-1.7B · 无提示识别',
                 'source_asr_sha256':sha256(directory/'asr.json'),'segments':bundle['transcript']}],
             'correction':{'model_label':'Qwen3.5-4B','model_sha256':config['model']['sha256'],
                 'source_asr_sha256':sha256(directory/'asr.json'),'status':proof['status'],
@@ -164,11 +164,11 @@ def publish_experiment(parent,directory,profile_path):
                 'source_rule_accepted_count':sum(n for k,n in origins.items() if k!='model'),
                 'segments':[{k:row[k] for k in ('transcript_id','original_text','start_sec','end_sec','text','uncertainties')}
                     for row in proof['segments']]},
-            'limitations':['This lesson has no independent manual transcript. Lesson character error rate and actual erroneous correction rate are not calculated.',
-                'The earlier recognizer uses same-lesson OCR vocabulary prompts; the new recognizer is unprompted. Settings differ, so recognition differences are descriptive only.',
-                'Each recognizer is shown using its own predicted times. Segment IDs and boundaries do not imply one-to-one correspondence.',
-                'Final proofreading includes source-rule edits. Change counts do not measure model correction gains; replay the source audio to verify.',
-                'Behavior images and predictions come from the same original video and do not change when speech or text models are replaced.']}
+            'limitations':['本课没有独立人工逐字稿，不计算本课字错率或真实误改率。',
+                '旧识别使用同课 OCR 词汇提示，新识别没有提示；两者设置不同，识别差异仅作描述。',
+                '不同识别器按各自预测时间展示，段落编号和边界不代表一一对应。',
+                '最终校对包含来源规则修订，改动数量不等于模型纠错收益；请回听原声核验。',
+                '行为图像和预测来自同一原录像，不因更换语音或文字模型而改变。']}
         report_path=EXPERIMENT/'evaluation/comparison.json'
         if report_path.is_file():payload['external_summary']=read_json(report_path).get('external_summary')
         atomic_json(directory/'model.upgrade.json',payload)

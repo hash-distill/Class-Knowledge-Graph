@@ -2,7 +2,7 @@ import { createApp } from 'vue'
 import { createPinia } from 'pinia'
 import App from './App.vue'
 
-// Global styles
+// 全局样式
 import './assets/main.css'
 
 const app = createApp(App)

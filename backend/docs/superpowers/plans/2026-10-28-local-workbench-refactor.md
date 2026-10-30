@@ -1,6 +1,6 @@
-# Archived local workbench refactor plan — 2026-10-28
+# Local Classroom Workbench Refactor Implementation Plan
 
-> Historical execution guidance: isolated modules were implemented continuously with source snapshots in the original non-Git workspace. This archived plan does not instruct a new implementation. The unified release is a Git checkout.
+> **For agentic workers:** Use subagent-driven-development for isolated modules and execute continuously. Preserve existing source material and verify spec compliance before code quality. This workspace is not a Git checkout; create source snapshots instead of commits.
 
 **Goal:** Refactor the working 4C application into a local-first FastAPI application with persistent SQLite state, independent background workers, teacher review and follow-up records, and a desktop launch boundary.
 
@@ -55,7 +55,7 @@ Files: `review/api/{application,http,lessons,media,chat,workspace,tasks}.py`, `r
 
 ## Task 4: Teacher workspace UI
 
-Files: `frontend/src/api`, `src/types`, `src/components/review/TeacherWorkspace.vue`, workbench navigation and validators, frontend scripts.
+Files: `frontend src/api`, `src/types`, `src/components/review/TeacherWorkspace.vue`, workbench navigation and validators, frontend scripts.
 
 - [x] Add a distinct teaching-workspace view while retaining the single shared player and current navigation state.
 - [x] Load persisted goals, teacher corrections, actions, exercises, responses and job states from the API. Preserve pending edits and report optimistic-concurrency conflicts with a reload action.
@@ -77,4 +77,4 @@ Files: `review/runtime.py`, `configs/runtime_profiles.json`, desktop launcher/bu
 
 Run backend `pytest tests -q`, frontend `test:review`, `test:activity`, new workspace tests and `npm run build`. Use the real six-lesson catalog to verify unchanged raw artifacts, API restart persistence, an independently processed courseware job, teacher corrections and revert, saved follow-up outcomes and actual sample responses. Record commands and results under `artifacts/verification/architecture-refactor-*`. Do not claim ASR accuracy gains or desktop installers that have not been built.
 
-Historical execution record: backend 317 passed and 4 skipped with the final frozen desktop backend; frontend review/activity checks and production build passed. Real API/browser acceptance and the real queued PDF import passed in an isolated lesson copy. See `artifacts/verification/architecture-refactor-20261028-154904/ACCEPTANCE.md` and `desktop/build/release-manifest.json` (repository-root-relative local artifact). OCR/BGE inference adapters and new model accuracy evaluation remain outside this framework implementation.
+Execution record: backend 317 passed and 4 skipped with the final frozen desktop backend; frontend review/activity checks and production build passed. Real API/browser acceptance and the real queued PDF import passed in an isolated lesson copy. See `artifacts/verification/architecture-refactor-20261028-154904/ACCEPTANCE.md` and `../desktop/build/release-manifest.json`. OCR/BGE inference adapters and new model accuracy evaluation remain outside this framework implementation.

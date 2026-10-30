@@ -64,7 +64,7 @@ def test_visual_lesson_requires_explicit_missing_speech_and_never_fills_transcri
     bundle=build_lesson('fixture',video,tmp_path,'测试',provider=object(),allow_no_speech=True)
     assert bundle['transcript']==[] and bundle['evidence_blocks']==[]
     assert bundle['lesson']['modalities']['audio']=='unrecognized'
-    assert any('Teacher speech is not invented' in limit for limit in bundle['report']['limitations'])
+    assert any('不补写教师台词' in limit for limit in bundle['report']['limitations'])
 
 
 def test_retrieval_blocks_keep_native_text_and_never_bridge_long_silence():
@@ -95,7 +95,7 @@ def test_literal_verification_and_no_invented_relationships():
     graph=extract_concepts(t,s,provider)
     assert [n['label'] for n in graph['nodes']]==['正弦定理','三角形']
     assert graph['nodes'][0]['properties']['source_refs']==['T0001','T0002','S0001','S0003']
-    assert {e['label'] for e in graph['edges']}=={'Co-occurs in segment'}
+    assert {e['label'] for e in graph['edges']}=={'同段出现'}
     assert graph['provenance']['rejected_candidates']==3
     assert normalize('學習三角形')==normalize('学习三角形')
     recovered=extract_concepts(t,s,FakeProvider({'concepts':[{'label':'正弦定理','evidence_ids':['MISSING']}]}))
@@ -153,7 +153,7 @@ def test_chat_citations_are_server_evidence_not_client_supplied():
     assert good['citations'][0]['text']==t[0]['text']
     assert good['citations'][0]['start_sec']==0
     for bad in [{'points':[{'text':'没有引用','evidence_ids':[]}]},{'points':[{'text':'编造事实','evidence_ids':['T9999']}]}]:
-        with pytest.raises(ReviewError,match='citations'):answer_question(bundle,'本课讲什么',0,'lesson',FakeProvider(bad))
+        with pytest.raises(ReviewError,match='引用'):answer_question(bundle,'本课讲什么',0,'lesson',FakeProvider(bad))
     with pytest.raises(ReviewError):answer_question(bundle,'内容',float('nan'),'lesson',FakeProvider(''))
     with pytest.raises(ReviewError):answer_question(bundle,'内容',0,'other',FakeProvider(''))
     assert parse_citations('解释 [ T0001, S0001 ]',{'T0001':{},'S0001':{}})==('解释 [T0001][S0001]',['T0001','S0001'])
@@ -185,7 +185,7 @@ def test_local_http_contract_range_path_errors_and_provider_failure(tmp_path):
     atomic_json(tmp_path/'bundle.json',bundle)
     registry=tmp_path/'registry.json';atomic_json(registry,{'test':{'directory':str(tmp_path),'source_video':str(video)}})
     class FailedProvider(FakeProvider):
-        def complete(self,*args,**kwargs):raise ReviewError('model_unavailable','The model is not ready')
+        def complete(self,*args,**kwargs):raise ReviewError('model_unavailable','模型未就绪')
     store=LessonStore(registry)
     with pytest.raises(ReviewError):store.media('test','../private.json')
     with TestClient(create_app(store=store,provider=FailedProvider())) as client:
@@ -203,7 +203,7 @@ def test_provider_never_falls_back_on_network_failure(monkeypatch,tmp_path):
     monkeypatch.setattr(model_runtime,'ROOT',tmp_path)
     def fail(*args,**kwargs):raise requests.ConnectionError('not a real provider')
     monkeypatch.setattr(requests,'post',fail)
-    with pytest.raises(ReviewError,match='not ready'):LLMProvider().complete('system','prompt')
+    with pytest.raises(ReviewError,match='未就绪'):LLMProvider().complete('system','prompt')
 
 
 def test_provider_rejects_truncated_answer_even_with_valid_citation(monkeypatch,tmp_path):
@@ -213,4 +213,4 @@ def test_provider_rejects_truncated_answer_even_with_valid_citation(monkeypatch,
         ok=True
         def json(self):return {'choices':[{'finish_reason':'length','message':{'content':'这是截断回答[T0001]'}}]}
     monkeypatch.setattr(requests,'post',lambda *a,**kw:Response())
-    with pytest.raises(ReviewError,match='incomplete'):LLMProvider().complete('system','prompt')
+    with pytest.raises(ReviewError,match='未正常完成'):LLMProvider().complete('system','prompt')
