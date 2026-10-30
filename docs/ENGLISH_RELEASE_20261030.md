@@ -40,6 +40,10 @@ fresh startup still requires the upstream SQLite runtime fix.
 - Real lesson scoring matched the independent reference across 181 frames;
   42 rendered spacing checks passed without page errors.
 
+Linux CI installs FFmpeg for synthetic-video integration tests. Model lifecycle
+tests explicitly select the Windows adapter or POSIX rejection path without
+starting a model or changing the host OS.
+
 Checks use isolated application state. Source media, model weights, teacher
 records, and original inference artifacts are excluded from publication.
 This release does not include a rebuilt native installer or a new model-quality

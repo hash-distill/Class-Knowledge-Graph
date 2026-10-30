@@ -81,6 +81,8 @@ def test_conflicting_target_does_not_unload_qa(tmp_path, monkeypatch):
 
 def test_lifecycle_timeout_is_reported(monkeypatch):
     import subprocess
+    # Select only the runtime's Windows branch; leave the host OS unchanged.
+    monkeypatch.setattr(runtime, 'os', SimpleNamespace(name='nt'))
     monkeypatch.setattr(runtime.shutil, 'which', lambda name: 'pwsh')
     def timeout(*a, **k):
         raise subprocess.TimeoutExpired('pwsh', 180)
@@ -88,6 +90,15 @@ def test_lifecycle_timeout_is_reported(monkeypatch):
     with pytest.raises(ReviewError) as error:
         runtime._invoke('configs/correction_llm.json')
     assert error.value.code == 'model_lifecycle_timeout'
+
+
+def test_non_windows_lifecycle_is_rejected_without_starting_a_shell(monkeypatch):
+    monkeypatch.setattr(runtime, 'os', SimpleNamespace(name='posix'))
+    monkeypatch.setattr(runtime.subprocess, 'run',
+                        lambda *a, **k: pytest.fail('Started a Windows lifecycle command on POSIX'))
+    with pytest.raises(ReviewError) as error:
+        runtime._invoke('configs/correction_llm.json')
+    assert error.value.code == 'unsupported_model_lifecycle'
 
 
 def test_unrelated_http_service_is_conflict_even_without_valid_health(monkeypatch):
