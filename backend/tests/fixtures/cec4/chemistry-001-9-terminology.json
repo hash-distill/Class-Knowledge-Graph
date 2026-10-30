@@ -1,0 +1,22 @@
+{
+  "schema_version": "1.0",
+  "kind": "post_observation_normative_vocabulary_diagnostic_not_verbatim_ground_truth",
+  "source_asr_sha256": "8e966a6581cb8172b6711c50985207016a95557bd351d86feb299f75e8ffb8c0",
+  "notice": "词表在观察本课后冻结，存在选择偏差。第二识别器也可能出错。词形出现、嵌套词形数量和课件词汇均不证明教师在某时刻说过该词。14 个组不是 14 个有人工标签的错误。",
+  "groups": [
+    {"id": "amino_acid", "forms": ["氨基酸"], "evidence": [{"artifact": "slides.json", "ids": ["S0001"], "literal": "认识氨基酸"}]},
+    {"id": "amino_group", "forms": ["氨基"], "evidence": [{"artifact": "asr.secondary.json", "ids": ["R0002"], "literal": "氨基和羧基"}]},
+    {"id": "carboxyl_group", "forms": ["羧基"], "evidence": [{"artifact": "asr.secondary.json", "ids": ["R0002", "R0013"], "literal": "羧基"}]},
+    {"id": "alpha_amino_acid", "forms": ["阿尔法氨基酸", "α氨基酸"], "evidence": [{"artifact": "asr.secondary.json", "ids": ["R0003", "R0007", "R0010"], "literal": "阿尔法氨基酸"}], "alias_note": "α 是阿尔法的常用书写形式；别名不增加本课语音证据。"},
+    {"id": "general_formula", "forms": ["通式"], "evidence": [{"artifact": "asr.secondary.json", "ids": ["R0010", "R0012"], "literal": "通式"}]},
+    {"id": "carbon", "forms": ["碳"], "evidence": [{"artifact": "asr.secondary.json", "ids": ["R0002", "R0013"], "literal": "同一个碳上"}]},
+    {"id": "alpha_carbon", "forms": ["阿尔法碳", "α碳"], "evidence": [{"artifact": "asr.secondary.json", "ids": ["R0014", "R0015"], "literal": "阿尔法碳"}]},
+    {"id": "r_group", "forms": ["R基", "r基"], "evidence": [{"artifact": "asr.secondary.json", "ids": ["R0018"], "literal": "r 基"}], "notice": "不能把 R2基 自动算作规范 R基。"},
+    {"id": "glutamic_acid", "forms": ["谷氨酸"], "evidence": [{"artifact": "slides.json", "ids": ["S0001"], "literal": "谷氨酸"}]},
+    {"id": "alpha_aminopentanedioic_acid", "forms": ["阿尔法氨基戊二酸", "α氨基戊二酸"], "evidence": [{"artifact": "asr.secondary.json", "ids": ["R0022", "R0023"], "literals": ["阿尔法，", "氨基戊二酸"], "basis": "相邻机器段的术语词形候选，未人工核听。"}]},
+    {"id": "msg_spoken_name", "forms": ["味精"], "evidence": [{"artifact": "asr.unguided.json", "ids": ["T0032", "T0033"], "literal": "味精"}, {"artifact": "asr.secondary.json", "ids": ["R0024"], "literal": "味精"}]},
+    {"id": "monosodium_glutamate", "forms": ["谷氨酸钠"], "evidence": [{"artifact": "asr.secondary.json", "ids": ["R0025"], "literal": "谷氨酸钠"}]},
+    {"id": "sodium_salt", "forms": ["钠盐"], "evidence": [{"artifact": "asr.secondary.json", "ids": ["R0026"], "literal": "钠盐"}]},
+    {"id": "protein", "forms": ["蛋白质"], "evidence": [{"artifact": "asr.secondary.json", "ids": ["R0006"], "literal": "人体蛋白质的氨基酸"}]}
+  ]
+}

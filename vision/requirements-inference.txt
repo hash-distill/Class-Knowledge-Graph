@@ -1,0 +1,11 @@
+# Install torch/torchvision separately for your CPU/CUDA environment.
+# Verified CPU: torch==2.8.0+cpu torchvision==0.23.0+cpu
+ultralytics==8.4.188
+dill==0.4.1
+numpy>=1.26,<3
+scipy>=1.13,<1.18
+opencv-python>=4.10,<6
+PyYAML>=6,<7
+pydantic>=2.8,<3
+lap>=0.5.12,<0.6
+pytest>=8,<9

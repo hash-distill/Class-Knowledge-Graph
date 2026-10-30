@@ -1,0 +1,22 @@
+# No training required. Fetch weights with scripts/fetch_pretrained.py.
+# Original configuration preserved in pipeline_legacy.yaml.
+mode: pretrained_observation
+device: auto
+models:
+  pose: artifacts/models/yolo26n-pose.pt
+  behavior: artifacts/models/scb_yolov9e.pt
+imgsz: 960
+person_conf: 0.25
+behavior_conf: 0.40
+tracker: configs/bytetrack_low.yaml
+# Optional normalized [x1,y1,x2,y2]. COCO does not distinguish teacher/student.
+student_roi: null
+default_task: unspecified
+temporal:
+  window_sec: 4.0
+  max_gap_sec: 1.2
+  min_evidence_sec: 0.6
+  retention_sec: 6.0
+  min_quality: 0.25
+vsam:
+  text_change_threshold: 0.3

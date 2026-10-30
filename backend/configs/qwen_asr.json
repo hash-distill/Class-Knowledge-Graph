@@ -1,0 +1,22 @@
+{
+  "schema_version": "1.0",
+  "model_id": "Qwen/Qwen3-ASR-1.7B",
+  "model_revision": "7278e1e70fe206f11671096ffdd38061171dd6e5",
+  "aligner_id": "Qwen/Qwen3-ForcedAligner-0.6B",
+  "aligner_revision": "c7cbfc2048c462b0d63a45797104fc9db3ad62b7",
+  "qwen_asr_version": "0.0.6",
+  "transformers_version": "4.57.6",
+  "backend": "transformers",
+  "dtype": "bfloat16",
+  "attention_implementation": "sdpa",
+  "language": "Chinese",
+  "context": "",
+  "max_new_tokens": 4096,
+  "max_inference_batch_size": 1,
+  "audio_time_offset_sec": 0,
+  "timestamp_method": "qwen3_forced_aligner_predicted",
+  "ground_truth_in_model_inputs": false,
+  "docs_checked_utc": "2026-10-28",
+  "official_model_card": "https://huggingface.co/Qwen/Qwen3-ASR-1.7B",
+  "official_package_source": "https://github.com/QwenLM/Qwen3-ASR"
+}

@@ -1,0 +1,8 @@
+node_modules/
+.toolchains/
+.venv-build/
+build/
+workspace/
+src-tauri/target/
+src-tauri/binaries/*.exe
+src-tauri/resources/frontend/

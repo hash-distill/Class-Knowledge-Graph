@@ -1,0 +1,5 @@
+# Build-only environment. No model packages or weights are required.
+PyInstaller==6.22.3
+opencv-python-headless>=4.10,<6
+Pillow>=10,<14
+pytesseract>=0.3.13,<1

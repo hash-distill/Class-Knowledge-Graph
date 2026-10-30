@@ -1,0 +1,1 @@
+{"desktop-minimal":{"identifier":"desktop-minimal","description":"The webview has no native execution, filesystem, or shell permissions. Rust manages the backend through a fixed entry point.","local":true,"windows":["main"],"permissions":[]}}

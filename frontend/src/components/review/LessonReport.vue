@@ -1,0 +1,30 @@
+<script setup lang="ts">
+import { headingText, reviewLimitation } from '@/utils/reviewPresentation'
+import { computed, ref } from 'vue'
+import { engagementExport } from '@/utils/classEngagement'
+import { useLessonReviewStore } from '@/stores/lessonReview'
+import { buildReviewMarkdown, formatReviewTime } from '@/utils/lessonReview'
+import AppIcon from '@/components/common/AppIcon.vue'
+const store = useLessonReviewStore()
+const exported = ref('')
+const engagement = computed(() => store.data?.activity_analysis?.frames.some(frame => frame.visual_reference) ? engagementExport(store.data.activity_analysis.frames) : null)
+function download(format: 'json' | 'md') {
+  if (!store.data) return
+  const content = format === 'json' ? JSON.stringify({ ...store.data, ...(engagement.value ? {
+    derived_engagement: { ...engagement.value, source_sha256: store.data.activity_analysis!.source_sha256 },
+  } : {}) }, null, 2) : buildReviewMarkdown(store.data)
+  const url = URL.createObjectURL(new Blob([content], { type: format === 'json' ? 'application/json' : 'text/markdown;charset=utf-8' }))
+  const anchor = document.createElement('a'); anchor.href = url; anchor.download = `${store.data.lesson.id}-lesson-review.${format}`; anchor.click()
+  window.setTimeout(() => URL.revokeObjectURL(url), 1000); exported.value = format === 'json' ? 'Full data' : 'Review document'
+}
+</script>
+<template>
+  <section v-if="store.data" id="report" class="panel lesson-report">
+    <div class="panel-heading"><div><h2>Save a review of the whole lesson</h2><p>Report, Sources and limitations are preserved together</p></div><AppIcon name="book" :size="21" /></div>
+    <div class="report-body"><span class="eyebrow">Whole-lesson review</span><h3>{{ headingText(store.data.report.title) }}</h3><p class="report-summary">{{ store.data.report.summary }}</p><section v-if="engagement" class="report-section" data-testid="report-engagement"><h4>Overall student engagement</h4><p>Lesson average engagement {{ engagement.summary.average === null ? 'No score available' : `${engagement.summary.average.toFixed(1)} / 100` }} · Valid scores {{ engagement.summary.scored_frames }} / {{ engagement.summary.total_frames }} frames</p><p>Weighted by valid frame duration. Uses the original project weights for seven behavior classes, Class dispersion adjustment and temporal smoothing. Scores with low coverage are auxiliary estimates. Unknown observations are not filled with zeros. The original generated report and evidence remain below</p></section><section v-for="(section,index) in store.data.report.sections" :key="index" class="report-section"><h4><span>{{ (index + 1).toString().padStart(2, '0') }}</span>{{ headingText(section.title) }}</h4><p>{{ section.text }}</p><div class="report-references"><button v-for="id in section.evidence_ids" :key="id" :disabled="!store.evidence(id)" :title="store.evidence(id)?.text || 'Source cannot be located'" @click="store.jumpToEvidence(id)">{{ id }}<span v-if="store.evidence(id)"> · {{ formatReviewTime(store.evidence(id)!.start_sec) }}</span></button></div></section><div class="report-limits"><h4>Limitations</h4><ul><li v-for="limit in store.data.report.limitations" :key="limit">{{ reviewLimitation(limit) }}</li></ul></div><details class="report-provenance"><summary>View generation method and provenance</summary><p>Original file: {{ store.data.lesson.source_video.filename }}</p><p>SHA-256: {{ store.data.lesson.source_video.sha256 }}</p><h4>Report generation method</h4><pre>{{ JSON.stringify(store.data.report.generated_by, null, 2) }}</pre><h4>Lesson processing provenance</h4><pre>{{ JSON.stringify(store.data.lesson.provenance, null, 2) }}</pre></details></div>
+    <div class="report-export"><span role="status">{{ exported ? `Exported ${exported} · Includes sources and limitations` : 'Preserve the complete lesson package. Available for later verification.' }}</span><button class="btn" @click="download('md')"><AppIcon name="download" :size="14" />Review document</button><button class="btn primary" @click="download('json')"><AppIcon name="download" :size="14" />Full data</button></div>
+  </section>
+</template>
+<style scoped>
+.lesson-report>.panel-heading>svg{color:#5f7ca6}.report-body{padding:3px 24px 18px}.report-body>.eyebrow{font-size:8px;color:#5f7ca5}.report-body h3{font-size:21px;font-weight:400;color:#385071;margin:12px 0 13px;line-height:1.6}.report-summary{font-size:12px;line-height:2;color:#546d90;white-space:pre-wrap}.report-section{border-top:1px solid #d5e3f7;margin-top:20px;padding-top:17px}.report-section h4{font-size:13px;font-weight:500;color:#466289;margin:0 0 10px;display:flex;align-items:center;gap:10px}.report-section h4>span{font-size:9px;color:#597bac;font-weight:400}.report-section>p{font-size:12px;line-height:2;color:#567095;white-space:pre-wrap;overflow-wrap:anywhere}.report-references{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}.report-references button{background:#e1ebf9;border-radius:4px;padding:5px 7px;font-size:8px;color:#4e6c97}.report-limits{padding:16px 18px;background:#e2ecf9;border:1px solid #cddbef;border-radius:7px;margin-top:23px}.report-limits h4{font-size:11px;font-weight:500;color:#466a9b;margin:0 0 9px}.report-limits ul{padding-left:16px;margin:0}.report-limits li{font-size:10px;line-height:1.9;color:#5176aa;margin-top:6px}.report-provenance{margin-top:20px;font-size:10px;color:#5776a2}.report-provenance summary{cursor:pointer;padding:7px 0}.report-provenance p{line-height:1.9;margin-top:8px;overflow-wrap:anywhere}.report-provenance h4{font-size:10px;font-weight:400}.report-provenance pre{font-size:9px;line-height:1.8;overflow:auto;max-height:260px;padding:12px;background:#ebf2fb;border-radius:5px}.report-export{border-top:1px solid var(--line);display:flex;align-items:center;gap:9px;padding:18px 22px}.report-export>span{font-size:9px;color:#5c7ca8;margin-right:auto}.report-export .btn{font-size:10px;padding:8px 10px}@media(max-width:550px){.report-body{padding-left:17px;padding-right:17px}.report-export{flex-wrap:wrap;padding:17px}.report-export>span{width:100%;margin-bottom:5px}}
+</style>

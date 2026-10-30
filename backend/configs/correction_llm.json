@@ -1,0 +1,84 @@
+{
+  "schema_version": "1.0",
+  "provider": "local_llm",
+  "base_url": "http://127.0.0.1:18082/v1",
+  "model_alias": "classroom-corrector",
+  "model": {
+    "repository": "mradermacher/ChineseErrorCorrector4-4B-GGUF",
+    "revision": "33952accc8b460769e3820ba0a794f558eec8f0b",
+    "filename": "ChineseErrorCorrector4-4B.Q4_K_M.gguf",
+    "path": "artifacts/models/ChineseErrorCorrector4-4B-GGUF/ChineseErrorCorrector4-4B.Q4_K_M.gguf",
+    "url": "https://huggingface.co/mradermacher/ChineseErrorCorrector4-4B-GGUF/resolve/33952accc8b460769e3820ba0a794f558eec8f0b/ChineseErrorCorrector4-4B.Q4_K_M.gguf",
+    "sha256": "b86247b60c844140944610cec31806f3c21150c9d53ca91d914dbc23a5c188db",
+    "size_bytes": 2497280096,
+    "architecture": "qwen3",
+    "parameters": "4B",
+    "quantization": "Q4_K_M",
+    "license": "Apache-2.0",
+    "upstream_repository": "twnlp/ChineseErrorCorrector4-4B",
+    "trained_here": false
+  },
+  "runtime": {
+    "repository": "ggml-org/llama.cpp",
+    "release": "b11871",
+    "revision": "b3fa69955ea81c3b60e77e3c1e2224c4a826ffb9",
+    "license": "MIT",
+    "default_backend": "cuda",
+    "cpu": {
+      "directory": "artifacts/runtime/llama-b11871-cpu",
+      "archives": [
+        {
+          "filename": "llama-b11871-bin-win-cpu-x64.zip",
+          "url": "https://github.com/ggml-org/llama.cpp/releases/download/b11871/llama-b11871-bin-win-cpu-x64.zip",
+          "sha256": "a39ae0a534a3ccfbf5c10b5b5c662da93cecac3c796173de786b7e89f4f0ccfa",
+          "size_bytes": 24216651
+        }
+      ]
+    },
+    "cuda": {
+      "directory": "artifacts/runtime/llama-b11871-cuda",
+      "archives": [
+        {
+          "filename": "llama-b11871-bin-win-cuda-12.4-x64.zip",
+          "url": "https://github.com/ggml-org/llama.cpp/releases/download/b11871/llama-b11871-bin-win-cuda-12.4-x64.zip",
+          "sha256": "ab901a45d4315e3c074bde7cf505c86a8c6261fab97099683e1de666c3370ee9",
+          "size_bytes": 272665002
+        },
+        {
+          "filename": "cudart-llama-bin-win-cuda-12.4-x64.zip",
+          "url": "https://github.com/ggml-org/llama.cpp/releases/download/b11871/cudart-llama-bin-win-cuda-12.4-x64.zip",
+          "sha256": "8c79a9b226de4b3cacfd1f83d24f962d0773be79f1e7b75c6af4ded7e32ae1d6",
+          "size_bytes": 391443627
+        }
+      ]
+    }
+  },
+  "server": {
+    "host": "127.0.0.1",
+    "port": 18082,
+    "context_size": 24576,
+    "parallel": 1,
+    "threads": 4,
+    "threads_batch": 4,
+    "reasoning": "off"
+  },
+  "request_defaults": {
+    "model": "classroom-corrector",
+    "temperature": 0.1,
+    "max_tokens": 1000,
+    "stream": false,
+    "chat_template_kwargs": {
+      "enable_thinking": false
+    }
+  },
+  "timeout_seconds": 600,
+  "limitations": [
+    "Specialized Chinese text corrector; classroom terminology correctness requires evaluation.",
+    "Quantized community conversion; pinned revision and SHA verified."
+  ],
+  "managed_lifecycle": true,
+  "verification_subdir": "llm-correction",
+  "qa_profile": "configs/local_llm.json",
+  "native_system": "Act as a professional Chinese text correction expert. Analyze grammatical error types and reasons for correction, but output only the corrected sentence in its original language. Error types include typos, incorrect collocations, incorrect parts of speech, word order, missing components, redundant components, incorrect conjunctions, ambiguous references, semantic or logical errors, and no error.",
+  "native_system_policy": "english_translation_of_upstream_recommended_professional_instruction"
+}

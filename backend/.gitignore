@@ -1,0 +1,10 @@
+.venv*/
+artifacts/
+__pycache__/
+.pytest_cache/
+*.pyc
+.env
+.env.*
+configs/lessons.json
+jieba.cache
+pytest-of-*/

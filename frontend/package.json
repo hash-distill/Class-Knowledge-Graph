@@ -1,0 +1,32 @@
+{
+  "name": "jingxi-insight-frontend",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "npm run test:review && npm run test:activity && npm run test:vision-review && npm run test:engagement",
+    "dev": "vite",
+    "build": "run-p type-check \"build-only {@}\" --",
+    "preview": "vite preview",
+    "build-only": "node scripts/build.mjs",
+    "type-check": "vue-tsc --build",
+    "test:review": "node scripts/test-teacher-workspace.mjs && node scripts/test-lesson-review.mjs && node scripts/test-workbench.mjs",
+    "test:activity": "node scripts/test-activity-analysis.mjs",
+    "test:vision-review": "node scripts/test-vision-review.mjs",
+    "test:engagement": "node scripts/test-class-engagement.mjs"
+  },
+  "dependencies": {
+    "pinia": "^2.1.7",
+    "vue": "^3.4.21"
+  },
+  "devDependencies": {
+    "@tsconfig/node20": "^20.1.2",
+    "@types/node": "^20.11.28",
+    "@vitejs/plugin-vue": "^5.2.4",
+    "@vue/tsconfig": "^0.5.1",
+    "npm-run-all2": "^6.1.2",
+    "typescript": "~5.4.2",
+    "vite": "^6.4.5",
+    "vue-tsc": "^2.0.6"
+  }
+}

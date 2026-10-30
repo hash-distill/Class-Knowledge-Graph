@@ -1,0 +1,4 @@
+# Optional isolated Chinese recognizer runtime; not required by the HTTP API.
+# Use an existing compatible PyTorch/torchaudio environment or install them first.
+funasr==1.4.16
+modelscope==1.40.2

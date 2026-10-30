@@ -1,0 +1,63 @@
+# Python cache and build artifacts
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# IDE settings
+.idea/
+.vscode/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs and temp files
+*.log
+*.tmp
+*.temp
+pymp-*/
+
+# Model/training artifacts
+artifacts/
+runs/
+checkpoints/
+wandb/
+tensorboard/
+
+# Large model files
+*.pt
+*.pth
+*.onnx
+*.engine
+
+# Datasets
+SCB-Dataset/
+SCB_yolo_dataset/
+SCB_yolo_dataset_merged/
+SCB_yolo_dataset_13cls/
+SCB5_yolo_unified/
+*.zip
+*.tar.gz
+scb5_yolo26m_e40/
+scb5_yolo26m_e60/
+
+
+# Large media / binary files
+*.mp4
+*.avi
+*.mkv
+.vendor/

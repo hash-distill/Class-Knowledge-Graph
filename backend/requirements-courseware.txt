@@ -1,0 +1,5 @@
+# Install into the existing media environment; it already supplies OCR and OpenCV.
+PyMuPDF==2.0
+python-pptx==1.0.2
+pypinyin==0.55.0
+jieba==0.42.1

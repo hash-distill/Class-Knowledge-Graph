@@ -1,0 +1,12 @@
+{
+  "name": "4c-desktop",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Tauri 2 desktop shell for the Jingxi Insight local classroom workbench",
+  "scripts": {
+    "dev": "tauri dev",
+    "build": "tauri build",
+    "check": "tauri info"
+  },
+  "devDependencies": {"@tauri-apps/cli": "^2.0.0"}
+}

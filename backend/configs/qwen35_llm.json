@@ -1,0 +1,91 @@
+{
+  "schema_version": "1.0",
+  "provider": "local_llm",
+  "base_url": "http://127.0.0.1:18083/v1",
+  "model_alias": "classroom-corrector-qwen35",
+  "model": {
+    "repository": "unsloth/Qwen3.5-4B-GGUF",
+    "revision": "e87f176479d0855a907a41277aca2f8ee7a09523",
+    "filename": "Qwen3.5-4B-Q4_K_M.gguf",
+    "path": "artifacts/models/Qwen3.5-4B-GGUF/Qwen3.5-4B-Q4_K_M.gguf",
+    "url": "https://huggingface.co/unsloth/Qwen3.5-4B-GGUF/resolve/e87f176479d0855a907a41277aca2f8ee7a09523/Qwen3.5-4B-Q4_K_M.gguf",
+    "sha256": "00fe7986ff5f6b463e62455821146049db6f9313603938a70800d1fb69ef11a4",
+    "size_bytes": 2740937888,
+    "architecture": "qwen35",
+    "parameters": "4B",
+    "quantization": "Q4_K_M",
+    "license": "Apache-2.0",
+    "upstream_repository": "Qwen/Qwen3.5-4B",
+    "upstream_revision": "851bf6e806efd8d0a36b00ddf55e13ccb7b8cd0a",
+    "display_name": "Qwen3.5-4B",
+    "trained_here": false
+  },
+  "runtime": {
+    "repository": "ggml-org/llama.cpp",
+    "release": "b11871",
+    "revision": "b3fa69955ea81c3b60e77e3c1e2224c4a826ffb9",
+    "license": "MIT",
+    "default_backend": "cuda",
+    "cpu": {
+      "directory": "artifacts/runtime/llama-b11871-cpu",
+      "archives": [
+        {
+          "filename": "llama-b11871-bin-win-cpu-x64.zip",
+          "url": "https://github.com/ggml-org/llama.cpp/releases/download/b11871/llama-b11871-bin-win-cpu-x64.zip",
+          "sha256": "a39ae0a534a3ccfbf5c10b5b5c662da93cecac3c796173de786b7e89f4f0ccfa",
+          "size_bytes": 24216651
+        }
+      ]
+    },
+    "cuda": {
+      "directory": "artifacts/runtime/llama-b11871-cuda",
+      "archives": [
+        {
+          "filename": "llama-b11871-bin-win-cuda-12.4-x64.zip",
+          "url": "https://github.com/ggml-org/llama.cpp/releases/download/b11871/llama-b11871-bin-win-cuda-12.4-x64.zip",
+          "sha256": "ab901a45d4315e3c074bde7cf505c86a8c6261fab97099683e1de666c3370ee9",
+          "size_bytes": 272665002
+        },
+        {
+          "filename": "cudart-llama-bin-win-cuda-12.4-x64.zip",
+          "url": "https://github.com/ggml-org/llama.cpp/releases/download/b11871/cudart-llama-bin-win-cuda-12.4-x64.zip",
+          "sha256": "8c79a9b226de4b3cacfd1f83d24f962d0773be79f1e7b75c6af4ded7e32ae1d6",
+          "size_bytes": 391443627
+        }
+      ]
+    }
+  },
+  "server": {
+    "host": "127.0.0.1",
+    "port": 18083,
+    "context_size": 24576,
+    "parallel": 1,
+    "threads": 4,
+    "threads_batch": 4,
+    "reasoning": "off",
+    "flash_attention": "on"
+  },
+  "request_defaults": {
+    "model": "classroom-corrector-qwen35",
+    "temperature": 0.1,
+    "max_tokens": 1000,
+    "stream": false,
+    "chat_template_kwargs": {
+      "enable_thinking": false
+    }
+  },
+  "timeout_seconds": 600,
+  "limitations": [
+    "Text-only correction; no vision projector loaded.",
+    "No classroom accuracy claim until same-input tests."
+  ],
+  "managed_lifecycle": true,
+  "verification_subdir": "llm-qwen35",
+  "qa_profile": "configs/local_llm.json",
+  "native_system": "You conservatively proofread Chinese classroom speech transcripts. Fix only highly certain recognition errors and typos. Preserve meaning, colloquial speech, questions, incomplete sentences, repetition, and speaker wording. Do not add content, delete words, polish, or rewrite sentences. Do not guess names, terms, numbers, negation, or formulas. When uncertain, retain the original text. Output only the proofread text in its original language, without explanation, headings, quotation marks, or reasoning traces.",
+  "native_system_policy": "conservative_asr_correction_v1_english_instruction_same_prompt_all_models",
+  "exclusive_profiles": [
+    "configs/local_llm.json",
+    "configs/correction_llm.json"
+  ]
+}

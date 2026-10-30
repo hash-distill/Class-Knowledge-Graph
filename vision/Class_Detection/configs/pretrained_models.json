@@ -1,0 +1,55 @@
+{
+  "schema_version": 1,
+  "verified_on": "2026-10-25",
+  "inspection_runtime": {"ultralytics": "8.4.188", "torch": "2.8.0+cpu", "dill": "0.4.1", "device": "cpu"},
+  "models": {
+    "behavior_scb": {
+      "filename": "scb_yolov9e.pt",
+      "url": "https://huggingface.co/spaces/nontaphat/Student-Behavior-Detector/resolve/dd6c9381099400c4c64135335cb531bdad35ed1d/best.pt",
+      "size_bytes": 117275802,
+      "sha256": "4ff890b66e69ed809f7bcbfa56eb4348404a1298457d772d728291d4027f6561",
+      "revision": "dd6c9381099400c4c64135335cb531bdad35ed1d",
+      "source_url": "https://huggingface.co/spaces/nontaphat/Student-Behavior-Detector/blob/dd6c9381099400c4c64135335cb531bdad35ed1d/best.pt",
+      "author_reference_url": "https://github.com/nontaphatfirm/Classroom-Behavior-Detector",
+      "integrity_source_url": "https://huggingface.co/spaces/nontaphat/Student-Behavior-Detector/raw/dd6c9381099400c4c64135335cb531bdad35ed1d/best.pt",
+      "dataset_source_url": "https://github.com/Whiffe/SCB-dataset",
+      "task": "detect",
+      "checkpoint_architecture": "yolov9e.yaml",
+      "expected_names": {"0": "hand-raising", "1": "reading", "2": "writing"},
+      "metadata_verification": "Verified by static ZIP/pickletools inspection and Ultralytics model load; task, names and yaml_file matched. A single-image CPU inference smoke completed on 2026-10-25; this is not accuracy validation.",
+      "dataset_description": "Author-linked SCB three-class classroom behavior checkpoint using the YOLOv9e architecture.",
+      "license": {
+        "space_card": "MIT metadata at pinned Space revision",
+        "upstream_dataset": "SCB repository states academic research, personal learning, and non-commercial use only; commercial use requires written authorization",
+        "framework_and_weights": "Ultralytics states its trained models are AGPL-3.0 by default, with Enterprise licensing available",
+        "caveat": "The Space MIT marker does not establish that the full checkpoint and dataset rights are permissive or commercially cleared.",
+        "urls": [
+          "https://huggingface.co/spaces/nontaphat/Student-Behavior-Detector/blob/dd6c9381099400c4c64135335cb531bdad35ed1d/README.md",
+          "https://github.com/Whiffe/SCB-dataset#4-commercial-use-restrictions",
+          "https://www.ultralytics.com/license"
+        ]
+      }
+    },
+    "pose_coco": {
+      "filename": "yolo26n-pose.pt",
+      "url": "https://github.com/ultralytics/assets/releases/download/v8.4.0/yolo26n-pose.pt",
+      "size_bytes": 7878574,
+      "sha256": "eb3bb8268828aeaf515cec23a4bfafd793944a86fe9af94ba7823609c14522a9",
+      "revision": "v8.4.0",
+      "source_url": "https://github.com/ultralytics/assets/releases/tag/v8.4.0",
+      "integrity_source_url": "https://api.github.com/repos/ultralytics/assets/releases/assets/340096236",
+      "release_asset_id": 340096236,
+      "task": "pose",
+      "checkpoint_architecture": "yolo26n-pose.yaml",
+      "expected_names": {"0": "person"},
+      "expected_keypoint_shape": [17, 3],
+      "metadata_verification": "Verified by static ZIP/pickletools inspection and Ultralytics model load; task, names, yaml_file and keypoint shape matched. A single-image CPU inference smoke completed on 2026-10-25; this is not accuracy validation.",
+      "dataset_description": "Official Ultralytics YOLO26n-pose COCO person-pose checkpoint.",
+      "license": {
+        "framework_and_weights": "AGPL-3.0 by default; Ultralytics Enterprise licensing available",
+        "caveat": "Publicly downloadable does not mean unrestricted proprietary or commercial deployment.",
+        "urls": ["https://www.ultralytics.com/license"]
+      }
+    }
+  }
+}

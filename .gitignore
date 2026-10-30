@@ -1,63 +1,66 @@
-# Python cache and build artifacts
-__pycache__/
+# Local environments, package caches and generated builds
+**/.venv*/
+**/node_modules/
+**/__pycache__/
+**/.pytest_cache/
+**/.cache/
+**/.toolchains/
+**/build/
+**/dist/
+**/target/
+**/artifacts/
+**/workspace/
+**/output/
+**/test-results/
+**/playwright-report/
+**/pytest-of-*/
+**/pip-*/
+**/pymp-*/
+**/tmp*/
+**/.idea/
+**/.vscode/
+release/
 *.py[cod]
-*$py.class
-*.so
-.Python
-build/
-dist/
-*.egg-info/
-.eggs/
-
-# Virtual environments
-.venv/
-venv/
-env/
-
-# IDE settings
-.idea/
-.vscode/
-
-# Jupyter
-.ipynb_checkpoints/
-
-# OS files
-.DS_Store
-Thumbs.db
-
-# Logs and temp files
+*.tsbuildinfo
 *.log
-*.tmp
-*.temp
-pymp-*/
+*.cache
+*.partial
+*.sqlite*
+*.db
+.env
+.env.*
+!.env.example
+backend/configs/lessons.json
+frontend/public/*
+!frontend/public/brand.svg
+!frontend/public/favicon.ico
+frontend/design-preview/*.json
 
-# Model/training artifacts
-artifacts/
-runs/
-checkpoints/
-wandb/
-tensorboard/
-
-# Large model files
+# Models, source classroom media, datasets and local exports
 *.pt
 *.pth
 *.onnx
+*.gguf
 *.engine
-
-# Datasets
-SCB-Dataset/
-SCB_yolo_dataset/
-SCB_yolo_dataset_merged/
-SCB_yolo_dataset_13cls/
-SCB5_yolo_unified/
+*.npz
+*.npy
+*.exe
+*.msi
 *.zip
 *.tar.gz
-scb5_yolo26m_e40/
-scb5_yolo26m_e60/
-
-
-# Large media / binary files
 *.mp4
 *.avi
 *.mkv
-.vendor/
+*.mov
+*.wav
+*.mp3
+*_snapshots.json
+vision/Class_Detection/test_images/
+competition-materials/
+
+# Operating system files and private keys
+.DS_Store
+Thumbs.db
+*.pem
+*.pfx
+*.key

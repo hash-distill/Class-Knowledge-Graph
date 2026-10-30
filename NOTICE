@@ -1,0 +1,9 @@
+Jingxi Insight: licensing and third-party material
+
+Existing author and license notices are preserved. No single open-source license currently covers all application code. Do not describe the entire project as MIT- or Apache-2.0-licensed before its license is established.
+
+Third-party Python/npm/Rust dependencies retain their package licenses. Model code, model weights, training data, and classroom recordings may have different terms. Before use or redistribution, inspect the official documentation for the downloaded revision and its LICENSE/NOTICE files. Runtime manifests record configuration and do not replace those terms.
+
+The source exporter excludes third-party model weights, classroom media, recognition artifacts, manual-review samples, and personal workspaces. Public dataset links, existing local copies, and research use do not by themselves establish redistribution rights.
+
+The historical graph-construction and AI-generation directories are separate repositories. They are outside the application source release, and their existing terms remain unchanged.

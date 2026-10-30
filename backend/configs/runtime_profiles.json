@@ -1,0 +1,47 @@
+{
+  "schema_version": "1.0",
+  "profiles": [
+    {
+      "id": "qwen3-asr-existing", "role": "asr", "label": "Qwen3-ASR-1.7B (existing experimental configuration)",
+      "model_id": "Qwen/Qwen3-ASR-1.7B", "config": "configs/qwen_asr.json", "license": "Apache-2.0",
+      "assets": [{"path": "artifacts/models/Qwen3-ASR-1.7B/model.safetensors"}, {"path": "artifacts/models/Qwen3-ASR-1.7B/config.json"}],
+      "runtimes": [{"path": ".venv-qwen-asr-local/Lib/site-packages/qwen_asr/__init__.py"}]
+    },
+    {
+      "id": "qwen3-asr-small", "role": "asr", "label": "Qwen3-ASR-0.6B (recommended installation)", "recommended": true,
+      "model_id": "Qwen/Qwen3-ASR-0.6B", "license": "Apache-2.0",
+      "assets": [{"path": "artifacts/models/Qwen3-ASR-0.6B/config.json"}, {"path": "artifacts/models/Qwen3-ASR-0.6B/model.safetensors"}],
+      "runtimes": [{"path": ".venv-qwen-asr-local/Lib/site-packages/qwen_asr/__init__.py"}]
+    },
+    {
+      "id": "pp-ocrv6-onnx", "role": "ocr", "label": "PP-OCRv6 ONNX (recommended installation; integration incomplete)", "recommended": true,
+      "model_id": "PP-OCRv6-ONNX", "license": "see_model_license",
+      "assets": [{"path": "artifacts/models/PP-OCRv6/det.onnx"}, {"path": "artifacts/models/PP-OCRv6/rec.onnx"}, {"path": "artifacts/models/PP-OCRv6/keys.txt"}],
+      "runtimes": [{"path": "artifacts/runtime/ocr/adapter.json"}]
+    },
+    {
+      "id": "bge-small", "role": "embeddings", "label": "BGE-small Chinese embeddings (recommended installation; integration incomplete)", "recommended": true,
+      "model_id": "BAAI/bge-small-zh-v1.5", "license": "MIT",
+      "assets": [{"path": "artifacts/models/bge-small-zh-v1.5/model.onnx"}, {"path": "artifacts/models/bge-small-zh-v1.5/tokenizer.json"}],
+      "runtimes": [{"path": "artifacts/runtime/embeddings/adapter.json"}]
+    },
+    {
+      "id": "qwen3-qa", "role": "qa", "label": "Qwen3-4B local Q&A", "model_id": "Qwen/Qwen3-4B-GGUF",
+      "config": "configs/local_llm.json", "license": "Apache-2.0",
+      "assets": [{"config_key": "model.path"}],
+      "runtimes": [{"config_key": "runtime.cpu.directory", "append": "llama-server.exe"}, {"config_key": "runtime.cuda.directory", "append": "llama-server.exe"}]
+    },
+    {
+      "id": "qwen35-correction", "role": "correction", "label": "Qwen3.5-4B conservative proofreading", "recommended": true,
+      "model_id": "Qwen/Qwen3.5-4B", "config": "configs/qwen35_llm.json", "license": "Apache-2.0",
+      "assets": [{"config_key": "model.path"}],
+      "runtimes": [{"config_key": "runtime.cpu.directory", "append": "llama-server.exe"}, {"config_key": "runtime.cuda.directory", "append": "llama-server.exe"}]
+    },
+    {
+      "id": "chinese-error-corrector", "role": "correction", "label": "ChineseErrorCorrector4 comparison configuration",
+      "model_id": "twnlp/ChineseErrorCorrector4-4B", "config": "configs/correction_llm.json", "license": "Apache-2.0",
+      "assets": [{"config_key": "model.path"}],
+      "runtimes": [{"config_key": "runtime.cpu.directory", "append": "llama-server.exe"}, {"config_key": "runtime.cuda.directory", "append": "llama-server.exe"}]
+    }
+  ]
+}

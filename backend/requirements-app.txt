@@ -1,0 +1,6 @@
+# Local API, visual review and PDF/PPTX import; model inference remains optional.
+-r requirements-review.txt
+-r requirements-courseware.txt
+numpy==2.2.6
+opencv-python-headless==4.12.0.88
+pytesseract==0.3.13
