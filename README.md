@@ -1,80 +1,87 @@
 # 精析智评
 
-面向教师的本地课堂复盘辅助系统，将课堂录像、语音转写、课件与学生可见行为放到同一条时间轴，支持证据回看、人工纠错、带引用问答和教学改进记录。
+精析智评是一款面向教师的本地课堂分析与教学复盘辅助系统。系统以课堂录像为基础，将语音转写、课件内容、学生可见行为和知识概念组织到统一时间轴，支持课堂回看、结果复核、证据问答、报告导出和教学改进。
 
-仓库地址：[hash-distill/Class-Knowledge-Graph](https://github.com/hash-distill/Class-Knowledge-Graph)。仓库沿用历史名称，应用名称统一为“精析智评”。
+教师可以从一个课堂片段出发，查看同一时刻的教学内容与学生表现，核对机器识别结果，并将复盘发现转化为改进计划、课后练习和反馈记录。
 
-文件夹和文件名使用英文，系统界面与说明文档正文使用中文。
+## 核心功能
+
+| 功能模块 | 主要能力 |
+| --- | --- |
+| 课堂概览 | 同步回放课堂录像、学生状态、整体积极度和语音转写 |
+| 语音与课件 | 对照原始转写与机器校对，导入 PDF、PPTX 和 PPT，定位对应课堂片段 |
+| 学生行为分析 | 展示人物检测框、可见行为分布、变化趋势及评分覆盖情况 |
+| 视觉复核 | 支持逐帧补框、标签修订、误检排除、版本恢复和分类样本导出 |
+| 知识图谱 | 展示课堂概念、同段关联及原文出处，支持从概念回到来源片段 |
+| 复盘报告 | 导出 JSON 和 Markdown，保留观测记录、派生评分和证据引用 |
+| 教学改进 | 管理教学目标、教师核对稿、改进计划、实施结果、练习与实际作答 |
+
+人工复核与原始识别记录分别保存，支持版本管理和冲突检测。课件处理任务持久化到 SQLite，支持状态查询、中断状态保留和失败重试。问答结果经过引用校验，证据不足或模型不可用时显示对应状态。
 
 ## 页面预览
 
-以下截图来自《认识氨基酸》真实课堂的处理结果，包含 90 秒录像、28 段转写、181 个行为采样帧和 11 个概念。截图中人物面部已遮挡，检测框、评分、识别文本和未知状态保持原样。
-
-该课堂片段属于 TS-Interact 训练组，用于展示实际软件功能，不作为独立准确率评测。来源与处理过程见 [同源课堂说明](backend/docs/SYNCHRONIZED_CHEMISTRY_DEMO_20261027.md)。
+以下为《认识氨基酸》课堂的实际运行页面，人物面部已匿名化处理。检测框、评分、识别文本和未知状态均来自现有课堂记录。
 
 ### 课堂概览
 
-在同一条时间轴上回看课堂，重点展示学生状态、整体积极度和同刻转写。示例定位到原录像第 21 秒，显示 40 个检测对象；检测数量不等同于全班人数。
+在统一时间轴上查看课堂录像、学生状态、整体积极度和同刻转写。
 
 ![精析智评课堂概览](docs/screenshots/overview.png)
 
 ### 学生行为与视觉复核
 
-查看当前对象与状态，按原始图像坐标补框、改标签或排除误检，复核结果独立保存。
+对照原始帧检查人物框与行为标签，补充漏检对象、排除误检并保存复核版本。
 
 ![精析智评学生行为与视觉复核](docs/screenshots/student-review.png)
 
 ### 知识图谱
 
-从本课概念查看关联关系，点击节点或证据回到对应片段。
+查看课堂概念及其关联，点击节点或引用定位原始证据。
 
 ![精析智评知识图谱](docs/screenshots/knowledge-graph.png)
 
-截图来源与展示范围见 [页面截图说明](docs/screenshots/README.md)。
+演示片段来自 TS-Interact 训练组，截图用于展示软件功能，不作为独立准确率评测。数据来源与展示范围见 [页面截图说明](docs/screenshots/README.md)。
 
-## 已有功能
+## 系统架构
 
-| 工作区 | 可以完成的操作 |
+| 层次 | 技术与职责 |
 | --- | --- |
-| 课堂概览 | 以学生画面为主，联动当前状态、整体积极度和同刻转写 |
-| 语音与课件 | 对照原始转写、机器校对、录像课件和独立 PDF/PPTX/PPT，点击证据定位原录像 |
-| 学生行为 | 查看人物框、状态来源、趋势和评分支持情况，人工补框、改标签、排除误检 |
-| 知识图谱 | 查看本课概念及其原文证据，共同出现关系可回到来源 |
-| 复盘报告 | 导出 JSON 和 Markdown，保留原始观测与独立的派生评分 |
-| 教学改进 | 保存目标、教师核对稿、改进计划、执行结果、练习和实际作答 |
+| Web 工作台 | Vue 3、TypeScript、Vite 和 Pinia，提供课堂回放与复核界面 |
+| 服务接口 | Python 3.11、FastAPI 和 Uvicorn，提供 `/api/review` 接口及 OpenAPI 文档 |
+| 数据存储 | SQLite 保存教师记录、处理任务、检索索引和人工复核；JSON 保存课堂证据 |
+| 媒体处理 | FFmpeg、OpenCV 和 Tesseract，支持音视频处理、画面分析及文字提取 |
+| 证据问答 | 课堂文本与时间检索、引用校验，以及独立的 llama.cpp 兼容模型服务 |
+| 桌面应用 | Tauri 2 与 Python sidecar，封装本地工作台与后端服务 |
 
-人工复核保存版本和来源摘要，支持冲突检测、撤回、恢复和分类样本 ZIP 导出。后台课件任务使用 SQLite 持久化，重启后保留中断状态并支持重试。模型问答会检查引用编号；模型离线、证据缺失或数据不足时给出对应状态。
+浏览已处理课堂、编辑记录和回看证据无需加载语言模型。视频处理、视觉推理和语言模型通过独立脚本或进程运行，媒体接口支持 Range 和 HEAD 请求。
 
-## 技术结构
+面向约 8 GB 显存的个人电脑，模型按任务串行加载。实际资源占用取决于模型、上下文长度和运行配置。
 
-| 层次 | 当前实现 |
-| --- | --- |
-| 界面 | Vue 3、TypeScript、Vite、Pinia，蓝色主题和响应布局 |
-| API | Python 3.11、FastAPI、Uvicorn，保留 `/api/review` 接口 |
-| 本地存储 | SQLite 保存教师记录、任务、检索索引和人工复核；JSON 保存原始课堂证据 |
-| 媒体 | FFmpeg、OpenCV、Tesseract；媒体通过 API 提供 Range/HEAD 读取 |
-| 本地问答 | 本课文本与时间检索、引用校验、独立的 llama.cpp 兼容服务 |
-| 桌面端 | Tauri 2 与 Python sidecar；模型运行时和权重单独安装 |
+## 模型配置
 
-浏览、编辑记录和回看已处理课堂不需要加载大模型。视频处理、视觉分析和语言模型使用独立脚本或进程。面向约 8 GB 显存的电脑，应按任务串行加载；显存占用取决于具体模型、上下文长度和运行配置。
-
-## 模型与实际接入状态
-
-| 任务 | 已有路径 | 说明 |
+| 任务 | 模型或方案 | 接入方式 |
 | --- | --- | --- |
-| 主转写 | faster-whisper Small，CPU int8 | `prepare_media.py` 的默认处理路径 |
-| 中文语音升级 | Qwen3-ASR-1.7B | 独立实验配置，见 [Qwen 升级说明](backend/docs/QWEN_UPGRADE.md) |
-| 中文二次识别 | FunASR Seaco Paraformer、FSMN-VAD、CT-Punc | 可选 SSH 参考通道，需明确配置远程主机 |
-| 人物与姿态 | YOLO26n、YOLO26n-pose，整图与切片融合 | 人物定位与行为分类分开；检测框数量不是班级人数 |
-| 七类可见行为 | MobileNetV3 Small 裁剪分类器 | 已有约 3.15 MB 权重实验；低置信和冲突状态保留未知 |
-| 概念与问答 | Qwen3-4B GGUF，llama.cpp | 本地模型服务，生成结果需通过引用检查 |
-| 校对 | 来源规则、ChineseErrorCorrector4-4B、Qwen3.5-4B 对照 | 原始转写始终保留，机器校对待教师核验 |
+| 语音转写 | faster-whisper Small，CPU int8 | `prepare_media.py` 默认处理方案 |
+| 中文语音实验 | Qwen3-ASR-1.7B | 独立实验配置，见 [Qwen 升级说明](backend/docs/QWEN_UPGRADE.md) |
+| 辅助语音识别 | FunASR Seaco Paraformer、FSMN-VAD 和 CT-Punc | 可选 SSH 参考通道，需配置远程主机 |
+| 人物与姿态检测 | YOLO26n、YOLO26n-pose | 整图与重叠切片融合，人物定位与行为分类分别处理 |
+| 可见行为分类 | MobileNetV3 Small | 七类裁剪分类实验，权重约 3.15 MB，保留低置信和冲突状态 |
+| 概念提取与问答 | Qwen3-4B GGUF、llama.cpp | 独立本地模型服务，生成结果接受引用检查 |
+| 转写校对 | 来源规则、ChineseErrorCorrector4-4B 和 Qwen3.5-4B 对照 | 保留原始转写，机器修订供教师核验 |
 
-运行时清单中的 Qwen3-ASR-0.6B、PP-OCRv6 ONNX 和 BGE-small 属于推荐安装项或待完成适配项，不能仅凭清单出现就认为已经部署。当前问答使用文本检索，没有把向量数据库或 GraphRAG 作为默认实现。
+模型权重与运行时需单独安装。清单中的 Qwen3-ASR-0.6B、PP-OCRv6 ONNX 和 BGE-small 属于推荐安装项或待适配项。默认问答采用课堂文本检索，向量数据库与 GraphRAG 尚未接入。
 
-## 从源码启动
+## 快速开始
 
-需要 Python 3.11、[uv](https://docs.astral.sh/uv/) 和 Node.js 22 或 24。以下命令在仓库根目录执行，先启动应用壳和 API；这一步不下载模型或课堂录像。
+### 环境要求
+
+- Python 3.11 和 [uv](https://docs.astral.sh/uv/)
+- Node.js 22 或 24
+- 新录像处理另需 FFmpeg、Tesseract 中文与英文语言包，以及相应模型
+
+### 安装与启动
+
+在仓库根目录执行以下命令，安装应用依赖并构建前端：
 
 ```powershell
 git clone https://github.com/hash-distill/Class-Knowledge-Graph.git
@@ -89,23 +96,17 @@ python scripts/workspace_setup.py
 python scripts/run_workbench.py --port 8000 --open-browser
 ```
 
-打开 [本机工作台](http://127.0.0.1:8000/)。接口文档位于 [API 文档](http://127.0.0.1:8000/docs)，健康检查为 `/api/review/health`。服务只监听 `127.0.0.1`。
+启动后访问 [本地工作台](http://127.0.0.1:8000/)。[API 文档](http://127.0.0.1:8000/docs) 位于 `/docs`，健康检查地址为 `/api/review/health`。服务默认监听 `127.0.0.1`。
 
-首次启动会创建空的课程登记和本地数据目录；页面没有课程是正常状态。源码仅附经过匿名化处理的页面截图，不附带原始课堂视频、完整转写、学生原始图像、模型权重或个人工作区。已有登记不会被初始化脚本覆盖。
+首次启动会创建空的课程登记和本地数据目录，已有登记不会被覆盖。课堂素材、完整转写、学生原始图像、模型权重和个人工作区需自行准备，源码仅包含经过匿名化处理的页面截图。
 
-Linux/macOS 安装依赖时将解释器路径换成 `backend/.venv-media/bin/python`。源码启动器会识别两种虚拟环境路径；Windows 安装包及 PowerShell 媒体入口的支持范围见 [桌面与运行时](backend/docs/DESKTOP.md)。
+Linux/macOS 安装依赖时使用 `backend/.venv-media/bin/python`。启动器支持 Windows 和 Linux/macOS 的虚拟环境布局。桌面安装包与 PowerShell 媒体入口的支持范围见 [桌面与运行时](backend/docs/DESKTOP.md)。
 
-### 前后端开发
+运行 `python scripts/run_workbench.py --check` 可检查路径、工具和前端构建状态。通过 `--python`、`--registry` 和 `--data-dir` 指定解释器、课程登记和本地状态目录。
 
-在一个终端运行 `python scripts/run_workbench.py --api-only --port 8000`，在另一个终端进入 `frontend` 运行 `npm run dev -- --host 127.0.0.1 --port 5175`。Vite 将 `/api/review` 代理到后端。`npm run preview` 只用于检查静态构建；完整应用使用上面的同源启动入口。
+## 接入课堂数据
 
-若 API 在前端首次构建前已启动，构建后先在原终端按 `Ctrl+C` 结束，再启动完整应用。启动器会拒绝复用缺少静态页面的旧服务，并保留它运行。
-
-`python scripts/run_workbench.py --check` 只检查路径、工具和构建状态。可使用 `--python`、`--registry`、`--data-dir` 指定解释器、课程登记和状态目录。
-
-## 使用自己的课堂
-
-已处理课程通过私有文件 `backend/configs/lessons.json` 登记，例如：
+已处理课程通过本地文件 `backend/configs/lessons.json` 登记：
 
 ```json
 {
@@ -116,21 +117,42 @@ Linux/macOS 安装依赖时将解释器路径换成 `backend/.venv-media/bin/pyt
 }
 ```
 
-相对路径以登记文件所在目录为基准，也支持绝对路径。`directory` 需要包含完成且来源一致的 `bundle.json` 和对应证据文件；只登记一个视频路径不会自动生成分析。原始素材和登记文件请保存在本地。
+相对路径以登记文件所在目录为基准，也支持绝对路径。`directory` 应包含完整且来源一致的 `bundle.json` 及对应证据文件。登记录像路径后，仍需运行媒体处理与分析流程。
 
-处理新录像需要额外安装媒体依赖、FFmpeg、Tesseract 中文/英文语言包及相应模型，并配置真实的课件区域。具体命令见 [后端与课堂处理](backend/README.md)。人物行为分析见 [视觉模块](vision/README.md)。上传 PDF/PPTX/PPT 是向已登记课堂补充课件，不等同于上传录像后自动完成全部推理。
+新录像处理需配置实际的课件区域、媒体依赖和模型，操作步骤见 [后端与课堂处理](backend/README.md) 及 [视觉模块](vision/README.md)。PDF、PPTX 和 PPT 导入用于向已登记课堂补充课件。
 
-本地问答配置见 [本地模型说明](backend/docs/LOCAL_LLM.md)。若在服务端显式设置外部 `REVIEW_LLM_BASE_URL`，检索证据会发送到该服务。可选中文二次识别会把该课 WAV 发往明确配置的 SSH 主机；默认不选择远程主机。
+问答服务配置见 [本地模型说明](backend/docs/LOCAL_LLM.md)。配置外部 `REVIEW_LLM_BASE_URL` 后，检索证据会发送至该服务；可选辅助语音识别会将课堂 WAV 发送到指定 SSH 主机。原始媒体与课程登记文件应保存在本地。
 
-## 整体积极度如何计算
+## 评分方法
 
-当前界面使用 `overall_behavior_engagement_v1`：书写 85、阅读 80、抬头 85、转头 30、举手 95、站立 90、讨论 75。将有效行为分归一化后，计算 `100 × 均值 × exp(-0.6 × 总体标准差)`，连续同镜头再作时间平滑。概览、详情、曲线和导出共用同一实现。
+整体积极度采用 `overall_behavior_engagement_v1`，以检测对象的可见行为为输入。动作权重为：书写 85、阅读 80、抬头 85、转头 30、举手 95、站立 90 和讨论 75。
 
-至少一个可信行为对象即可给出估计分；不足 3 个对象或覆盖率低于 60% 时标记“低支持估计”。无人物、无有效行为、几何姿态或未识别对象不按零分处理。人工复核独立保存，尚不会自动重算全课模型曲线。权重、平滑、覆盖和导出字段见 [评分说明](backend/docs/CLASS_ENGAGEMENT_20261029.md)。
+有效行为分归一化后，按以下公式计算，并在连续同镜头观测间进行时间平滑：
 
-评分是检测对象的可见行为规则估计，尚未完成人工校准，不能解释成学生个人成绩、心理投入或知识掌握。分类器现有固定裁剪测试存在相邻画面重叠，其 Macro-F1 不能作为独立课堂端到端准确率；详见 [视觉改造记录](backend/docs/VISION_IMPROVEMENT_20261029.md)。
+```text
+整体积极度 = 100 × 均值 × exp(-0.6 × 总体标准差)
+```
 
-## 验证与发布
+至少一个可信行为对象可产生估计分。不足 3 个对象或评分覆盖率低于 60% 时，界面标记“低支持估计”。无人物、无有效行为和未识别状态保留未知。人工复核结果独立保存，暂不自动重算全课模型曲线。详细定义见 [评分说明](backend/docs/CLASS_ENGAGEMENT_20261029.md)。
+
+该分数是未经人工校准的可见行为规则估计，不用于判断个人成绩、心理投入或知识掌握。检测框数量不等于班级人数。分类器固定裁剪测试存在相邻画面重叠，相关指标不能作为独立课堂端到端准确率，详见 [视觉分析说明](backend/docs/VISION_IMPROVEMENT_20261029.md)。
+
+## 开发与验证
+
+开发时分别启动 API 与前端开发服务器：
+
+```powershell
+# 终端一：启动 API
+python scripts/run_workbench.py --api-only --port 8000
+
+# 终端二：启动前端
+cd frontend
+npm run dev -- --host 127.0.0.1 --port 5175
+```
+
+Vite 将 `/api/review` 请求代理至后端。`npm run preview` 用于检查静态构建，完整应用使用源码启动器运行。若 API 在前端首次构建前已启动，构建完成后需在原终端停止并重新启动服务。
+
+执行回归测试、生产构建与源码审计：
 
 ```powershell
 & backend/.venv-media/Scripts/python.exe -m pytest backend/tests -q
@@ -139,29 +161,31 @@ npm test
 npm run build
 cd ..
 python scripts/prepare_release.py --check
-python scripts/prepare_release.py --output release/github-ready
 ```
 
-源码导出生成 `source/`、`jingxi-insight-source.zip` 和逐文件 SHA-256 清单，过滤本地登记、数据库、课堂产物、权重、环境、构建目录和嵌套 Git 元数据。输出目录已存在时拒绝覆盖，常见凭据格式命中时中止导出。它不能替代人工检查文件内容和素材授权。
+GitHub Actions 自动执行后端测试、前端测试、生产构建和源码审计。模型准确率与真实课堂效果需另行评测。
 
-[GitHub 更新说明](docs/PUBLISHING.md) 说明统一仓库布局、历史视觉目录迁移和上传前检查。GitHub Actions 配置会执行后端测试、前端测试、生产构建和源码审计；模型识别准确率与真实课堂验收仍需单独评测。
+使用 `python scripts/prepare_release.py --output release/github-ready` 导出源码。导出内容包括源码目录、ZIP 和逐文件 SHA-256 清单，排除本地登记、数据库、课堂产物、权重、环境及构建目录。发布流程见 [源码发布说明](docs/PUBLISHING.md)。
 
-## 目录与文档
+## 项目结构
 
 ```text
-scripts/              初始化、源码启动与发布导出
-backend/             FastAPI、媒体处理、证据、教师工作区与测试
-frontend/           Vue 工作台
-desktop/              Tauri 壳和打包脚本
-vision/             人物定位、状态分类与历史视觉管线
-docs/                 发布说明
+backend/     FastAPI 服务、媒体处理、课堂证据与测试
+frontend/    Vue 工作台
+desktop/     Tauri 桌面应用与打包脚本
+vision/      人物定位、姿态分析与行为分类
+scripts/     工作区初始化、启动与源码导出
+docs/        项目说明与页面截图
 ```
+
+## 开发文档
 
 - [人工视觉复核与训练样本导出](backend/docs/VISUAL_REVIEW_20261029.md)
 - [本地任务与数据架构](backend/docs/LOCAL_ARCHITECTURE.md)
 - [独立课件导入与对齐](backend/docs/COURSEWARE.md)
 - [前端开发](frontend/README.md)
-- [贡献约定](CONTRIBUTING.md)
-- [许可与第三方材料](NOTICE)
+- [贡献指南](CONTRIBUTING.md)
 
-现有课堂素材、训练数据、第三方代码和模型分别遵守其原有许可。仓库尚未声明覆盖全部代码的统一开源许可证；公开源码不自动授予课堂素材与模型权重的再分发权。
+## 许可与数据使用
+
+项目尚未声明覆盖全部代码的统一开源许可证，许可范围见 [NOTICE](NOTICE)。第三方代码、模型、训练数据与课堂素材分别遵守其原有许可。公开源码不自动授予课堂素材和模型权重的再分发权。
